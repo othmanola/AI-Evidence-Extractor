@@ -1494,9 +1494,10 @@ html[data-theme="light"] .aee-tool{
 .aee-update-status[data-tone="error"]{border-color:rgba(239,68,68,.32);background:rgba(239,68,68,.07);}
 .aee-update-notes{margin:10px 0 0;color:var(--text-muted);white-space:pre-wrap;}
 .aee-update-dialog-shell{position:fixed!important;inset:0!important;z-index:12000!important;
-  display:grid!important;place-items:center!important;padding:22px!important;
+  padding:22px!important;
   background:rgba(2,6,23,.68)!important;backdrop-filter:blur(12px)!important;}
-.aee-update-dialog-shell>div{width:min(620px,calc(100vw - 32px))!important;max-height:min(82vh,720px)!important;
+.aee-update-dialog-shell>div{position:absolute!important;left:50%!important;top:50%!important;
+  transform:translate(-50%,-50%)!important;width:min(620px,calc(100vw - 32px))!important;max-height:min(82vh,720px)!important;
   overflow:auto!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-update-dialog{position:relative;padding:clamp(24px,4vw,36px);border:1px solid rgba(96,165,250,.3);
   border-radius:26px;background:radial-gradient(520px 240px at 100% 0%,rgba(59,130,246,.18),transparent 68%),

@@ -3,8 +3,8 @@
   "version": "1.0.7",
   "published_at": "2026-10-15",
   "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.7/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "154d56bb517dabf3b16c59d0dcc37fb10f9366ad161dc4abe420e164dfe1f780",
+  "sha256": "cb1a7466a47d0a0612f68370ddca27b7b1b6bd4db4e920a6eccc66fa882b5f2f",
   "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.7/AI_Evidence_Extractor_Update.zip",
-  "package_sha256": "7b8407194ca2edd16fe7cdf68d7d6a4b5a45d98e39dda880bd6106b1e398418a",
+  "package_sha256": "4d73749af1345ffd0bbe09a0ffce54a0985d95944b13eb77f07ecfc352135d70",
   "release_notes": "Presents update status and release details in a modern in-app dialog, with download and installation progress."
 }
