@@ -1,0 +1,18 @@
+# Generated application builds and installers (publish installers as GitHub Release assets)
+/build/
+/dist/
+/AI Evidence Extractor.exe
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+runtimeenv/
+
+# Local run data and logs
+outputs/
+*.log
+
+# Local source backup
+/app.py.before_notebook_replace.bak

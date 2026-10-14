@@ -1,0 +1,8 @@
+{
+  "app_id": "ai-evidence-extractor",
+  "version": "1.0.1",
+  "published_at": "2026-10-15",
+  "download_url": "https://github.com/OWNER/REPOSITORY/releases/download/v1.0.1/AI_Evidence_Extractor_Setup.exe",
+  "sha256": "REPLACE_WITH_64_CHARACTER_SHA256",
+  "release_notes": "Describe the changes in this release."
+}

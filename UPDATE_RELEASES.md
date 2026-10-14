@@ -1,0 +1,33 @@
+# Publishing app updates
+
+Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases can host each setup file, while `latest.json` in the repository's default branch points apps to the newest setup.
+
+## Connect this build to your release feed
+
+1. Make `othmanola/AI-Evidence-Extractor` public, or host the manifest at another HTTPS URL accessible without sign-in. The repository currently needs to serve `latest.json` from its `main` branch.
+2. This build is already configured to check:
+   `https://raw.githubusercontent.com/othmanola/AI-Evidence-Extractor/main/latest.json`
+3. Keep that URL in every installer you distribute. If the repository's default branch is not `main`, update `update_config.json` and rebuild.
+
+The current repository URL returned 404 when checked during this build. Until the repository is public and `latest.json` is uploaded to its `main` branch, the Updates page will report that it cannot reach the feed. Do not distribute this build as a working update service before publishing that file and release asset.
+
+## Publish a new version
+
+1. Increase `version.txt` to the next three-part version, such as `1.0.2` (the prepared release in this build is `1.0.1`).
+2. Build `dist/AI_Evidence_Extractor_Setup.exe` with `build_windows.ps1`.
+3. Create a GitHub Release with tag `v1.0.2` and upload that setup file as a release asset. Use the same version in the tag and manifest.
+4. Calculate the installer checksum in PowerShell:
+
+   ```powershell
+   (Get-FileHash .\dist\AI_Evidence_Extractor_Setup.exe -Algorithm SHA256).Hash.ToLower()
+   ```
+
+5. Copy `latest.example.json` to `latest.json`. Set `version`, `published_at`, `download_url` to the release asset's HTTPS URL, `sha256` to the checksum, and `release_notes` to a short description. The prepared `latest.json` in this workspace is for version `1.0.1`; upload it alongside the first release after adding the corresponding setup asset.
+6. Commit or upload `latest.json` to the repository's default branch. Existing apps read it from the stable raw URL and show the update on their next check.
+7. For the first public release, rebuild and distribute the installer after setting `update_config.json` so new installations already point to the feed.
+
+The updater verifies the HTTPS manifest, app identifier, version, HTTPS installer URL, and SHA-256 checksum before opening the setup wizard. The user completes the normal installer and then restarts the app. Keep previous setup assets available in old GitHub Releases so users can still download them if needed.
+
+## Current release values
+
+The app version is stored in `version.txt` and is embedded into the setup version by `installer.iss`. `latest.json` is intentionally a release-time file: generate and publish it after the setup file has been built and its SHA-256 hash is known.

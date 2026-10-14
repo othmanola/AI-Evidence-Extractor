@@ -1,0 +1,15 @@
+﻿# Bootstrap versions use CPU PyTorch for broad Windows compatibility.
+numpy
+pandas
+opencv-python-headless
+soundfile
+gradio
+ultralytics
+huggingface_hub
+librosa
+reportlab
+grad-cam
+scikit-learn
+matplotlib
+imageio-ffmpeg
+pywebview
