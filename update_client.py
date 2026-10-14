@@ -117,11 +117,11 @@ def check_for_updates() -> dict:
     }
 
 
-def download_and_launch_installer(
+def download_update_installer(
     update: dict,
     progress: Callable | None = None,
 ) -> Path:
-    """Download and checksum-verify the published setup, then open its wizard."""
+    """Download and checksum-verify the installer without running it."""
     if not isinstance(update, dict) or update.get("app_id") != APP_ID:
         raise UpdateError("Check for updates again before installing.")
     if not update.get("available"):
@@ -176,15 +176,5 @@ def download_and_launch_installer(
         raise UpdateError("The installer checksum did not match. The file was discarded for safety.")
 
     if progress:
-        progress(1, desc="Starting the installer")
-    try:
-        if os.name == "nt":
-            os.startfile(str(installer))  # type: ignore[attr-defined]
-        else:
-            import subprocess
-            subprocess.Popen([str(installer)], cwd=str(output_dir), close_fds=True)
-    except OSError as exc:
-        raise UpdateError(
-            f"The installer downloaded, but Windows could not open it. You can run it from: {installer}"
-        ) from exc
+        progress(1, desc="Installer downloaded and verified")
     return installer

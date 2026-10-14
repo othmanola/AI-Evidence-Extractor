@@ -1532,6 +1532,12 @@ html[data-theme="light"] .aee-update-status{background:rgba(255,255,255,.8);}
 .aee-tabs [role="tab"].aee-utility-tab-hidden{display:none!important;}
 .aee-about-card,.aee-contact-card{max-width:900px;margin:20px auto;padding:clamp(22px,4vw,36px);
   border:1px solid var(--border);border-radius:22px;background:linear-gradient(150deg,rgba(15,23,42,.86),rgba(8,12,23,.94));}
+.aee-project-page-heading{max-width:900px;margin:28px auto 12px;display:flex;align-items:center;gap:12px;}
+.aee-project-page-mark{width:42px;height:42px;display:grid;place-items:center;flex:none;border:1px solid rgba(96,165,250,.25);
+  border-radius:14px;color:#93c5fd;background:linear-gradient(145deg,rgba(37,99,235,.2),rgba(79,70,229,.12));}
+.aee-project-page-mark svg{width:21px;height:21px;}
+.aee-project-page-heading small{display:block;color:#93c5fd;font-size:.68rem;font-weight:750;letter-spacing:.14em;text-transform:uppercase;}
+.aee-project-page-heading h1{margin:3px 0 0;color:var(--text);font-size:1.25rem;font-weight:800;letter-spacing:-.03em;}
 .aee-about-title,.aee-contact-title{margin:0 0 9px;color:var(--text);font-size:clamp(1.45rem,3vw,2rem);font-weight:800;letter-spacing:-.04em;}
 .aee-about-copy,.aee-contact-copy{max-width:740px;color:var(--text-muted);font-size:.94rem;line-height:1.75;}
 .aee-contact-link{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:11px 15px;border-radius:12px;
@@ -4575,35 +4581,39 @@ def _check_updates_ui():
     try:
         update = _update_client.check_for_updates()
     except _update_client.UpdateNotConfigured as exc:
-        return _update_status_html(str(exc), "neutral"), gr.update(visible=False), None
+        return (_update_status_html(str(exc), "neutral"), gr.update(visible=False),
+                None, gr.update(value=None, visible=False))
     except _update_client.UpdateError as exc:
-        return _update_status_html(str(exc), "error"), gr.update(visible=False), None
+        return (_update_status_html(str(exc), "error"), gr.update(visible=False),
+                None, gr.update(value=None, visible=False))
     except Exception as exc:
         log.exception("Update check failed")
         return (_update_status_html(f"Update check failed: {exc}", "error"),
-                gr.update(visible=False), None)
+                gr.update(visible=False), None, gr.update(value=None, visible=False))
 
     if update["available"]:
         return (_update_status_html("A new version is available.", "available", update),
-                gr.update(visible=True), update)
+                gr.update(visible=True), update, gr.update(value=None, visible=False))
     current = _html.escape(update["installed_version"])
     return (_update_status_html(
         f"No updates right now. You are using the latest version ({current}).", "success"),
-        gr.update(visible=False), update)
+        gr.update(visible=False), update, gr.update(value=None, visible=False))
 
 
-def _install_update_ui(update, progress=gr.Progress(track_tqdm=False)):
+def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
     try:
-        installer = _update_client.download_and_launch_installer(update, progress)
+        installer = _update_client.download_update_installer(update, progress)
         safe_path = _html.escape(str(installer))
-        return _update_status_html(
-            "The installer has started. Complete its steps, then close and reopen AI Evidence Extractor. "
-            f"If you need to open it manually, it is saved at {safe_path}", "success")
+        return (_update_status_html(
+            "The installer was downloaded and checksum-verified. The installed app was not changed. "
+            f"Use the file below if you choose to install it later. Saved at {safe_path}", "success"),
+            gr.update(value=str(installer), visible=True))
     except _update_client.UpdateError as exc:
-        return _update_status_html(str(exc), "error")
+        return _update_status_html(str(exc), "error"), gr.update(value=None, visible=False)
     except Exception as exc:
-        log.exception("Could not install the downloaded update")
-        return _update_status_html(f"Could not start the update installer: {exc}", "error")
+        log.exception("Could not download the update installer")
+        return (_update_status_html(f"Could not download the update installer: {exc}", "error"),
+                gr.update(value=None, visible=False))
 
 
 def _updates_intro_html():
@@ -4615,7 +4625,8 @@ def _updates_intro_html():
       <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Desktop app</div>
       <div class="aee-update-title">Stay up to date</div>
       <div class="aee-update-copy">Check the secure release feed for improvements and fixes.
-        When a new version is available, download and run its installer from here.</div>
+        A new version can be downloaded and verified here. Downloading it does not change or restart
+        the installed app; you decide if and when to run the installer.</div>
       <div class="aee-version-pill">Installed version&nbsp; v{version}</div>
     </section>'''
 
@@ -4801,6 +4812,10 @@ def build_ui():
                     interactive=False, wrap=True, show_row_numbers=True)
 
             with gr.Tab("Updates"):
+                gr.HTML('''<header class="aee-project-page-heading">
+                  <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg></span>
+                  <div><small>Project</small><h1>Updates</h1></div>
+                </header>''')
                 gr.HTML(_updates_intro_html())
                 update_status = gr.HTML(
                     value=_update_status_html("Select Check for Updates to check for a new release."))
@@ -4808,11 +4823,18 @@ def build_ui():
                 with gr.Row():
                     update_check_btn = gr.Button(
                         "Check for Updates", variant="primary", size="lg")
-                    update_install_btn = gr.Button(
-                        "Download and Install Update", variant="secondary", size="lg",
+                    update_download_btn = gr.Button(
+                        "Download Update Installer", variant="secondary", size="lg",
                         visible=False)
+                update_installer_file = gr.File(
+                    label="Verified update installer", show_label=True,
+                    interactive=False, visible=False)
 
             with gr.Tab("About Us"):
+                gr.HTML('''<header class="aee-project-page-heading">
+                  <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.9 1.3-1.9 2.8M12 17h.01"/></svg></span>
+                  <div><small>Project</small><h1>About Us</h1></div>
+                </header>''')
                 gr.HTML('''<section class="aee-about-card">
                   <h1 class="aee-about-title">About AI Evidence Extractor</h1>
                   <div class="aee-about-copy">
@@ -4825,6 +4847,10 @@ def build_ui():
                 </section>''')
 
             with gr.Tab("Contact Us"):
+                gr.HTML('''<header class="aee-project-page-heading">
+                  <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
+                  <div><small>Project</small><h1>Contact Us</h1></div>
+                </header>''')
                 gr.HTML('''<section class="aee-contact-card">
                   <h1 class="aee-contact-title">Contact the project team</h1>
                   <div class="aee-contact-copy">Share questions, feature ideas, or bug reports through the
@@ -4915,9 +4941,10 @@ def build_ui():
                               outputs=[history_table], queue=False)
         process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
-            outputs=[update_status, update_install_btn, update_state], queue=False)
-        update_install_btn.click(fn=_install_update_ui, inputs=[update_state],
-            outputs=[update_status], show_progress="full")
+            outputs=[update_status, update_download_btn, update_state,
+                     update_installer_file], queue=False)
+        update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
+            outputs=[update_status, update_installer_file], show_progress="full")
 
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
