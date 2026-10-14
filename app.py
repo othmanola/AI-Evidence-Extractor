@@ -1548,12 +1548,14 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-nav-spacer{flex:1;min-height:12px;}
 .aee-nav-foot{padding:14px 10px;border-top:1px solid var(--border);color:#687993;font-size:.72rem;line-height:1.6;}
 .aee-tabs [role="tab"].aee-utility-tab-hidden{display:none!important;}
-body.aee-utility-window-open{overflow:hidden!important;}
+body.aee-utility-window-open{overflow-y:auto!important;overscroll-behavior-y:none;}
 body.aee-utility-window-open .aee-tabs [role="tabpanel"]{display:none!important;}
 body.aee-utility-window-open .aee-tabs [role="tabpanel"].aee-utility-window-page{
   display:block!important;position:fixed!important;inset:0!important;z-index:11000!important;
   width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;
-  overflow-y:auto!important;padding:28px clamp(18px,5vw,72px) 48px!important;
+  overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y;
+  padding:28px clamp(18px,5vw,72px) 48px!important;
   box-sizing:border-box!important;border:0!important;border-radius:0!important;
   background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.17),transparent 70%),
     linear-gradient(160deg,#0b1220,#060910 76%)!important;}

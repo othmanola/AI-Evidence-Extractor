@@ -1,10 +1,10 @@
 {
   "app_id": "ai-evidence-extractor",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "published_at": "2026-10-15",
-  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.8/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "59a7491a79831b8ca69a013a6f24b2f3ecc7ff0217a48ca88284bc6c692531f3",
-  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.8/AI_Evidence_Extractor_Update.zip",
-  "package_sha256": "1e021d32919e3df36dc6915af81426122301057cabc037edd8c3c090bf8ba743",
-  "release_notes": "Opens Updates, About Us, and Contact Us in dedicated full-screen in-app windows."
+  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.9/AI_Evidence_Extractor_Setup.exe",
+  "sha256": "35aff061a31958e5f291647dcc9c339a4118fd8cc4f7ee448a4432e2972c050a",
+  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.9/AI_Evidence_Extractor_Update.zip",
+  "package_sha256": "59c10d905c8d5910aa9865dbb1b3ed051635803025a5e01d429653c20c526804",
+  "release_notes": "Fixes scrolling in full-screen Updates, About Us, and Contact Us pages."
 }
