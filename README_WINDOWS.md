@@ -14,7 +14,7 @@ For challenging footage, select **Enhanced accuracy (slower)** before analysis t
 
 FFmpeg is installed as a Python package dependency and added to the process path at startup. User files and generated app data are stored under `%LOCALAPPDATA%\AI Evidence Extractor` and the operating system temporary folder.
 
-The **Updates** tab checks the configured HTTPS release feed. When a newer version is available, the app verifies the downloaded setup file's SHA-256 checksum and opens the installer. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
+The left-side project menu contains **Updates**, **About Us**, and **Contact Us**. Updates checks the configured HTTPS release feed and verifies a newer setup file's SHA-256 checksum before opening it. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
 
 ## Build the installer
 

@@ -1495,6 +1495,54 @@ html[data-theme="light"] .aee-tool{
 .aee-update-notes{margin:10px 0 0;color:var(--text-muted);white-space:pre-wrap;}
 html[data-theme="light"] .aee-update-card{background:radial-gradient(600px 240px at 100% 0%,rgba(59,130,246,.12),transparent 68%),linear-gradient(150deg,#fff,#f4f7fc);}
 html[data-theme="light"] .aee-update-status{background:rgba(255,255,255,.8);}
+.aee-nav-toggle{position:fixed;z-index:10002;left:16px;top:20px;width:48px;height:48px;display:grid;place-items:center;
+  border:1px solid var(--border-strong);border-radius:15px;color:var(--text);cursor:pointer;
+  background:linear-gradient(145deg,rgba(30,41,59,.96),rgba(10,15,28,.96));
+  box-shadow:0 12px 32px -16px rgba(2,6,23,.85);transition:transform .2s,border-color .2s,box-shadow .2s;}
+.aee-nav-toggle:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.6);box-shadow:0 14px 35px -15px rgba(59,130,246,.5);}
+.aee-nav-toggle svg{width:21px;height:21px;}
+.aee-nav-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.55);backdrop-filter:blur(3px);
+  opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s;}
+.aee-nav-drawer{position:fixed;inset:0 auto 0 0;z-index:10001;width:min(340px,88vw);padding:24px 18px;
+  display:flex;flex-direction:column;gap:22px;overflow-y:auto;transform:translateX(-105%);transition:transform .28s cubic-bezier(.2,.75,.25,1);
+  background:linear-gradient(180deg,#0c1426,#070b14);border-right:1px solid rgba(148,163,184,.18);
+  box-shadow:24px 0 80px -34px rgba(0,0,0,.8);}
+.aee-nav-open .aee-nav-drawer{transform:translateX(0);}
+.aee-nav-open .aee-nav-backdrop{opacity:1;visibility:visible;}
+.aee-nav-open{overflow:hidden;}
+.aee-nav-head{display:flex;align-items:center;gap:12px;padding:8px 6px 18px;border-bottom:1px solid var(--border);}
+.aee-nav-logo{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;
+  background:linear-gradient(145deg,#111b36,#090d18);border:1px solid rgba(147,197,253,.28);
+  box-shadow:0 8px 25px -12px rgba(59,130,246,.8);}
+.aee-nav-logo svg{width:27px;height:27px;}
+.aee-nav-brand{min-width:0;flex:1;}
+.aee-nav-brand strong{display:block;color:#f1f5f9;font-size:.91rem;letter-spacing:-.02em;}
+.aee-nav-brand span{display:block;margin-top:3px;color:#8493ac;font-size:.7rem;}
+.aee-nav-close{width:34px;height:34px;border:1px solid rgba(148,163,184,.18);border-radius:10px;
+  color:#aebbd0;background:rgba(148,163,184,.06);cursor:pointer;font-size:1.1rem;}
+.aee-nav-group-label{margin:0 10px 8px;color:#64748b;font-size:.65rem;font-weight:750;letter-spacing:.14em;text-transform:uppercase;}
+.aee-nav-items{display:grid;gap:6px;}
+.aee-nav-item{width:100%;display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid transparent;
+  border-radius:13px;text-align:left;color:#b9c5d8;background:transparent;cursor:pointer;font:600 .86rem Inter,system-ui,sans-serif;
+  transition:background .18s,border-color .18s,color .18s,transform .18s;}
+.aee-nav-item:hover{transform:translateX(2px);color:#f8fafc;border-color:rgba(96,165,250,.22);background:rgba(59,130,246,.11);}
+.aee-nav-item svg{width:19px;height:19px;flex:none;color:#8fb9ff;}
+.aee-nav-spacer{flex:1;min-height:12px;}
+.aee-nav-foot{padding:14px 10px;border-top:1px solid var(--border);color:#687993;font-size:.72rem;line-height:1.6;}
+.aee-tabs [role="tab"].aee-utility-tab-hidden{display:none!important;}
+.aee-about-card,.aee-contact-card{max-width:900px;margin:20px auto;padding:clamp(22px,4vw,36px);
+  border:1px solid var(--border);border-radius:22px;background:linear-gradient(150deg,rgba(15,23,42,.86),rgba(8,12,23,.94));}
+.aee-about-title,.aee-contact-title{margin:0 0 9px;color:var(--text);font-size:clamp(1.45rem,3vw,2rem);font-weight:800;letter-spacing:-.04em;}
+.aee-about-copy,.aee-contact-copy{max-width:740px;color:var(--text-muted);font-size:.94rem;line-height:1.75;}
+.aee-contact-link{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:11px 15px;border-radius:12px;
+  color:#fff!important;text-decoration:none!important;font-weight:700;background:linear-gradient(120deg,#2563eb,#4f46e5);
+  box-shadow:0 12px 28px -16px rgba(59,130,246,.9);}
+html[data-theme="light"] .aee-nav-toggle{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
+html[data-theme="light"] .aee-nav-drawer{background:linear-gradient(180deg,#fff,#f3f6fb);}
+html[data-theme="light"] .aee-nav-brand strong{color:#0f172a;}
+html[data-theme="light"] .aee-nav-item{color:#334155;}
+html[data-theme="light"] .aee-nav-item:hover{color:#0f172a;background:rgba(59,130,246,.08);}
+html[data-theme="light"] .aee-about-card,html[data-theme="light"] .aee-contact-card{background:linear-gradient(150deg,#fff,#f4f7fc);}
 .aee-tabs [role="tablist"]{
   gap:4px!important;padding:5px!important;
   background:linear-gradient(180deg,rgba(15,23,42,.75),rgba(9,12,22,.85))!important;
@@ -3134,9 +3182,46 @@ _JS_HEAD = r"""
   window.aeeToggleTheme = toggleTheme;
 
   function clickTab(i){
-    const tabs = document.querySelectorAll('[role="tab"]');
+    const tabs = document.querySelectorAll('.aee-tabs [role="tab"]');
     if (tabs[i]) tabs[i].click();
   }
+
+  function setAeeNavigation(open){
+    if (!document.body) return;
+    document.body.classList.toggle('aee-nav-open', !!open);
+    const toggle = document.querySelector('[data-aee-nav-toggle]');
+    if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  function hideAeeUtilityTabs(){
+    document.querySelectorAll('.aee-tabs [role="tab"]').forEach(tab => {
+      if (['Updates','About Us','Contact Us'].includes(tab.textContent.trim())){
+        tab.classList.add('aee-utility-tab-hidden');
+      }
+    });
+  }
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-aee-nav-toggle]')){
+      const isOpen = document.body && document.body.classList.contains('aee-nav-open');
+      setAeeNavigation(!isOpen); return;
+    }
+    if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
+      setAeeNavigation(false); return;
+    }
+    const item = event.target.closest('[data-aee-nav-tab]');
+    if (item){
+      const name = item.getAttribute('data-aee-nav-tab');
+      const tab = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'))
+        .find(candidate => candidate.textContent.trim() === name);
+      if (tab) tab.click();
+      setAeeNavigation(false);
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setAeeNavigation(false);
+  });
+  hideAeeUtilityTabs();
+  new MutationObserver(hideAeeUtilityTabs).observe(document.documentElement,
+    {childList:true,subtree:true});
 
   function toast(msg, type, ms){
     type = type || 'info'; ms = ms || 2800;
@@ -3691,7 +3776,7 @@ _JS_HEAD = r"""
       const b = document.querySelector('button.primary');
       if (b) { b.click(); e.preventDefault(); }
     }
-    if (['1','2','3','4','5','6','7','8','9'].indexOf(e.key) >= 0) clickTab(parseInt(e.key)-1);
+    if (['1','2','3','4','5','6','7','8'].indexOf(e.key) >= 0) clickTab(parseInt(e.key)-1);
     if (e.key === 't' || e.key === 'T') toggleTheme();
   });
 
@@ -3704,7 +3789,6 @@ _JS_HEAD = r"""
     {label:'🔬  Go to Evidence',   keys:['6'], run:()=>clickTab(5)},
     {label:'📄  Go to Report',     keys:['7'], run:()=>clickTab(6)},
     {label:'History',               keys:['8'], run:()=>clickTab(7)},
-    {label:'Check for Updates',     keys:['9'], run:()=>clickTab(8)},
     {label:'⚡  Run analysis',      keys:['A'], run:()=>{
        const b = document.querySelector('button.primary'); if (b) b.click(); }},
     {label:'🌓  Toggle theme',     keys:['T'], run: toggleTheme},
@@ -4527,9 +4611,57 @@ def _updates_intro_html():
     </section>'''
 
 
+def _side_navigation_html():
+    return '''<div class="aee-navigation">
+      <button class="aee-nav-toggle" type="button" data-aee-nav-toggle
+        aria-label="Open navigation" aria-expanded="false" title="Open navigation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+      <div class="aee-nav-backdrop" data-aee-nav-backdrop></div>
+      <aside class="aee-nav-drawer" aria-label="App navigation">
+        <div class="aee-nav-head">
+          <div class="aee-nav-logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 4.5 28.4 18l13.1 6-13.1 5.2L24 43.5l-4.8-14.3L6 24l13.2-6L24 4.5Z" fill="#60a5fa" stroke="white" stroke-opacity=".8" stroke-width="1.4" stroke-linejoin="round"/><path d="m35.8 5 .9 3.1 3.1.9-3.1.9-.9 3.1-.9-3.1-3.1-.9 3.1-.9.9-3.1Z" fill="#c4b5fd"/></svg></div>
+          <div class="aee-nav-brand"><strong>AI Evidence Extractor</strong><span>Project menu</span></div>
+          <button class="aee-nav-close" type="button" data-aee-nav-close aria-label="Close navigation">×</button>
+        </div>
+        <div>
+          <div class="aee-nav-group-label">Workspace</div>
+          <div class="aee-nav-items">
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Overview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/></svg>
+              <span>Back to workspace</span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <div class="aee-nav-group-label">Project</div>
+          <div class="aee-nav-items">
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Updates">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg>
+              <span>Updates</span>
+            </button>
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="About Us">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.9 1.3-1.9 2.8M12 17h.01"/></svg>
+              <span>About Us</span>
+            </button>
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Contact Us">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg>
+              <span>Contact Us</span>
+            </button>
+          </div>
+        </div>
+        <div class="aee-nav-spacer"></div>
+        <div class="aee-nav-foot">AI-assisted video evidence review<br>Human review remains essential.</div>
+      </aside>
+    </div>'''
+
+
 def build_ui():
     info = Ensemble.get().info
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
+        gr.HTML(_side_navigation_html())
         gr.HTML(_hero_html(info))
         gr.HTML(_workflow_html())
 
@@ -4670,6 +4802,28 @@ def build_ui():
                     update_install_btn = gr.Button(
                         "Download and Install Update", variant="secondary", size="lg",
                         visible=False)
+
+            with gr.Tab("About Us"):
+                gr.HTML('''<section class="aee-about-card">
+                  <h1 class="aee-about-title">About AI Evidence Extractor</h1>
+                  <div class="aee-about-copy">
+                    <p>AI Evidence Extractor is a desktop project for reviewing video evidence.
+                    It brings object detection, tracking, model explanations, and report exports
+                    together in one workspace.</p>
+                    <p>The app helps organize observations for human review. AI-generated detections
+                    and scores are review aids and should be checked against the original video.</p>
+                  </div>
+                </section>''')
+
+            with gr.Tab("Contact Us"):
+                gr.HTML('''<section class="aee-contact-card">
+                  <h1 class="aee-contact-title">Contact the project team</h1>
+                  <div class="aee-contact-copy">Share questions, feature ideas, or bug reports through the
+                    project issue tracker. For a useful report, include the app version and steps to reproduce
+                    the issue. Do not post private videos, case details, or other sensitive evidence.</div>
+                  <a class="aee-contact-link" href="https://github.com/othmanola/AI-Evidence-Extractor/issues"
+                    target="_blank" rel="noopener noreferrer">Open GitHub Issues <span aria-hidden="true">↗</span></a>
+                </section>''')
 
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM
