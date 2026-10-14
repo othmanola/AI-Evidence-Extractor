@@ -1,10 +1,10 @@
 {
   "app_id": "ai-evidence-extractor",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "published_at": "2026-10-15",
-  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.6/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "b14db4b6b0c0430570a583cff490243d4858e2bf49636460156d08f5a8ced1ac",
-  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.6/AI_Evidence_Extractor_Update.zip",
-  "package_sha256": "086c6a0cbc7f895f0ae24da109a500de457f1274b8ec768ffb280b8ddfbd946d",
-  "release_notes": "Adds in-app installation progress with per-file updates, safe rollback, and restart instructions."
+  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.7/AI_Evidence_Extractor_Setup.exe",
+  "sha256": "154d56bb517dabf3b16c59d0dcc37fb10f9366ad161dc4abe420e164dfe1f780",
+  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.7/AI_Evidence_Extractor_Update.zip",
+  "package_sha256": "7b8407194ca2edd16fe7cdf68d7d6a4b5a45d98e39dda880bd6106b1e398418a",
+  "release_notes": "Presents update status and release details in a modern in-app dialog, with download and installation progress."
 }

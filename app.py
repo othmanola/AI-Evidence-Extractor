@@ -1493,8 +1493,25 @@ html[data-theme="light"] .aee-tool{
 .aee-update-status[data-tone="available"]{border-color:rgba(59,130,246,.42);background:rgba(59,130,246,.09);}
 .aee-update-status[data-tone="error"]{border-color:rgba(239,68,68,.32);background:rgba(239,68,68,.07);}
 .aee-update-notes{margin:10px 0 0;color:var(--text-muted);white-space:pre-wrap;}
+.aee-update-dialog-shell{position:fixed!important;inset:0!important;z-index:12000!important;
+  display:grid!important;place-items:center!important;padding:22px!important;
+  background:rgba(2,6,23,.68)!important;backdrop-filter:blur(12px)!important;}
+.aee-update-dialog-shell>div{width:min(620px,calc(100vw - 32px))!important;max-height:min(82vh,720px)!important;
+  overflow:auto!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;}
+.aee-update-dialog{position:relative;padding:clamp(24px,4vw,36px);border:1px solid rgba(96,165,250,.3);
+  border-radius:26px;background:radial-gradient(520px 240px at 100% 0%,rgba(59,130,246,.18),transparent 68%),
+  linear-gradient(150deg,#111b30,#080d18);box-shadow:0 35px 110px -34px rgba(0,0,0,.85),0 0 0 1px rgba(148,163,184,.06) inset;}
+.aee-update-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px;}
+.aee-update-dialog-kicker{color:#93c5fd;font-size:.72rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
+.aee-update-dialog-title{margin:6px 0 0;color:var(--text);font-size:1.45rem;font-weight:800;letter-spacing:-.04em;}
+.aee-update-dialog-copy{margin:0 0 18px;color:var(--text-muted);line-height:1.7;}
+.aee-update-dialog-actions{margin-top:20px;}
+.aee-update-dialog-close{min-width:42px!important;width:42px!important;height:42px!important;border:1px solid var(--border)!important;
+  border-radius:14px!important;background:rgba(148,163,184,.08)!important;color:var(--text)!important;}
+.aee-update-dialog-shell .aee-update-status{max-width:none;margin:0;}
 html[data-theme="light"] .aee-update-card{background:radial-gradient(600px 240px at 100% 0%,rgba(59,130,246,.12),transparent 68%),linear-gradient(150deg,#fff,#f4f7fc);}
 html[data-theme="light"] .aee-update-status{background:rgba(255,255,255,.8);}
+html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240px at 100% 0%,rgba(59,130,246,.1),transparent 68%),linear-gradient(150deg,#fff,#f4f7fc);}
 .aee-nav-toggle{position:fixed;z-index:10002;left:16px;top:20px;width:48px;height:48px;display:grid;place-items:center;
   border:1px solid var(--border-strong);border-radius:15px;color:var(--text);cursor:pointer;
   background:linear-gradient(145deg,rgba(30,41,59,.96),rgba(10,15,28,.96));
@@ -4582,26 +4599,30 @@ def _check_updates_ui():
         update = _update_client.check_for_updates()
     except _update_client.UpdateNotConfigured as exc:
         return (_update_status_html(str(exc), "neutral"), gr.update(visible=False),
-                None, gr.update(visible=False))
+                None, gr.update(visible=False), gr.update(visible=True))
     except _update_client.UpdateError as exc:
         return (_update_status_html(str(exc), "error"), gr.update(visible=False),
-                None, gr.update(visible=False))
+                None, gr.update(visible=False), gr.update(visible=True))
     except Exception as exc:
         log.exception("Update check failed")
         return (_update_status_html(f"Update check failed: {exc}", "error"),
-                gr.update(visible=False), None, gr.update(visible=False))
+                gr.update(visible=False), None, gr.update(visible=False),
+                gr.update(visible=True))
 
     if update["available"]:
         if not update.get("package_url"):
             return (_update_status_html(
                 "This release needs the one-time updater migration before it can be applied in-app.",
-                "error"), gr.update(visible=False), update, gr.update(visible=False))
+                "error"), gr.update(visible=False), update, gr.update(visible=False),
+                gr.update(visible=True))
         return (_update_status_html("A new version is available.", "available", update),
-                gr.update(visible=True), update, gr.update(visible=False))
+                gr.update(visible=True), update, gr.update(visible=False),
+                gr.update(visible=True))
     current = _html.escape(update["installed_version"])
     return (_update_status_html(
         f"No updates right now. You are using the latest version ({current}).", "success"),
-        gr.update(visible=False), update, gr.update(visible=False))
+        gr.update(visible=False), update, gr.update(visible=False),
+        gr.update(visible=True))
 
 
 def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
@@ -4839,12 +4860,23 @@ def build_ui():
                 with gr.Row():
                     update_check_btn = gr.Button(
                         "Check for Updates", variant="primary", size="lg")
-                    update_download_btn = gr.Button(
-                        "Download Update", variant="secondary", size="lg",
-                        visible=False)
-                    update_apply_btn = gr.Button(
-                        "Install Update", variant="primary", size="lg",
-                        visible=False)
+                with gr.Group(visible=False, elem_classes=["aee-update-dialog-shell"]) as update_dialog:
+                    with gr.Column(elem_classes=["aee-update-dialog"]):
+                        with gr.Row(elem_classes=["aee-update-dialog-head"]):
+                            gr.HTML('''<div><div class="aee-update-dialog-kicker">Release center</div>
+                              <h2 class="aee-update-dialog-title">AI Evidence Extractor</h2></div>''')
+                            update_close_btn = gr.Button("Close", elem_classes=["aee-update-dialog-close"],
+                                                         size="sm", elem_id="aee-update-dialog-close")
+                        gr.HTML('<p class="aee-update-dialog-copy">Your update status and release information are shown here.</p>')
+                        update_status = gr.HTML(
+                            value=_update_status_html("Select Check for Updates to check for a new release."))
+                        with gr.Row(elem_classes=["aee-update-dialog-actions"]):
+                            update_download_btn = gr.Button(
+                                "Download Update", variant="secondary", size="lg",
+                                visible=False)
+                            update_apply_btn = gr.Button(
+                                "Install Update", variant="primary", size="lg",
+                                visible=False)
 
             with gr.Tab("About Us"):
                 gr.HTML('''<header class="aee-project-page-heading">
@@ -4958,11 +4990,13 @@ def build_ui():
         process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
-                     update_apply_btn], queue=False)
+                     update_apply_btn, update_dialog], queue=False)
         update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn, update_state], show_progress="full")
         update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn], show_progress="full")
+        update_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[],
+            outputs=[update_dialog], queue=False)
 
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
