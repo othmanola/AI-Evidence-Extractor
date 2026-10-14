@@ -4609,7 +4609,7 @@ def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
         staged = _update_client.download_and_stage_update(update, progress)
         return (_update_status_html(
             "The update package was downloaded, checksum-verified, and prepared. "
-            "Your installed app has not changed yet. Select Apply Update & Restart when ready.", "success"),
+              "Your installed app has not changed yet. Select Install Update when ready.", "success"),
             gr.update(visible=True), staged)
     except _update_client.UpdateError as exc:
         return _update_status_html(str(exc), "error"), gr.update(visible=False), update
@@ -4619,11 +4619,12 @@ def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
                 gr.update(visible=False), update)
 
 
-def _apply_update_ui(staged):
+def _apply_update_ui(staged, progress=gr.Progress(track_tqdm=False)):
     try:
-        _update_client.start_staged_update(staged)
+        _update_client.apply_staged_update(staged, progress)
         return (_update_status_html(
-            "The update is ready. Close this app window to apply it; the app will restart automatically.",
+            f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "
+            "Close and reopen AI Evidence Extractor to load the updated version.",
             "success"), gr.update(visible=False))
     except _update_client.UpdateError as exc:
         return _update_status_html(str(exc), "error"), gr.update(visible=True)
@@ -4641,7 +4642,7 @@ def _updates_intro_html():
       <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Desktop app</div>
       <div class="aee-update-title">Stay up to date</div>
       <div class="aee-update-copy">Check for updates and download the verified app files here.
-        Applying an update happens inside the app after you choose Apply Update &amp; Restart; no setup wizard is opened.</div>
+        Downloading and installation happen inside the app with progress shown. Choose Install Update to replace the app files, then restart the app to load them; no setup wizard is opened.</div>
       <div class="aee-version-pill">Installed version&nbsp; v{version}</div>
     </section>'''
 
@@ -4842,7 +4843,7 @@ def build_ui():
                         "Download Update", variant="secondary", size="lg",
                         visible=False)
                     update_apply_btn = gr.Button(
-                        "Apply Update & Restart", variant="primary", size="lg",
+                        "Install Update", variant="primary", size="lg",
                         visible=False)
 
             with gr.Tab("About Us"):
@@ -4961,7 +4962,7 @@ def build_ui():
         update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn, update_state], show_progress="full")
         update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
-            outputs=[update_status, update_apply_btn], queue=False)
+            outputs=[update_status, update_apply_btn], show_progress="full")
 
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])

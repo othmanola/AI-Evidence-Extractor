@@ -1,6 +1,6 @@
 # Publishing app updates
 
-Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. New app versions download the archive inside the app and apply it after the app closes; they do not open setup.
+Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
 ## Connect this build to your release feed
 
@@ -10,9 +10,9 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version, such as `1.0.6` (the prepared release in this build is `1.0.5`).
+1. Increase `version.txt` to the next three-part version (the prepared release in this build is `1.0.6`).
 2. Build `dist/AI_Evidence_Extractor_Setup.exe` and `dist/AI_Evidence_Extractor_Update.zip` with `build_windows.ps1`.
-3. Create a GitHub Release with tag `v1.0.6` and upload both files. The setup is for first installs and recovery; the update archive is used by the in-app updater.
+3. Create a GitHub Release with the matching version tag and upload both files. The setup is for first installs and recovery; the update archive is used by the in-app updater.
 4. Calculate both checksums in PowerShell:
 
    ```powershell
@@ -24,7 +24,7 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 6. Push `latest.json` to `main`. Existing apps read it from the stable raw URL and show the update on their next check.
 7. Apps built before internal updates must be upgraded once with the setup installer. Later releases download and apply their archive from inside the app.
 
-The updater verifies HTTPS, the app identifier, the version, the package checksum, and every archive path before staging files. It only writes staged files under the app's user-data folder while downloading. After the user selects **Apply Update & Restart** and closes the app, a hidden helper replaces the allowlisted app files, rolls back if any replacement fails, and restarts the app. Keep the setup asset for first installs and recovery.
+The updater verifies HTTPS, the app identifier, the version, the package checksum, and every archive path before staging files. It only writes staged files under the app's user-data folder while downloading. When the user selects **Install Update**, it replaces the allowlisted app files in-process, shows progress for each file, and rolls back if any replacement fails. The user then restarts the app to load the new version. Keep the setup asset for first installs and recovery.
 
 ## Current release values
 

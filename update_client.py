@@ -7,8 +7,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
-import sys
 import urllib.error
 import urllib.request
 import zipfile
@@ -313,8 +311,8 @@ def download_and_stage_update(
             "package_path": str(package), "staged": True}
 
 
-def start_staged_update(staged: dict) -> None:
-    """Apply the staged package after this app exits, then relaunch the app."""
+def apply_staged_update(staged: dict, progress: Callable | None = None) -> None:
+    """Install staged app files now and report per-file progress to the UI."""
     if not isinstance(staged, dict) or staged.get("app_id") != APP_ID or not staged.get("staged"):
         raise UpdateError("Download and prepare the update before applying it.")
     version = str(staged.get("version", ""))
@@ -324,16 +322,8 @@ def start_staged_update(staged: dict) -> None:
         raise UpdateError("The prepared update folder is missing or invalid.")
     if _version_key(version) <= _version_key(current_version()):
         raise UpdateError("The installed app is already current.")
-    helper = APP_DIR / "update_apply.py"
-    app_exe = APP_DIR / "AI Evidence Extractor.exe"
-    pythonw = Path(sys.executable).with_name("pythonw.exe")
-    if not helper.is_file() or not app_exe.is_file() or not pythonw.is_file():
-        raise UpdateError("The in-app update helper is not available in this installation.")
-    command = [str(pythonw), str(helper), str(stage_dir), str(APP_DIR),
-               str(os.getpid()), version, str(app_exe)]
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
     try:
-        subprocess.Popen(command, cwd=str(DATA_DIR), close_fds=True,
-                         creationflags=flags)
-    except OSError as exc:
-        raise UpdateError("The update is ready, but the background updater could not start.") from exc
+        from update_apply import apply_staged_update as apply
+        apply(stage_dir, APP_DIR, version, progress)
+    except Exception as exc:
+        raise UpdateError(f"The update could not be installed: {exc}") from exc
