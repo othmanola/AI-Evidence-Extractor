@@ -1,8 +1,10 @@
 {
   "app_id": "ai-evidence-extractor",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "published_at": "2026-10-15",
-  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.4/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "35bd6169afcab0b6ea56b02671d9855b6864f174fac9bdef40978ede1d1e6e56",
-  "release_notes": "Makes Updates, About Us, and Contact Us distinct project pages. Updates now downloads a verified installer without installing or changing the app."
+  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.5/AI_Evidence_Extractor_Setup.exe",
+  "sha256": "0aa2d4961cc20b037d8d11a5bfd6bb441a41440ea28467e8e6970d034d038aab",
+  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.5/AI_Evidence_Extractor_Update.zip",
+  "package_sha256": "7e186913af81192382c1e14627fef1c668c4960b22ce09804c6bc846426cb115",
+  "release_notes": "Adds in-app updates: download and verify app files, apply after closing the app, and restart without opening setup."
 }

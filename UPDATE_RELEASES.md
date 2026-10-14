@@ -1,6 +1,6 @@
 # Publishing app updates
 
-Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases can host each setup file, while `latest.json` in the repository's default branch points apps to the newest setup.
+Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. New app versions download the archive inside the app and apply it after the app closes; they do not open setup.
 
 ## Connect this build to your release feed
 
@@ -10,21 +10,22 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version, such as `1.0.5` (the prepared release in this build is `1.0.4`).
-2. Build `dist/AI_Evidence_Extractor_Setup.exe` with `build_windows.ps1`.
-3. Create a GitHub Release with tag `v1.0.5` and upload that setup file as a release asset. Use the same version in the tag and manifest.
-4. Calculate the installer checksum in PowerShell:
+1. Increase `version.txt` to the next three-part version, such as `1.0.6` (the prepared release in this build is `1.0.5`).
+2. Build `dist/AI_Evidence_Extractor_Setup.exe` and `dist/AI_Evidence_Extractor_Update.zip` with `build_windows.ps1`.
+3. Create a GitHub Release with tag `v1.0.6` and upload both files. The setup is for first installs and recovery; the update archive is used by the in-app updater.
+4. Calculate both checksums in PowerShell:
 
    ```powershell
    (Get-FileHash .\dist\AI_Evidence_Extractor_Setup.exe -Algorithm SHA256).Hash.ToLower()
+   (Get-FileHash .\dist\AI_Evidence_Extractor_Update.zip -Algorithm SHA256).Hash.ToLower()
    ```
 
-5. Copy `latest.example.json` to `latest.json`. Set `version`, `published_at`, `download_url` to the release asset's HTTPS URL, `sha256` to the checksum, and `release_notes` to a short description. The current `latest.json` is updated for each release and must be committed after its matching setup asset is uploaded.
-6. Commit or upload `latest.json` to the repository's default branch. Existing apps read it from the stable raw URL and show the update on their next check.
-7. Users of builds created before the Updates feature was added must install the first update-enabled release manually. Subsequent releases can be installed from the app's Updates page.
+5. Copy `latest.example.json` to `latest.json`. Set `version`, `published_at`, `download_url` and `sha256` to the setup URL and checksum for compatibility with older clients. Set `package_url` and `package_sha256` to the update archive URL and checksum. Set `release_notes` to a short description.
+6. Push `latest.json` to `main`. Existing apps read it from the stable raw URL and show the update on their next check.
+7. Apps built before internal updates must be upgraded once with the setup installer. Later releases download and apply their archive from inside the app.
 
-The updater verifies the HTTPS manifest, app identifier, version, HTTPS installer URL, and SHA-256 checksum before making an installer available to download. Downloading never launches the installer or changes the installed app. Users choose when and where to run the downloaded setup. Keep previous setup assets available in old GitHub Releases so users can still download them if needed.
+The updater verifies HTTPS, the app identifier, the version, the package checksum, and every archive path before staging files. It only writes staged files under the app's user-data folder while downloading. After the user selects **Apply Update & Restart** and closes the app, a hidden helper replaces the allowlisted app files, rolls back if any replacement fails, and restarts the app. Keep the setup asset for first installs and recovery.
 
 ## Current release values
 
-The app version is stored in `version.txt` and is embedded into the setup version by `installer.iss`. `latest.json` is intentionally a release-time file: generate and publish it after the setup file has been built and its SHA-256 hash is known.
+The app version is stored in `version.txt` and is embedded into the setup version by `installer.iss`. Generate `latest.json` after both release assets have been built and their SHA-256 hashes are known.

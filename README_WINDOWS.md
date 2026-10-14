@@ -14,13 +14,13 @@ For challenging footage, select **Enhanced accuracy (slower)** before analysis t
 
 FFmpeg is installed as a Python package dependency and added to the process path at startup. User files and generated app data are stored under `%LOCALAPPDATA%\AI Evidence Extractor` and the operating system temporary folder.
 
-The left-side project menu contains **Updates**, **About Us**, and **Contact Us**. Updates checks the configured HTTPS release feed and verifies a newer setup file's SHA-256 checksum before opening it. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
+The left-side project menu contains **Updates**, **About Us**, and **Contact Us**. Updates checks the HTTPS release feed, verifies an update package, stages it inside app data, and applies it after the app closes. The app then restarts; no setup wizard is used for subsequent updates. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
 
 ## Build the installer
 
 1. Install Inno Setup 6 or 7.
 2. Run `build_windows.ps1` from PowerShell.
-3. The installer is written to `dist\AI_Evidence_Extractor_Setup.exe`.
+3. The setup installer and the in-app update archive are written to `dist\AI_Evidence_Extractor_Setup.exe` and `dist\AI_Evidence_Extractor_Update.zip`.
 
 The installer distributes the application source and bootstrap scripts; the model weights and Python dependencies are fetched during first launch. This keeps the setup package smaller and ensures each installation downloads current model repository files. For a controlled academic release, pin and archive the exact model revisions before distributing.
 

@@ -35,6 +35,7 @@ SelectDirBrowseLabel=Keep this folder, or click Browse... to choose another inst
 [Files]
 Source: "app.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "update_client.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "update_apply.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "update_config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "desktop_launcher.py"; DestDir: "{app}"; Flags: ignoreversion

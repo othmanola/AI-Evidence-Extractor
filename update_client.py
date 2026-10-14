@@ -1,4 +1,4 @@
-"""Secure version checks and installer downloads for the desktop app."""
+"""Secure update checks, downloads, staging, and in-app update launch."""
 
 from __future__ import annotations
 
@@ -6,9 +6,14 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import subprocess
+import sys
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Callable
 
 
@@ -24,7 +29,13 @@ CONFIG_FILE = APP_DIR / "update_config.json"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
 MAX_MANIFEST_BYTES = 1024 * 1024
-MAX_INSTALLER_BYTES = 2 * 1024 * 1024 * 1024
+MAX_PACKAGE_BYTES = 512 * 1024 * 1024
+MAX_EXTRACTED_BYTES = 512 * 1024 * 1024
+MAX_INSTALLER_BYTES = 2 * 1024 * 1024 * 1024  # compatibility with the legacy downloader
+UPDATE_FILES = frozenset({
+    "app.py", "desktop_launcher.py", "desktop_entry.py", "update_client.py",
+    "update_apply.py", "version.txt", "update_config.json", "assets/aee.ico",
+})
 
 
 class UpdateError(RuntimeError):
@@ -98,12 +109,23 @@ def check_for_updates() -> dict:
     latest = str(manifest.get("version", "")).strip()
     latest_key = _version_key(latest)
     installed = current_version()
+    package_url = str(manifest.get("package_url", "")).strip()
+    package_digest = str(manifest.get("package_sha256", "")).strip()
+    if package_url and not package_url.lower().startswith("https://"):
+        raise UpdateError("The update package must be hosted over HTTPS.")
+    if package_url and not SHA256_RE.fullmatch(package_digest):
+        raise UpdateError("The update package is missing a valid SHA-256 checksum.")
+
+    # Keep the installer fields for older app versions during the one-time
+    # migration to the in-app updater. New clients use the package fields.
     download_url = str(manifest.get("download_url", "")).strip()
     digest = str(manifest.get("sha256", "")).strip()
-    if not download_url.lower().startswith("https://"):
-        raise UpdateError("The release installer must be hosted over HTTPS.")
-    if not SHA256_RE.fullmatch(digest):
-        raise UpdateError("The release information is missing a valid SHA-256 checksum.")
+    if download_url and not download_url.lower().startswith("https://"):
+        raise UpdateError("The legacy installer must be hosted over HTTPS.")
+    if download_url and not SHA256_RE.fullmatch(digest):
+        raise UpdateError("The legacy installer is missing a valid SHA-256 checksum.")
+    if latest_key > _version_key(installed) and not package_url:
+        raise UpdateError("This release has no in-app update package yet.")
 
     return {
         "app_id": APP_ID,
@@ -112,6 +134,8 @@ def check_for_updates() -> dict:
         "available": latest_key > _version_key(installed),
         "download_url": download_url,
         "sha256": digest.lower(),
+        "package_url": package_url,
+        "package_sha256": package_digest.lower(),
         "release_notes": str(manifest.get("release_notes", "")).strip(),
         "published_at": str(manifest.get("published_at", "")).strip(),
         "manifest_url": url,
@@ -179,3 +203,137 @@ def download_update_installer(
     if progress:
         progress(1, desc="Installer downloaded and verified")
     return installer
+
+
+def download_and_stage_update(
+    update: dict,
+    progress: Callable | None = None,
+) -> dict:
+    """Download a verified in-app package and stage its allowlisted files."""
+    if not isinstance(update, dict) or update.get("app_id") != APP_ID:
+        raise UpdateError("Check for updates again before downloading.")
+    if not update.get("available"):
+        raise UpdateError("There is no newer version to download.")
+    version = str(update.get("version", ""))
+    if _version_key(version) <= _version_key(current_version()):
+        raise UpdateError("The installed app is already current. Check again for updates.")
+    package_url = str(update.get("package_url", ""))
+    expected_hash = str(update.get("package_sha256", "")).lower()
+    if not package_url.lower().startswith("https://") or not SHA256_RE.fullmatch(expected_hash):
+        raise UpdateError("This release does not contain a valid in-app update package.")
+
+    UPDATE_DIR.mkdir(parents=True, exist_ok=True)
+    package = UPDATE_DIR / f"AI_Evidence_Extractor_Update_{version}.zip"
+    partial = package.with_suffix(".zip.partial")
+    request = urllib.request.Request(package_url, headers={
+        "User-Agent": "AI-Evidence-Extractor-Updater/2",
+        "Accept": "application/octet-stream",
+    })
+    digest = hashlib.sha256()
+    downloaded = 0
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if not response.geturl().lower().startswith("https://"):
+                raise UpdateError("The update package redirected to an insecure address.")
+            content_length = response.headers.get("Content-Length")
+            total = int(content_length) if content_length and content_length.isdigit() else 0
+            if total > MAX_PACKAGE_BYTES:
+                raise UpdateError("The update package exceeds the supported file size.")
+            with partial.open("wb") as target:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    downloaded += len(chunk)
+                    if downloaded > MAX_PACKAGE_BYTES:
+                        raise UpdateError("The update package exceeds the supported file size.")
+                    target.write(chunk)
+                    digest.update(chunk)
+                    if progress:
+                        fraction = min(downloaded / total, 0.99) if total else 0
+                        progress(fraction, desc="Downloading update package")
+        if downloaded == 0 or digest.hexdigest().lower() != expected_hash:
+            raise UpdateError("The update package checksum did not match. The package was discarded.")
+        os.replace(partial, package)
+    except UpdateError:
+        partial.unlink(missing_ok=True)
+        package.unlink(missing_ok=True)
+        raise
+    except (OSError, urllib.error.URLError, TimeoutError) as exc:
+        partial.unlink(missing_ok=True)
+        raise UpdateError("The update package download failed. Check your connection and try again.") from exc
+
+    stage_dir = UPDATE_DIR / f"staged_{version}"
+    try:
+        if stage_dir.exists():
+            if stage_dir.resolve().parent != UPDATE_DIR.resolve():
+                raise UpdateError("The staged update path is invalid.")
+            shutil.rmtree(stage_dir)
+        stage_dir.mkdir()
+        found: set[str] = set()
+        total_uncompressed = 0
+        with zipfile.ZipFile(package) as archive:
+            for item in archive.infolist():
+                name = item.filename
+                if item.is_dir():
+                    if name.rstrip("/") != "assets":
+                        raise UpdateError("The update package contains an unexpected folder.")
+                    continue
+                relative = PurePosixPath(name)
+                mode = item.external_attr >> 16
+                if ("\\" in name or relative.is_absolute() or
+                        any(part in ("", ".", "..") for part in relative.parts) or
+                        name not in UPDATE_FILES or (mode & 0o170000) == 0o120000):
+                    raise UpdateError("The update package contains an unsafe file path.")
+                total_uncompressed += item.file_size
+                if total_uncompressed > MAX_EXTRACTED_BYTES:
+                    raise UpdateError("The extracted update is larger than expected.")
+                destination = stage_dir.joinpath(*relative.parts)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(item) as source, destination.open("xb") as target:
+                    shutil.copyfileobj(source, target, length=1024 * 1024)
+                found.add(name)
+        required = UPDATE_FILES - {"assets/aee.ico"}
+        if not required.issubset(found):
+            raise UpdateError("The update package is incomplete.")
+        staged_version = (stage_dir / "version.txt").read_text(encoding="utf-8").strip()
+        if staged_version != version:
+            raise UpdateError("The package version does not match the release information.")
+    except UpdateError:
+        shutil.rmtree(stage_dir, ignore_errors=True)
+        package.unlink(missing_ok=True)
+        raise
+    except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
+        shutil.rmtree(stage_dir, ignore_errors=True)
+        package.unlink(missing_ok=True)
+        raise UpdateError("The update package could not be safely prepared.") from exc
+    if progress:
+        progress(1, desc="Update downloaded, verified, and staged")
+    return {"app_id": APP_ID, "version": version, "stage_dir": str(stage_dir),
+            "package_path": str(package), "staged": True}
+
+
+def start_staged_update(staged: dict) -> None:
+    """Apply the staged package after this app exits, then relaunch the app."""
+    if not isinstance(staged, dict) or staged.get("app_id") != APP_ID or not staged.get("staged"):
+        raise UpdateError("Download and prepare the update before applying it.")
+    version = str(staged.get("version", ""))
+    _version_key(version)
+    stage_dir = Path(str(staged.get("stage_dir", ""))).resolve()
+    if stage_dir.parent != UPDATE_DIR.resolve() or not stage_dir.is_dir():
+        raise UpdateError("The prepared update folder is missing or invalid.")
+    if _version_key(version) <= _version_key(current_version()):
+        raise UpdateError("The installed app is already current.")
+    helper = APP_DIR / "update_apply.py"
+    app_exe = APP_DIR / "AI Evidence Extractor.exe"
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    if not helper.is_file() or not app_exe.is_file() or not pythonw.is_file():
+        raise UpdateError("The in-app update helper is not available in this installation.")
+    command = [str(pythonw), str(helper), str(stage_dir), str(APP_DIR),
+               str(os.getpid()), version, str(app_exe)]
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    try:
+        subprocess.Popen(command, cwd=str(DATA_DIR), close_fds=True,
+                         creationflags=flags)
+    except OSError as exc:
+        raise UpdateError("The update is ready, but the background updater could not start.") from exc

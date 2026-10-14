@@ -17,3 +17,5 @@ if (-not $compiler) { throw 'Inno Setup compiler was not found after installatio
 & $compiler (Join-Path $PSScriptRoot 'installer.iss')
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
 Write-Host "Installer created at $(Join-Path $PSScriptRoot 'dist\AI_Evidence_Extractor_Setup.exe')"
+& python (Join-Path $PSScriptRoot 'build_update_package.py')
+if ($LASTEXITCODE -ne 0) { throw "In-app update package build failed with exit code $LASTEXITCODE" }

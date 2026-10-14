@@ -4582,38 +4582,54 @@ def _check_updates_ui():
         update = _update_client.check_for_updates()
     except _update_client.UpdateNotConfigured as exc:
         return (_update_status_html(str(exc), "neutral"), gr.update(visible=False),
-                None, gr.update(value=None, visible=False))
+                None, gr.update(visible=False))
     except _update_client.UpdateError as exc:
         return (_update_status_html(str(exc), "error"), gr.update(visible=False),
-                None, gr.update(value=None, visible=False))
+                None, gr.update(visible=False))
     except Exception as exc:
         log.exception("Update check failed")
         return (_update_status_html(f"Update check failed: {exc}", "error"),
-                gr.update(visible=False), None, gr.update(value=None, visible=False))
+                gr.update(visible=False), None, gr.update(visible=False))
 
     if update["available"]:
+        if not update.get("package_url"):
+            return (_update_status_html(
+                "This release needs the one-time updater migration before it can be applied in-app.",
+                "error"), gr.update(visible=False), update, gr.update(visible=False))
         return (_update_status_html("A new version is available.", "available", update),
-                gr.update(visible=True), update, gr.update(value=None, visible=False))
+                gr.update(visible=True), update, gr.update(visible=False))
     current = _html.escape(update["installed_version"])
     return (_update_status_html(
         f"No updates right now. You are using the latest version ({current}).", "success"),
-        gr.update(visible=False), update, gr.update(value=None, visible=False))
+        gr.update(visible=False), update, gr.update(visible=False))
 
 
 def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
     try:
-        installer = _update_client.download_update_installer(update, progress)
-        safe_path = _html.escape(str(installer))
+        staged = _update_client.download_and_stage_update(update, progress)
         return (_update_status_html(
-            "The installer was downloaded and checksum-verified. The installed app was not changed. "
-            f"Use the file below if you choose to install it later. Saved at {safe_path}", "success"),
-            gr.update(value=str(installer), visible=True))
+            "The update package was downloaded, checksum-verified, and prepared. "
+            "Your installed app has not changed yet. Select Apply Update & Restart when ready.", "success"),
+            gr.update(visible=True), staged)
     except _update_client.UpdateError as exc:
-        return _update_status_html(str(exc), "error"), gr.update(value=None, visible=False)
+        return _update_status_html(str(exc), "error"), gr.update(visible=False), update
     except Exception as exc:
-        log.exception("Could not download the update installer")
-        return (_update_status_html(f"Could not download the update installer: {exc}", "error"),
-                gr.update(value=None, visible=False))
+        log.exception("Could not download and prepare the update")
+        return (_update_status_html(f"Could not prepare the update: {exc}", "error"),
+                gr.update(visible=False), update)
+
+
+def _apply_update_ui(staged):
+    try:
+        _update_client.start_staged_update(staged)
+        return (_update_status_html(
+            "The update is ready. Close this app window to apply it; the app will restart automatically.",
+            "success"), gr.update(visible=False))
+    except _update_client.UpdateError as exc:
+        return _update_status_html(str(exc), "error"), gr.update(visible=True)
+    except Exception as exc:
+        log.exception("Could not start applying the update")
+        return _update_status_html(f"Could not start the update: {exc}", "error"), gr.update(visible=True)
 
 
 def _updates_intro_html():
@@ -4624,9 +4640,8 @@ def _updates_intro_html():
     return f'''<section class="aee-update-card">
       <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Desktop app</div>
       <div class="aee-update-title">Stay up to date</div>
-      <div class="aee-update-copy">Check the secure release feed for improvements and fixes.
-        A new version can be downloaded and verified here. Downloading it does not change or restart
-        the installed app; you decide if and when to run the installer.</div>
+      <div class="aee-update-copy">Check for updates and download the verified app files here.
+        Applying an update happens inside the app after you choose Apply Update &amp; Restart; no setup wizard is opened.</div>
       <div class="aee-version-pill">Installed version&nbsp; v{version}</div>
     </section>'''
 
@@ -4824,11 +4839,11 @@ def build_ui():
                     update_check_btn = gr.Button(
                         "Check for Updates", variant="primary", size="lg")
                     update_download_btn = gr.Button(
-                        "Download Update Installer", variant="secondary", size="lg",
+                        "Download Update", variant="secondary", size="lg",
                         visible=False)
-                update_installer_file = gr.File(
-                    label="Verified update installer", show_label=True,
-                    interactive=False, visible=False)
+                    update_apply_btn = gr.Button(
+                        "Apply Update & Restart", variant="primary", size="lg",
+                        visible=False)
 
             with gr.Tab("About Us"):
                 gr.HTML('''<header class="aee-project-page-heading">
@@ -4942,9 +4957,11 @@ def build_ui():
         process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
-                     update_installer_file], queue=False)
+                     update_apply_btn], queue=False)
         update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
-            outputs=[update_status, update_installer_file], show_progress="full")
+            outputs=[update_status, update_apply_btn, update_state], show_progress="full")
+        update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
+            outputs=[update_status, update_apply_btn], queue=False)
 
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
