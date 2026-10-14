@@ -18,6 +18,7 @@ DATA_DIR = Path(os.environ.get(
     "AEE_DATA_DIR",
     str(Path.home() / "AppData" / "Local" / "AI Evidence Extractor"),
 ))
+UPDATE_DIR = DATA_DIR / "updates"
 VERSION_FILE = APP_DIR / "version.txt"
 CONFIG_FILE = APP_DIR / "update_config.json"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -134,7 +135,7 @@ def download_update_installer(
     if not url.lower().startswith("https://") or not SHA256_RE.fullmatch(expected_hash):
         raise UpdateError("The release information is incomplete or invalid.")
 
-    output_dir = DATA_DIR / "updates"
+    output_dir = UPDATE_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
     installer = output_dir / f"AI_Evidence_Extractor_Setup_{version}.exe"
     request = urllib.request.Request(

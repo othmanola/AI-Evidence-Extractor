@@ -3,6 +3,6 @@
   "version": "1.0.4",
   "published_at": "2026-10-15",
   "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.4/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "dcda6d93ac608b4f0a63ebbdea8f21bae487c903237b257e1942a59f827ef320",
+  "sha256": "35bd6169afcab0b6ea56b02671d9855b6864f174fac9bdef40978ede1d1e6e56",
   "release_notes": "Makes Updates, About Us, and Contact Us distinct project pages. Updates now downloads a verified installer without installing or changing the app."
 }

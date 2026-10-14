@@ -151,7 +151,10 @@ def main() -> None:
                         css=application.CSS,
                         head=application._JS_HEAD,
                         max_file_size=None,
-                        allowed_paths=[str(application.OUTPUT_DIR.resolve())],
+                        allowed_paths=[
+                            str(application.OUTPUT_DIR.resolve()),
+                            str(application._update_client.UPDATE_DIR.resolve()),
+                        ],
                         prevent_thread_lock=True,
                     )
                 except BaseException as exc:
