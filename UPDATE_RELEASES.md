@@ -10,9 +10,9 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version, such as `1.0.3` (the prepared release in this build is `1.0.2`).
+1. Increase `version.txt` to the next three-part version, such as `1.0.4` (the prepared release in this build is `1.0.3`).
 2. Build `dist/AI_Evidence_Extractor_Setup.exe` with `build_windows.ps1`.
-3. Create a GitHub Release with tag `v1.0.3` and upload that setup file as a release asset. Use the same version in the tag and manifest.
+3. Create a GitHub Release with tag `v1.0.4` and upload that setup file as a release asset. Use the same version in the tag and manifest.
 4. Calculate the installer checksum in PowerShell:
 
    ```powershell

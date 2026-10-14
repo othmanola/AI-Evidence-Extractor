@@ -3199,6 +3199,14 @@ _JS_HEAD = r"""
       }
     });
   }
+  function liftAeeNavigation(){
+    const host = document.getElementById('aee-nav-host');
+    const navigation = host && host.querySelector('.aee-navigation');
+    if (navigation && navigation.parentElement !== document.body){
+      document.body.appendChild(navigation);
+      host.style.display = 'none';
+    }
+  }
   document.addEventListener('click', event => {
     if (event.target.closest('[data-aee-nav-toggle]')){
       const isOpen = document.body && document.body.classList.contains('aee-nav-open');
@@ -3219,8 +3227,9 @@ _JS_HEAD = r"""
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') setAeeNavigation(false);
   });
-  hideAeeUtilityTabs();
-  new MutationObserver(hideAeeUtilityTabs).observe(document.documentElement,
+  const refreshAeeNavigation = () => { hideAeeUtilityTabs(); liftAeeNavigation(); };
+  refreshAeeNavigation();
+  new MutationObserver(refreshAeeNavigation).observe(document.documentElement,
     {childList:true,subtree:true});
 
   function toast(msg, type, ms){
@@ -4661,7 +4670,7 @@ def _side_navigation_html():
 def build_ui():
     info = Ensemble.get().info
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
-        gr.HTML(_side_navigation_html())
+        gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
         gr.HTML(_hero_html(info))
         gr.HTML(_workflow_html())
 

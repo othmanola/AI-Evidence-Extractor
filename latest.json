@@ -1,8 +1,8 @@
 {
   "app_id": "ai-evidence-extractor",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "published_at": "2026-10-15",
-  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.2/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "99c4735e2a0b0f00e8fc06ca9162499ca2cb34f804e267f092d90331193d9c72",
-  "release_notes": "Adds a left-side project menu with Updates, About Us, and Contact Us."
+  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.0.3/AI_Evidence_Extractor_Setup.exe",
+  "sha256": "f8cb13825bc6f099dd87cf8ac835155a3c702ab549da127ca767d69cb264e1ff",
+  "release_notes": "Moves Updates into a left-side project menu and adds About Us and Contact Us."
 }
