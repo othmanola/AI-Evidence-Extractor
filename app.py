@@ -1548,6 +1548,27 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-nav-spacer{flex:1;min-height:12px;}
 .aee-nav-foot{padding:14px 10px;border-top:1px solid var(--border);color:#687993;font-size:.72rem;line-height:1.6;}
 .aee-tabs [role="tab"].aee-utility-tab-hidden{display:none!important;}
+body.aee-utility-window-open{overflow:hidden!important;}
+body.aee-utility-window-open .aee-tabs [role="tabpanel"]{display:none!important;}
+body.aee-utility-window-open .aee-tabs [role="tabpanel"].aee-utility-window-page{
+  display:block!important;position:fixed!important;inset:0!important;z-index:11000!important;
+  width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;
+  overflow-y:auto!important;padding:28px clamp(18px,5vw,72px) 48px!important;
+  box-sizing:border-box!important;border:0!important;border-radius:0!important;
+  background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.17),transparent 70%),
+    linear-gradient(160deg,#0b1220,#060910 76%)!important;}
+.aee-utility-window-toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;
+  max-width:1100px;margin:0 auto 28px;padding:12px 0 16px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(8,13,24,.96),rgba(8,13,24,.78));backdrop-filter:blur(14px);}
+.aee-utility-window-back{display:inline-flex;align-items:center;gap:9px;padding:10px 14px;
+  border:1px solid var(--border-strong);border-radius:13px;color:var(--text);cursor:pointer;
+  background:rgba(148,163,184,.08);font:650 .84rem Inter,system-ui,sans-serif;transition:.18s;}
+.aee-utility-window-back:hover{border-color:rgba(96,165,250,.55);background:rgba(59,130,246,.12);transform:translateY(-1px);}
+.aee-utility-window-label{color:var(--text-muted);font-size:.78rem;letter-spacing:.04em;}
+html[data-theme="light"] body.aee-utility-window-open .aee-tabs [role="tabpanel"].aee-utility-window-page{
+  background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.1),transparent 70%),
+    linear-gradient(160deg,#f8faff,#edf2fa 76%)!important;}
+html[data-theme="light"] .aee-utility-window-toolbar{background:linear-gradient(180deg,rgba(248,250,255,.97),rgba(248,250,255,.82));}
 .aee-about-card,.aee-contact-card{max-width:900px;margin:20px auto;padding:clamp(22px,4vw,36px);
   border:1px solid var(--border);border-radius:22px;background:linear-gradient(150deg,rgba(15,23,42,.86),rgba(8,12,23,.94));}
 .aee-project-page-heading{max-width:900px;margin:28px auto 12px;display:flex;align-items:center;gap:12px;}
@@ -3223,6 +3244,46 @@ _JS_HEAD = r"""
       }
     });
   }
+  function closeAeeUtilityWindow(){
+    if (!document.body) return;
+    document.body.classList.remove('aee-utility-window-open');
+    document.querySelectorAll('.aee-tabs [role="tabpanel"].aee-utility-window-page').forEach(panel => {
+      panel.classList.remove('aee-utility-window-page');
+      panel.querySelector('.aee-utility-window-toolbar')?.remove();
+    });
+    const overview = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'))
+      .find(tab => tab.textContent.trim() === 'Overview');
+    if (overview) overview.click();
+  }
+  function showAeeUtilityWindow(name, tab){
+    setAeeNavigation(false);
+    tab.click();
+    document.body.classList.add('aee-utility-window-open');
+    requestAnimationFrame(() => {
+      const controls = tab.getAttribute('aria-controls');
+      const panel = (controls && document.getElementById(controls)) ||
+        document.querySelector('.aee-tabs [role="tabpanel"][aria-labelledby="' + tab.id + '"]');
+      if (!panel) return;
+      document.querySelectorAll('.aee-tabs [role="tabpanel"].aee-utility-window-page').forEach(other => {
+        other.classList.remove('aee-utility-window-page');
+      });
+      panel.classList.add('aee-utility-window-page');
+      if (!panel.querySelector('.aee-utility-window-toolbar')){
+        const toolbar = document.createElement('div');
+        toolbar.className = 'aee-utility-window-toolbar';
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'aee-utility-window-back';
+        back.setAttribute('data-aee-utility-close', '');
+        back.innerHTML = '<span aria-hidden="true">←</span><span>Back to workspace</span>';
+        const label = document.createElement('span');
+        label.className = 'aee-utility-window-label';
+        label.textContent = 'Project window  /  ' + name;
+        toolbar.append(back, label);
+        panel.insertBefore(toolbar, panel.firstChild);
+      }
+    });
+  }
   function liftAeeNavigation(){
     const host = document.getElementById('aee-nav-host');
     const navigation = host && host.querySelector('.aee-navigation');
@@ -3239,17 +3300,27 @@ _JS_HEAD = r"""
     if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
       setAeeNavigation(false); return;
     }
+    if (event.target.closest('[data-aee-utility-close]')){
+      closeAeeUtilityWindow(); return;
+    }
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
       const tab = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'))
         .find(candidate => candidate.textContent.trim() === name);
+      if (tab && ['Updates','About Us','Contact Us'].includes(name)){
+        showAeeUtilityWindow(name, tab); return;
+      }
+      closeAeeUtilityWindow();
       if (tab) tab.click();
       setAeeNavigation(false);
     }
   });
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') setAeeNavigation(false);
+    if (event.key === 'Escape'){
+      if (document.body?.classList.contains('aee-utility-window-open')) closeAeeUtilityWindow();
+      else setAeeNavigation(false);
+    }
   });
   const refreshAeeNavigation = () => { hideAeeUtilityTabs(); liftAeeNavigation(); };
   refreshAeeNavigation();
