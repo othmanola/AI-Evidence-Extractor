@@ -3260,16 +3260,24 @@ _JS_HEAD = r"""
   function showAeeUtilityWindow(name, tab){
     setAeeNavigation(false);
     tab.click();
-    document.body.classList.add('aee-utility-window-open');
     requestAnimationFrame(() => {
+      const tabs = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'));
+      const panels = Array.from(document.querySelectorAll('.aee-tabs [role="tabpanel"]'));
+      const tabIndex = tabs.indexOf(tab);
       const controls = tab.getAttribute('aria-controls');
-      const panel = (controls && document.getElementById(controls)) ||
-        document.querySelector('.aee-tabs [role="tabpanel"][aria-labelledby="' + tab.id + '"]');
-      if (!panel) return;
+      const controlledId = controls && controls.trim().split(/\s+/)[0];
+      const panel = (controlledId && document.getElementById(controlledId)) ||
+        (tab.id && document.querySelector('.aee-tabs [role="tabpanel"][aria-labelledby="' + tab.id + '"]')) ||
+        (tabIndex >= 0 ? panels[tabIndex] : null);
+      if (!panel){
+        document.body.classList.remove('aee-utility-window-open');
+        return;
+      }
       document.querySelectorAll('.aee-tabs [role="tabpanel"].aee-utility-window-page').forEach(other => {
         other.classList.remove('aee-utility-window-page');
       });
       panel.classList.add('aee-utility-window-page');
+      document.body.classList.add('aee-utility-window-open');
       if (!panel.querySelector('.aee-utility-window-toolbar')){
         const toolbar = document.createElement('div');
         toolbar.className = 'aee-utility-window-toolbar';
