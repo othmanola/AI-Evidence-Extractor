@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.4",
+    "version":  "1.1.5",
     "published_at":  "2026-10-15",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.4/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "54b1b2a047ba7a19db8d2c230a766581a331c2a74f7e4390145157a660a6db45",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.4/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "9da352a312d3ee029ff787c6d69f4497c22fcce416e121a7ba5d77325b4d06de",
-    "release_notes":  "Fixes Gradio duplicate wrapper visibility so Updates, About Us, and Contact Us open as full-screen app windows."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.5/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "835ea53bc9e8844e99886863ce344a931566e7c47d1d95ca51193ba60dd5582c",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.5/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "cb49e7c1c2fe97b2008ddf1fe6ba4b7d70cce6909df459732f691112f90847a8",
+    "release_notes":  "Refreshes the Updates, About Us, and Contact Us windows with a modern app header, responsive detail cards, and clearer actions."
 }

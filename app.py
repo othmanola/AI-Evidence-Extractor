@@ -1551,42 +1551,86 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
   width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;
   overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;touch-action:pan-y;
-  padding:28px clamp(18px,5vw,72px) 48px!important;
+  padding:18px clamp(16px,4vw,64px) 56px!important;
   box-sizing:border-box!important;border:0!important;border-radius:0!important;
-  background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.17),transparent 70%),
+  background:radial-gradient(680px 400px at 92% 4%,rgba(79,70,229,.13),transparent 72%),
+    radial-gradient(900px 460px at 8% -12%,rgba(14,165,233,.12),transparent 72%),
     linear-gradient(160deg,#0b1220,#060910 76%)!important;}
 html[data-theme="light"] .aee-utility-window-shell{
-  background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.1),transparent 70%),
+  background:radial-gradient(680px 400px at 92% 4%,rgba(79,70,229,.08),transparent 72%),
+    radial-gradient(900px 460px at 8% -12%,rgba(14,165,233,.07),transparent 72%),
     linear-gradient(160deg,#f8faff,#edf2fa 76%)!important;}
-.aee-utility-window-shell>.wrap{max-width:1200px;margin:0 auto;}
-.aee-utility-window-header{max-width:900px;margin:8px auto 28px;display:flex;align-items:center;gap:12px;}
-.aee-utility-window-header>div:first-child{flex:1;}
-.aee-utility-window-close{min-width:44px!important;width:44px!important;height:44px!important;
-  border:1px solid var(--border-strong)!important;border-radius:14px!important;
-  color:var(--text)!important;background:rgba(148,163,184,.08)!important;}
-.aee-utility-window-shell .aee-project-page-heading{margin-top:0;}
-.aee-utility-window-shell .aee-update-status{max-width:900px;}
-.aee-utility-window-shell .aee-update-actions{max-width:900px;margin:16px auto 0;}
+.aee-utility-window-shell .wrap{width:min(1120px,100%);max-width:1120px;margin:0 auto;}
+.aee-utility-window-header{position:sticky;top:-18px;z-index:12;max-width:100%;margin:0 auto 30px;
+  padding:15px clamp(16px,2.6vw,28px);display:flex;align-items:center;gap:18px;
+  border:1px solid rgba(148,163,184,.18);border-top:0;border-radius:0 0 20px 20px;
+  background:linear-gradient(120deg,rgba(14,23,41,.92),rgba(9,14,27,.88));
+  box-shadow:0 18px 50px -32px rgba(0,0,0,.88);backdrop-filter:blur(20px) saturate(1.25);}
+.aee-utility-window-header>div:first-child{flex:1;min-width:0;}
+.aee-utility-window-close{min-width:126px!important;height:44px!important;padding:0 16px!important;
+  border:1px solid rgba(148,163,184,.24)!important;border-radius:13px!important;
+  color:var(--text)!important;background:rgba(148,163,184,.08)!important;
+  transition:transform .18s,border-color .18s,background .18s!important;}
+.aee-utility-window-close:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.55)!important;
+  background:rgba(59,130,246,.14)!important;}
+html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,.88);
+  border-color:rgba(100,116,139,.2);box-shadow:0 18px 50px -36px rgba(15,23,42,.34);}
+.aee-utility-window-shell .aee-project-page-heading{margin:0;}
+.aee-utility-window-shell .aee-update-card{max-width:100%;margin:0 auto 18px;padding:clamp(26px,4vw,46px);
+  border-radius:26px;box-shadow:0 30px 90px -55px rgba(37,99,235,.6);}
+.aee-utility-window-shell .aee-update-copy{max-width:760px;}
+.aee-utility-window-shell .aee-update-status{max-width:100%;margin:0;padding:18px 22px;}
+.aee-utility-window-shell .aee-update-actions{width:100%;max-width:100%;margin:16px auto 0;gap:12px;}
+.aee-utility-window-shell .aee-update-actions button{min-height:48px;border-radius:13px!important;
+  font-weight:700!important;box-shadow:0 10px 28px -20px rgba(37,99,235,.9);}
+.aee-utility-window-shell .aee-update-actions>div{flex:1 1 220px;}
 .aee-hidden-trigger{display:none!important;}
-.aee-about-card,.aee-contact-card{max-width:900px;margin:20px auto;padding:clamp(22px,4vw,36px);
-  border:1px solid var(--border);border-radius:22px;background:linear-gradient(150deg,rgba(15,23,42,.86),rgba(8,12,23,.94));}
-.aee-project-page-heading{max-width:900px;margin:28px auto 12px;display:flex;align-items:center;gap:12px;}
-.aee-project-page-mark{width:42px;height:42px;display:grid;place-items:center;flex:none;border:1px solid rgba(96,165,250,.25);
-  border-radius:14px;color:#93c5fd;background:linear-gradient(145deg,rgba(37,99,235,.2),rgba(79,70,229,.12));}
-.aee-project-page-mark svg{width:21px;height:21px;}
-.aee-project-page-heading small{display:block;color:#93c5fd;font-size:.68rem;font-weight:750;letter-spacing:.14em;text-transform:uppercase;}
-.aee-project-page-heading h1{margin:3px 0 0;color:var(--text);font-size:1.25rem;font-weight:800;letter-spacing:-.03em;}
-.aee-about-title,.aee-contact-title{margin:0 0 9px;color:var(--text);font-size:clamp(1.45rem,3vw,2rem);font-weight:800;letter-spacing:-.04em;}
-.aee-about-copy,.aee-contact-copy{max-width:740px;color:var(--text-muted);font-size:.94rem;line-height:1.75;}
-.aee-contact-link{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:11px 15px;border-radius:12px;
-  color:#fff!important;text-decoration:none!important;font-weight:700;background:linear-gradient(120deg,#2563eb,#4f46e5);
-  box-shadow:0 12px 28px -16px rgba(59,130,246,.9);}
+.aee-about-card,.aee-contact-card{position:relative;max-width:100%;margin:0 auto;padding:clamp(26px,4.5vw,50px);
+  overflow:hidden;border:1px solid rgba(96,165,250,.2);border-radius:26px;
+  background:radial-gradient(480px 240px at 100% 0%,rgba(59,130,246,.12),transparent 70%),
+    linear-gradient(150deg,rgba(15,23,42,.94),rgba(8,12,23,.97));
+  box-shadow:0 30px 90px -55px rgba(37,99,235,.55),0 1px 0 rgba(255,255,255,.04) inset;}
+.aee-about-card:before,.aee-contact-card:before{content:'';position:absolute;left:0;top:28px;bottom:28px;width:3px;
+  border-radius:0 6px 6px 0;background:linear-gradient(180deg,#38bdf8,#6366f1,transparent);opacity:.85;}
+.aee-project-page-heading{max-width:100%;margin:0;display:flex;align-items:center;gap:15px;}
+.aee-project-page-mark{width:54px;height:54px;display:grid;place-items:center;flex:none;border:1px solid rgba(96,165,250,.34);
+  border-radius:17px;color:#bfdbfe;background:linear-gradient(145deg,rgba(37,99,235,.27),rgba(79,70,229,.18));
+  box-shadow:0 12px 30px -18px rgba(59,130,246,.95),0 1px 0 rgba(255,255,255,.1) inset;}
+.aee-project-page-mark svg{width:24px;height:24px;}
+.aee-project-page-heading small{display:block;color:#7dd3fc;font-size:.67rem;font-weight:800;letter-spacing:.17em;text-transform:uppercase;}
+.aee-project-page-heading h1{margin:4px 0 0;color:var(--text);font-size:clamp(1.35rem,2.5vw,1.7rem);font-weight:800;letter-spacing:-.04em;}
+.aee-about-title,.aee-contact-title{margin:0 0 15px;color:var(--text);font-size:clamp(1.6rem,3.4vw,2.35rem);font-weight:850;letter-spacing:-.05em;}
+.aee-about-copy,.aee-contact-copy{max-width:820px;color:var(--text-muted);font-size:1rem;line-height:1.85;}
+.aee-about-copy p{margin:0 0 14px;}
+.aee-about-copy p:last-child{margin-bottom:0;}
+.aee-project-feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+  max-width:100%;margin:18px auto 0;}
+.aee-project-feature{padding:17px 18px;border:1px solid rgba(148,163,184,.15);border-radius:16px;
+  background:linear-gradient(145deg,rgba(30,41,59,.58),rgba(15,23,42,.35));}
+.aee-project-feature strong{display:block;color:var(--text);font-size:.88rem;font-weight:750;}
+.aee-project-feature span{display:block;margin-top:6px;color:var(--text-muted);font-size:.8rem;line-height:1.55;}
+.aee-contact-link{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin-top:25px;padding:13px 18px;
+  border:1px solid rgba(191,219,254,.2);border-radius:13px;color:#fff!important;text-decoration:none!important;font-weight:750;
+  background:linear-gradient(120deg,#2563eb,#4f46e5);box-shadow:0 14px 34px -19px rgba(59,130,246,.9);
+  transition:transform .18s,box-shadow .18s,filter .18s;}
+.aee-contact-link:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 18px 40px -18px rgba(59,130,246,.75);}
+@media(max-width:640px){
+  .aee-utility-window-shell{padding:12px 12px 32px!important;}
+  .aee-utility-window-header{top:-12px;margin-bottom:20px;padding:12px;border-radius:0 0 16px 16px;gap:10px;}
+  .aee-utility-window-close{min-width:96px!important;height:40px!important;padding:0 10px!important;}
+  .aee-project-page-mark{width:46px;height:46px;border-radius:14px;}
+  .aee-update-actions{flex-wrap:wrap!important;}
+  .aee-update-actions>div{flex:1 1 100%!important;}
+  .aee-about-card,.aee-contact-card{padding:25px 22px;border-radius:20px;}
+  .aee-project-feature-grid{grid-template-columns:1fr;}
+}
 html[data-theme="light"] .aee-nav-toggle{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
 html[data-theme="light"] .aee-nav-drawer{background:linear-gradient(180deg,#fff,#f3f6fb);}
 html[data-theme="light"] .aee-nav-brand strong{color:#0f172a;}
 html[data-theme="light"] .aee-nav-item{color:#334155;}
 html[data-theme="light"] .aee-nav-item:hover{color:#0f172a;background:rgba(59,130,246,.08);}
-html[data-theme="light"] .aee-about-card,html[data-theme="light"] .aee-contact-card{background:linear-gradient(150deg,#fff,#f4f7fc);}
+html[data-theme="light"] .aee-about-card,html[data-theme="light"] .aee-contact-card{background:radial-gradient(480px 240px at 100% 0%,rgba(59,130,246,.08),transparent 70%),linear-gradient(150deg,#fff,#f4f7fc);}
+html[data-theme="light"] .aee-project-feature{background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(241,245,249,.8));border-color:rgba(100,116,139,.16);}
 .aee-tabs [role="tablist"]{
   gap:4px!important;padding:5px!important;
   background:linear-gradient(180deg,rgba(15,23,42,.75),rgba(9,12,22,.85))!important;
@@ -4910,7 +4954,7 @@ def build_ui():
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg></span>
                       <div><small>Project</small><h1>Updates</h1></div>
                     </header>''')
-                    update_close_btn = gr.Button("Close", size="sm",
+                    update_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-updates-close")
                 gr.HTML(_updates_intro_html())
                 update_status = gr.HTML(
@@ -4932,7 +4976,7 @@ def build_ui():
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.9 1.3-1.9 2.8M12 17h.01"/></svg></span>
                       <div><small>Project</small><h1>About Us</h1></div>
                     </header>''')
-                    about_close_btn = gr.Button("Close", size="sm",
+                    about_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-about-close")
                 gr.HTML('''<section class="aee-about-card">
                   <h1 class="aee-about-title">About AI Evidence Extractor</h1>
@@ -4942,6 +4986,11 @@ def build_ui():
                     together in one workspace.</p>
                     <p>The app helps organize observations for human review. AI-generated detections
                     and scores are review aids and should be checked against the original video.</p>
+                  </div>
+                  <div class="aee-project-feature-grid" aria-label="Project capabilities">
+                    <div class="aee-project-feature"><strong>Video analysis</strong><span>Review footage with an ensemble of detection models.</span></div>
+                    <div class="aee-project-feature"><strong>Evidence review</strong><span>Explore captures, object tracks, and model explanations.</span></div>
+                    <div class="aee-project-feature"><strong>Report exports</strong><span>Prepare evidence summaries and downloadable reports.</span></div>
                   </div>
                 </section>''')
 
@@ -4953,7 +5002,7 @@ def build_ui():
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
                       <div><small>Project</small><h1>Contact Us</h1></div>
                     </header>''')
-                    contact_close_btn = gr.Button("Close", size="sm",
+                    contact_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-contact-close")
                 gr.HTML('''<section class="aee-contact-card">
                   <h1 class="aee-contact-title">Contact the project team</h1>
