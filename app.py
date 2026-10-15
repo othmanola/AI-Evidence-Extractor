@@ -1547,7 +1547,7 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-nav-item svg{width:19px;height:19px;flex:none;color:#8fb9ff;}
 .aee-nav-spacer{flex:1;min-height:12px;}
 .aee-nav-foot{padding:14px 10px;border-top:1px solid var(--border);color:#687993;font-size:.72rem;line-height:1.6;}
-.aee-utility-window-shell{position:fixed!important;inset:0!important;z-index:11000!important;
+.aee-utility-window-shell{display:none;position:fixed!important;inset:0!important;z-index:11000!important;
   width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;
   overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;touch-action:pan-y;
@@ -3238,9 +3238,26 @@ _JS_HEAD = r"""
   }
   function activateAeeUtilityWindow(name){
     setAeeNavigation(false);
-    const trigger = document.getElementById('aee-open-' + name + '-trigger');
-    const button = trigger && (trigger.querySelector('button') || trigger);
-    if (button) button.click();
+    const shell = document.getElementById('aee-' + name + '-window');
+    if (!shell) return;
+    document.querySelectorAll('.aee-utility-window-shell').forEach(panel => {
+      if (panel !== shell) panel.style.display = 'none';
+    });
+    shell.style.display = 'block';
+    shell.setAttribute('aria-modal', 'true');
+    shell.setAttribute('role', 'dialog');
+    shell.scrollTop = 0;
+    const close = shell.querySelector('.aee-utility-window-close button');
+    if (close) close.focus({preventScroll:true});
+    document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:true,name}}));
+  }
+  function closeAeeUtilityWindow(shell){
+    shell = shell || document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
+    if (!shell) return;
+    shell.style.display = 'none';
+    shell.removeAttribute('aria-modal');
+    shell.removeAttribute('role');
+    document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:false}}));
   }
   function liftAeeNavigation(){
     const host = document.getElementById('aee-nav-host');
@@ -3258,6 +3275,10 @@ _JS_HEAD = r"""
     if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
       setAeeNavigation(false); return;
     }
+    const closeButton = event.target.closest('.aee-utility-window-close');
+    if (closeButton){
+      closeAeeUtilityWindow(closeButton.closest('.aee-utility-window-shell')); return;
+    }
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
@@ -3272,12 +3293,9 @@ _JS_HEAD = r"""
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape'){
-      const windowShell = document.querySelector('.aee-utility-window-shell');
-      const isOpen = windowShell && getComputedStyle(windowShell).display !== 'none';
-      if (isOpen){
-        const close = windowShell.querySelector('.aee-utility-window-close button');
-        if (close) close.click();
-      } else setAeeNavigation(false);
+      const windowShell = document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
+      if (windowShell) closeAeeUtilityWindow(windowShell);
+      else setAeeNavigation(false);
     }
   });
   liftAeeNavigation();
@@ -4940,12 +4958,6 @@ def build_ui():
                     target="_blank" rel="noopener noreferrer">Open GitHub Issues <span aria-hidden="true">â†—</span></a>
                 </section>''')
 
-        open_updates_btn = gr.Button("Open Updates", visible=False, elem_id="aee-open-updates-trigger",
-                                    elem_classes=["aee-hidden-trigger"])
-        open_about_btn = gr.Button("Open About Us", visible=False, elem_id="aee-open-about-us-trigger",
-                                  elem_classes=["aee-hidden-trigger"])
-        open_contact_btn = gr.Button("Open Contact Us", visible=False, elem_id="aee-open-contact-us-trigger",
-                                    elem_classes=["aee-hidden-trigger"])
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM
             · {info.get('n_models',0)} models · Learned Fusion
@@ -5036,9 +5048,6 @@ def build_ui():
         update_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[updates_window], queue=False)
         about_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[about_window], queue=False)
         contact_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[contact_window], queue=False)
-        open_updates_btn.click(fn=lambda: gr.update(visible=True), inputs=[], outputs=[updates_window], queue=False)
-        open_about_btn.click(fn=lambda: gr.update(visible=True), inputs=[], outputs=[about_window], queue=False)
-        open_contact_btn.click(fn=lambda: gr.update(visible=True), inputs=[], outputs=[contact_window], queue=False)
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
         cap_filter.change(fn=filter_gallery,

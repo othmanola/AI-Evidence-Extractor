@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.1",
+    "version":  "1.1.2",
     "published_at":  "2026-10-15",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.1/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "34a0452f986d023629b95f1b6f2ae27a3706d259b93009e68e533967ae1237f3",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.1/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "d79435e651764856990f84b1da4d6057070a40926f3ee4a8d9a7299cb67409ad",
-    "release_notes":  "Moves the complete Updates, About Us, and Contact Us pages into dedicated full-screen app windows with direct open and close controls."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.2/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "PENDING",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.2/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "15b64038d0226df41a30e634674dcc98fcaa474011c5f2dc9ffa7fc80e9e522e",
+    "release_notes":  "Fixes utility window visibility and click routing. Updates, About Us, and Contact Us now open reliably as fullscreen app windows."
 }
