@@ -1547,11 +1547,7 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-nav-item svg{width:19px;height:19px;flex:none;color:#8fb9ff;}
 .aee-nav-spacer{flex:1;min-height:12px;}
 .aee-nav-foot{padding:14px 10px;border-top:1px solid var(--border);color:#687993;font-size:.72rem;line-height:1.6;}
-.aee-tabs [role="tab"].aee-utility-tab-hidden{display:none!important;}
-body.aee-utility-window-open{overflow-y:auto!important;overscroll-behavior-y:none;}
-body.aee-utility-window-open .aee-tabs [role="tabpanel"]{display:none!important;}
-body.aee-utility-window-open .aee-tabs [role="tabpanel"].aee-utility-window-page{
-  display:block!important;position:fixed!important;inset:0!important;z-index:11000!important;
+.aee-utility-window-shell{position:fixed!important;inset:0!important;z-index:11000!important;
   width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;
   overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;touch-action:pan-y;
@@ -1559,18 +1555,19 @@ body.aee-utility-window-open .aee-tabs [role="tabpanel"].aee-utility-window-page
   box-sizing:border-box!important;border:0!important;border-radius:0!important;
   background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.17),transparent 70%),
     linear-gradient(160deg,#0b1220,#060910 76%)!important;}
-.aee-utility-window-toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;
-  max-width:1100px;margin:0 auto 28px;padding:12px 0 16px;border-bottom:1px solid var(--border);
-  background:linear-gradient(180deg,rgba(8,13,24,.96),rgba(8,13,24,.78));backdrop-filter:blur(14px);}
-.aee-utility-window-back{display:inline-flex;align-items:center;gap:9px;padding:10px 14px;
-  border:1px solid var(--border-strong);border-radius:13px;color:var(--text);cursor:pointer;
-  background:rgba(148,163,184,.08);font:650 .84rem Inter,system-ui,sans-serif;transition:.18s;}
-.aee-utility-window-back:hover{border-color:rgba(96,165,250,.55);background:rgba(59,130,246,.12);transform:translateY(-1px);}
-.aee-utility-window-label{color:var(--text-muted);font-size:.78rem;letter-spacing:.04em;}
-html[data-theme="light"] body.aee-utility-window-open .aee-tabs [role="tabpanel"].aee-utility-window-page{
+html[data-theme="light"] .aee-utility-window-shell{
   background:radial-gradient(900px 360px at 85% -8%,rgba(59,130,246,.1),transparent 70%),
     linear-gradient(160deg,#f8faff,#edf2fa 76%)!important;}
-html[data-theme="light"] .aee-utility-window-toolbar{background:linear-gradient(180deg,rgba(248,250,255,.97),rgba(248,250,255,.82));}
+.aee-utility-window-shell>.wrap{max-width:1200px;margin:0 auto;}
+.aee-utility-window-header{max-width:900px;margin:8px auto 28px;display:flex;align-items:center;gap:12px;}
+.aee-utility-window-header>div:first-child{flex:1;}
+.aee-utility-window-close{min-width:44px!important;width:44px!important;height:44px!important;
+  border:1px solid var(--border-strong)!important;border-radius:14px!important;
+  color:var(--text)!important;background:rgba(148,163,184,.08)!important;}
+.aee-utility-window-shell .aee-project-page-heading{margin-top:0;}
+.aee-utility-window-shell .aee-update-status{max-width:900px;}
+.aee-utility-window-shell .aee-update-actions{max-width:900px;margin:16px auto 0;}
+.aee-hidden-trigger{display:none!important;}
 .aee-about-card,.aee-contact-card{max-width:900px;margin:20px auto;padding:clamp(22px,4vw,36px);
   border:1px solid var(--border);border-radius:22px;background:linear-gradient(150deg,rgba(15,23,42,.86),rgba(8,12,23,.94));}
 .aee-project-page-heading{max-width:900px;margin:28px auto 12px;display:flex;align-items:center;gap:12px;}
@@ -3239,60 +3236,11 @@ _JS_HEAD = r"""
     const toggle = document.querySelector('[data-aee-nav-toggle]');
     if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
-  function hideAeeUtilityTabs(){
-    document.querySelectorAll('.aee-tabs [role="tab"]').forEach(tab => {
-      if (['Updates','About Us','Contact Us'].includes(tab.textContent.trim())){
-        tab.classList.add('aee-utility-tab-hidden');
-      }
-    });
-  }
-  function closeAeeUtilityWindow(){
-    if (!document.body) return;
-    document.body.classList.remove('aee-utility-window-open');
-    document.querySelectorAll('.aee-tabs [role="tabpanel"].aee-utility-window-page').forEach(panel => {
-      panel.classList.remove('aee-utility-window-page');
-      panel.querySelector('.aee-utility-window-toolbar')?.remove();
-    });
-    const overview = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'))
-      .find(tab => tab.textContent.trim() === 'Overview');
-    if (overview) overview.click();
-  }
-  function showAeeUtilityWindow(name, tab){
+  function activateAeeUtilityWindow(name){
     setAeeNavigation(false);
-    tab.click();
-    requestAnimationFrame(() => {
-      const tabs = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'));
-      const panels = Array.from(document.querySelectorAll('.aee-tabs [role="tabpanel"]'));
-      const tabIndex = tabs.indexOf(tab);
-      const controls = tab.getAttribute('aria-controls');
-      const controlledId = controls && controls.trim().split(/\s+/)[0];
-      const panel = (controlledId && document.getElementById(controlledId)) ||
-        (tab.id && document.querySelector('.aee-tabs [role="tabpanel"][aria-labelledby="' + tab.id + '"]')) ||
-        (tabIndex >= 0 ? panels[tabIndex] : null);
-      if (!panel){
-        document.body.classList.remove('aee-utility-window-open');
-        return;
-      }
-      document.querySelectorAll('.aee-tabs [role="tabpanel"].aee-utility-window-page').forEach(other => {
-        other.classList.remove('aee-utility-window-page');
-      });
-      panel.classList.add('aee-utility-window-page');
-      document.body.classList.add('aee-utility-window-open');
-      if (!panel.querySelector('.aee-utility-window-toolbar')){
-        const toolbar = document.createElement('div');
-        toolbar.className = 'aee-utility-window-toolbar';
-        const back = document.createElement('button');
-        back.type = 'button';
-        back.className = 'aee-utility-window-back';
-        back.setAttribute('data-aee-utility-close', '');
-        back.innerHTML = '<span aria-hidden="true">←</span><span>Back to workspace</span>';
-        const label = document.createElement('span');
-        label.className = 'aee-utility-window-label';
-        label.textContent = 'Project window  /  ' + name;
-        toolbar.append(back, label);
-        panel.insertBefore(toolbar, panel.firstChild);
-      }
-    });
+    const trigger = document.getElementById('aee-open-' + name + '-trigger');
+    const button = trigger && (trigger.querySelector('button') || trigger);
+    if (button) button.click();
   }
   function liftAeeNavigation(){
     const host = document.getElementById('aee-nav-host');
@@ -3310,31 +3258,30 @@ _JS_HEAD = r"""
     if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
       setAeeNavigation(false); return;
     }
-    if (event.target.closest('[data-aee-utility-close]')){
-      closeAeeUtilityWindow(); return;
-    }
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
+      if (['Updates','About Us','Contact Us'].includes(name)){
+        activateAeeUtilityWindow(name.toLowerCase().replace(/\s+/g, '-')); return;
+      }
       const tab = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'))
         .find(candidate => candidate.textContent.trim() === name);
-      if (tab && ['Updates','About Us','Contact Us'].includes(name)){
-        showAeeUtilityWindow(name, tab); return;
-      }
-      closeAeeUtilityWindow();
       if (tab) tab.click();
       setAeeNavigation(false);
     }
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape'){
-      if (document.body?.classList.contains('aee-utility-window-open')) closeAeeUtilityWindow();
-      else setAeeNavigation(false);
+      const windowShell = document.querySelector('.aee-utility-window-shell');
+      const isOpen = windowShell && getComputedStyle(windowShell).display !== 'none';
+      if (isOpen){
+        const close = windowShell.querySelector('.aee-utility-window-close button');
+        if (close) close.click();
+      } else setAeeNavigation(false);
     }
   });
-  const refreshAeeNavigation = () => { hideAeeUtilityTabs(); liftAeeNavigation(); };
-  refreshAeeNavigation();
-  new MutationObserver(refreshAeeNavigation).observe(document.documentElement,
+  liftAeeNavigation();
+  new MutationObserver(liftAeeNavigation).observe(document.documentElement,
     {childList:true,subtree:true});
 
   function toast(msg, type, ms){
@@ -4930,41 +4877,39 @@ def build_ui():
                     datatype=["str", "str", "number", "number", "str", "str"],
                     interactive=False, wrap=True, show_row_numbers=True)
 
-            with gr.Tab("Updates"):
-                gr.HTML('''<header class="aee-project-page-heading">
-                  <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg></span>
-                  <div><small>Project</small><h1>Updates</h1></div>
-                </header>''')
+        # Project pages live in independent fullscreen app panels, not workspace tabs.
+        with gr.Group(visible=False, elem_id="aee-updates-window",
+                      elem_classes=["aee-utility-window-shell"]) as updates_window:
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg></span>
+                      <div><small>Project</small><h1>Updates</h1></div>
+                    </header>''')
+                    update_close_btn = gr.Button("Close", size="sm",
+                        elem_classes=["aee-utility-window-close"], elem_id="aee-updates-close")
                 gr.HTML(_updates_intro_html())
                 update_status = gr.HTML(
                     value=_update_status_html("Select Check for Updates to check for a new release."))
                 update_state = gr.State(None)
-                with gr.Row():
+                with gr.Row(elem_classes=["aee-update-actions"]):
                     update_check_btn = gr.Button(
                         "Check for Updates", variant="primary", size="lg")
-                with gr.Group(visible=False, elem_classes=["aee-update-dialog-shell"]) as update_dialog:
-                    with gr.Column(elem_classes=["aee-update-dialog"]):
-                        with gr.Row(elem_classes=["aee-update-dialog-head"]):
-                            gr.HTML('''<div><div class="aee-update-dialog-kicker">Release center</div>
-                              <h2 class="aee-update-dialog-title">AI Evidence Extractor</h2></div>''')
-                            update_close_btn = gr.Button("Close", elem_classes=["aee-update-dialog-close"],
-                                                         size="sm", elem_id="aee-update-dialog-close")
-                        gr.HTML('<p class="aee-update-dialog-copy">Your update status and release information are shown here.</p>')
-                        update_status = gr.HTML(
-                            value=_update_status_html("Select Check for Updates to check for a new release."))
-                        with gr.Row(elem_classes=["aee-update-dialog-actions"]):
-                            update_download_btn = gr.Button(
-                                "Download Update", variant="secondary", size="lg",
-                                visible=False)
-                            update_apply_btn = gr.Button(
-                                "Install Update", variant="primary", size="lg",
-                                visible=False)
+                    update_download_btn = gr.Button(
+                        "Download Update", variant="secondary", size="lg", visible=False)
+                    update_apply_btn = gr.Button(
+                        "Install Update", variant="primary", size="lg", visible=False)
 
-            with gr.Tab("About Us"):
-                gr.HTML('''<header class="aee-project-page-heading">
-                  <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.9 1.3-1.9 2.8M12 17h.01"/></svg></span>
-                  <div><small>Project</small><h1>About Us</h1></div>
-                </header>''')
+        with gr.Group(visible=False, elem_id="aee-about-us-window",
+                      elem_classes=["aee-utility-window-shell"]) as about_window:
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.9 1.3-1.9 2.8M12 17h.01"/></svg></span>
+                      <div><small>Project</small><h1>About Us</h1></div>
+                    </header>''')
+                    about_close_btn = gr.Button("Close", size="sm",
+                        elem_classes=["aee-utility-window-close"], elem_id="aee-about-close")
                 gr.HTML('''<section class="aee-about-card">
                   <h1 class="aee-about-title">About AI Evidence Extractor</h1>
                   <div class="aee-about-copy">
@@ -4976,20 +4921,31 @@ def build_ui():
                   </div>
                 </section>''')
 
-            with gr.Tab("Contact Us"):
-                gr.HTML('''<header class="aee-project-page-heading">
-                  <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
-                  <div><small>Project</small><h1>Contact Us</h1></div>
-                </header>''')
+        with gr.Group(visible=False, elem_id="aee-contact-us-window",
+                      elem_classes=["aee-utility-window-shell"]) as contact_window:
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
+                      <div><small>Project</small><h1>Contact Us</h1></div>
+                    </header>''')
+                    contact_close_btn = gr.Button("Close", size="sm",
+                        elem_classes=["aee-utility-window-close"], elem_id="aee-contact-close")
                 gr.HTML('''<section class="aee-contact-card">
                   <h1 class="aee-contact-title">Contact the project team</h1>
                   <div class="aee-contact-copy">Share questions, feature ideas, or bug reports through the
                     project issue tracker. For a useful report, include the app version and steps to reproduce
                     the issue. Do not post private videos, case details, or other sensitive evidence.</div>
                   <a class="aee-contact-link" href="https://github.com/othmanola/AI-Evidence-Extractor/issues"
-                    target="_blank" rel="noopener noreferrer">Open GitHub Issues <span aria-hidden="true">↗</span></a>
+                    target="_blank" rel="noopener noreferrer">Open GitHub Issues <span aria-hidden="true">â†—</span></a>
                 </section>''')
 
+        open_updates_btn = gr.Button("Open Updates", visible=False, elem_id="aee-open-updates-trigger",
+                                    elem_classes=["aee-hidden-trigger"])
+        open_about_btn = gr.Button("Open About Us", visible=False, elem_id="aee-open-about-us-trigger",
+                                  elem_classes=["aee-hidden-trigger"])
+        open_contact_btn = gr.Button("Open Contact Us", visible=False, elem_id="aee-open-contact-us-trigger",
+                                    elem_classes=["aee-hidden-trigger"])
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM
             · {info.get('n_models',0)} models · Learned Fusion
@@ -5072,14 +5028,17 @@ def build_ui():
         process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
-                     update_apply_btn, update_dialog], queue=False)
+                     update_apply_btn], queue=False)
         update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn, update_state], show_progress="full")
         update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn], show_progress="full")
-        update_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[],
-            outputs=[update_dialog], queue=False)
-
+        update_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[updates_window], queue=False)
+        about_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[about_window], queue=False)
+        contact_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[contact_window], queue=False)
+        open_updates_btn.click(fn=lambda: gr.update(visible=True), inputs=[], outputs=[updates_window], queue=False)
+        open_about_btn.click(fn=lambda: gr.update(visible=True), inputs=[], outputs=[about_window], queue=False)
+        open_contact_btn.click(fn=lambda: gr.update(visible=True), inputs=[], outputs=[contact_window], queue=False)
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
         cap_filter.change(fn=filter_gallery,
