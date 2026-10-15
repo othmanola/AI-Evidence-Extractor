@@ -4896,7 +4896,7 @@ def build_ui():
                     interactive=False, wrap=True, show_row_numbers=True)
 
         # Project pages live in independent fullscreen app panels, not workspace tabs.
-        with gr.Group(visible=False, elem_id="aee-updates-window",
+        with gr.Group(visible=True, elem_id="aee-updates-window",
                       elem_classes=["aee-utility-window-shell"]) as updates_window:
             with gr.Column(elem_classes=["wrap"]):
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
@@ -4918,7 +4918,7 @@ def build_ui():
                     update_apply_btn = gr.Button(
                         "Install Update", variant="primary", size="lg", visible=False)
 
-        with gr.Group(visible=False, elem_id="aee-about-us-window",
+        with gr.Group(visible=True, elem_id="aee-about-us-window",
                       elem_classes=["aee-utility-window-shell"]) as about_window:
             with gr.Column(elem_classes=["wrap"]):
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
@@ -4939,7 +4939,7 @@ def build_ui():
                   </div>
                 </section>''')
 
-        with gr.Group(visible=False, elem_id="aee-contact-us-window",
+        with gr.Group(visible=True, elem_id="aee-contact-us-window",
                       elem_classes=["aee-utility-window-shell"]) as contact_window:
             with gr.Column(elem_classes=["wrap"]):
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
@@ -5045,9 +5045,6 @@ def build_ui():
             outputs=[update_status, update_apply_btn, update_state], show_progress="full")
         update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn], show_progress="full")
-        update_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[updates_window], queue=False)
-        about_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[about_window], queue=False)
-        contact_close_btn.click(fn=lambda: gr.update(visible=False), inputs=[], outputs=[contact_window], queue=False)
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
         cap_filter.change(fn=filter_gallery,
