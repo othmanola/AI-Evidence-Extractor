@@ -3,7 +3,7 @@
     "version":  "1.1.2",
     "published_at":  "2026-10-15",
     "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.2/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "PENDING",
+    "sha256":  "592f4c32b1d706696a71051c10802f50b1c165e5d1b4d4921f4194ff21e59ee3",
     "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.2/AI_Evidence_Extractor_Update.zip",
     "package_sha256":  "15b64038d0226df41a30e634674dcc98fcaa474011c5f2dc9ffa7fc80e9e522e",
     "release_notes":  "Fixes utility window visibility and click routing. Updates, About Us, and Contact Us now open reliably as fullscreen app windows."
