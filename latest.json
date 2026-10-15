@@ -3,7 +3,7 @@
     "version":  "1.1.3",
     "published_at":  "2026-10-15",
     "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.3/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "PENDING",
+    "sha256":  "c9cb985faf915a8d116b58d9168bd83249e2bf665fc377249789aaefeb7eeb42",
     "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.3/AI_Evidence_Extractor_Update.zip",
     "package_sha256":  "36559979c98eb4971f44e77f1b3068df4f9a5595052edee1a09e91e976739bf7",
     "release_notes":  "Fixes missing project panel DOM by keeping the Updates, About Us, and Contact Us panels mounted and opening them as independent full-screen app windows."
