@@ -3238,15 +3238,16 @@ _JS_HEAD = r"""
   }
   function activateAeeUtilityWindow(name){
     setAeeNavigation(false);
-    const shell = document.getElementById('aee-' + name + '-window');
-    if (!shell) return;
+    const shellId = 'aee-' + name + '-window';
+    const shells = Array.from(document.querySelectorAll('[id="' + shellId + '"]'));
+    if (!shells.length) return;
     document.querySelectorAll('.aee-utility-window-shell').forEach(panel => {
-      if (panel !== shell) panel.style.display = 'none';
+      panel.style.display = 'none';
     });
-    shell.style.display = 'block';
+    shells.forEach(panel => { panel.style.display = 'block'; panel.scrollTop = 0; });
+    const shell = shells[0];
     shell.setAttribute('aria-modal', 'true');
     shell.setAttribute('role', 'dialog');
-    shell.scrollTop = 0;
     const close = shell.querySelector('.aee-utility-window-close button');
     if (close) close.focus({preventScroll:true});
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:true,name}}));
@@ -3254,7 +3255,12 @@ _JS_HEAD = r"""
   function closeAeeUtilityWindow(shell){
     shell = shell || document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
     if (!shell) return;
-    shell.style.display = 'none';
+    const shellId = shell.id;
+    document.querySelectorAll('[id="' + shellId + '"]').forEach(panel => {
+      panel.style.display = 'none';
+      panel.removeAttribute('aria-modal');
+      panel.removeAttribute('role');
+    });
     shell.removeAttribute('aria-modal');
     shell.removeAttribute('role');
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:false}}));
