@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.10",
+    "version":  "1.2.0",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.10/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "f3b7cdd64e89bd9a260783ed41c568a434f92736e4bcb481465df1df8242e2bc",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.10/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "dece03573847fae5eac88633dd1f0d5393205731125f0618c5c538a1c12e0eed",
-    "release_notes":  "Fixes app restart by using the installed Python runtime for the detached restart helper."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.0/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "3e6f43406384b4502d95431293869db758d35bb800e3caa63d996f25de55ee54",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.0/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "3d5b787ce256ab025618ae5c78fb6ce11870c4dde2087e75f53d5b5c816ce438",
+    "release_notes":  "Adds guest, email, and Google accounts with optional profile photos and profile-only Supabase sync. Video evidence and analysis data remain local."
 }
