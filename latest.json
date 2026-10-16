@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.6",
+    "version":  "1.2.7",
     "published_at":  "2026-10-17",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.6/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "25e70be075d6e3933591d711606934f734dcdee299cebba42ec26b2654dc5154",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.6/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "9c49fed6ef664d806fe373c6a30a186a371318235a21522dc288df5aff3c3a83",
-    "release_notes":  "Adds Google sign-in, profile settings, log out and change-account actions, and a clearer Supabase connection setup panel."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.7/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "fdd0786db0908d2b265369ae014c45890c80174d4252961d55e195b464c59e1d",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.7/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "13cf6e79727d1e25766626c2a26cb9caa2ccd1ce698f96f5afa25eb07f253285",
+    "release_notes":  "Fixes Account visibility for remembered guest mode and makes Change account available from the guest profile."
 }
