@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.5",
-    "published_at":  "2026-10-15",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.5/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "835ea53bc9e8844e99886863ce344a931566e7c47d1d95ca51193ba60dd5582c",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.5/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "cb49e7c1c2fe97b2008ddf1fe6ba4b7d70cce6909df459732f691112f90847a8",
-    "release_notes":  "Refreshes the Updates, About Us, and Contact Us windows with a modern app header, responsive detail cards, and clearer actions."
+    "version":  "1.1.6",
+    "published_at":  "2026-10-16",
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.6/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "cc33bb48b280a2418de3d78acae2fc64a5fb8f9e1e7377463f7b45ae9b0b444c",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.6/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "259d4bce6d7c9bb7e68e17bf8107363c3e283d722cae5a772a4aa86bac5abc37",
+    "release_notes":  "Fixes update-check status rendering and refreshes the Update and About panels with a clearer, responsive design."
 }
