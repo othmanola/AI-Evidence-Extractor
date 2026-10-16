@@ -31,8 +31,9 @@ MAX_PACKAGE_BYTES = 512 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 512 * 1024 * 1024
 MAX_INSTALLER_BYTES = 2 * 1024 * 1024 * 1024  # compatibility with the legacy downloader
 UPDATE_FILES = frozenset({
-    "app.py", "desktop_launcher.py", "desktop_entry.py", "update_client.py",
-    "update_apply.py", "version.txt", "update_config.json", "assets/aee.ico",
+    "app.py", "account_client.py", "desktop_launcher.py", "desktop_entry.py",
+    "update_client.py", "update_apply.py", "version.txt", "update_config.json",
+    "assets/aee.ico",
 })
 
 

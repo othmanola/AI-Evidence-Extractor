@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 FILES = (
     "app.py",
+    "account_client.py",
     "desktop_launcher.py",
     "desktop_entry.py",
     "update_client.py",

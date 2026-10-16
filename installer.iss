@@ -34,6 +34,7 @@ SelectDirBrowseLabel=Keep this folder, or click Browse... to choose another inst
 
 [Files]
 Source: "app.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "account_client.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "update_client.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "update_apply.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt"; DestDir: "{app}"; Flags: ignoreversion
@@ -49,6 +50,7 @@ Source: "assets\setup_wizard.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\python-3.13.16-amd64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "assets\MicrosoftEdgeWebView2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "README_WINDOWS.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "SUPABASE_SETUP.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "UPDATE_RELEASES.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

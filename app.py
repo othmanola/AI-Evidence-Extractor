@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
+import account_client as _account_client
 import update_client as _update_client
 
 logging.basicConfig(level="INFO", format="%(asctime)s | %(levelname)s | %(message)s")
@@ -1598,6 +1599,48 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   font-weight:700!important;box-shadow:0 10px 28px -20px rgba(37,99,235,.9);}
 .aee-utility-window-shell .aee-update-actions>div{flex:1 1 220px;}
 .aee-hidden-trigger{display:none!important;}
+.aee-account-card{position:relative;max-width:780px;margin:0 auto 20px;padding:clamp(24px,4vw,40px);
+  overflow:hidden;border:1px solid rgba(96,165,250,.2);border-radius:26px;
+  background:radial-gradient(520px 260px at 100% 0%,rgba(59,130,246,.13),transparent 70%),
+    linear-gradient(150deg,rgba(15,23,42,.95),rgba(8,12,23,.98));
+  box-shadow:0 30px 90px -55px rgba(37,99,235,.55),0 1px 0 rgba(255,255,255,.04) inset;}
+.aee-account-eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:12px;color:#93c5fd;
+  font-size:.68rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
+.aee-account-title{margin:0;color:var(--text);font-size:clamp(1.7rem,4vw,2.5rem);
+  font-weight:850;letter-spacing:-.05em;line-height:1.1;}
+.aee-account-copy{max-width:680px;margin-top:12px;color:var(--text-muted);font-size:.9rem;line-height:1.7;}
+.aee-account-status{max-width:780px;margin:0 auto 16px;padding:13px 16px;border:1px solid rgba(96,165,250,.2);
+  border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
+.aee-account-status[data-kind="success"]{color:#a7f3d0;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08);}
+.aee-account-status[data-kind="error"]{color:#fecaca;border-color:rgba(248,113,113,.26);background:rgba(239,68,68,.08);}
+.aee-account-status[data-kind="neutral"]{color:var(--text-muted);border-color:var(--border);background:rgba(148,163,184,.06);}
+.aee-account-profile{display:flex;align-items:center;gap:18px;margin:0 0 20px;padding:18px;
+  border:1px solid rgba(148,163,184,.16);border-radius:18px;background:rgba(15,23,42,.42);}
+.aee-account-avatar{width:68px;height:68px;flex:none;display:grid;place-items:center;overflow:hidden;
+  border:1px solid rgba(96,165,250,.36);border-radius:22px;color:#dbeafe;
+  background:linear-gradient(145deg,rgba(37,99,235,.32),rgba(79,70,229,.22));font-size:1.25rem;font-weight:800;}
+.aee-account-avatar img{width:100%;height:100%;object-fit:cover;}
+.aee-account-identity{min-width:0;}
+.aee-account-identity strong{display:block;overflow-wrap:anywhere;color:var(--text);font-size:1rem;font-weight:800;}
+.aee-account-identity span{display:block;margin-top:5px;overflow-wrap:anywhere;color:var(--text-muted);font-size:.82rem;}
+.aee-account-mode{display:inline-flex;align-items:center;gap:7px;margin-top:11px;padding:6px 10px;
+  border:1px solid rgba(16,185,129,.2);border-radius:999px;color:#6ee7b7;background:rgba(16,185,129,.07);
+  font-size:.68rem;font-weight:750;letter-spacing:.04em;}
+.aee-account-mode:before{content:'';width:7px;height:7px;border-radius:50%;background:#34d399;
+  box-shadow:0 0 10px rgba(52,211,153,.7);}
+.aee-account-privacy{margin:18px 0 0;padding:14px 16px;border:1px solid rgba(148,163,184,.13);
+  border-radius:14px;color:var(--text-muted);background:rgba(148,163,184,.045);font-size:.76rem;line-height:1.65;}
+.aee-account-oauth-note{margin:8px 0 16px;color:var(--text-muted);font-size:.76rem;line-height:1.55;}
+.aee-account-shell .aee-account-settings{max-width:780px;margin:14px auto 0;border:1px solid rgba(148,163,184,.17);
+  border-radius:18px;background:rgba(15,23,42,.34);}
+.aee-account-shell .aee-account-settings>div:first-child{color:var(--text);font-weight:750;}
+.aee-account-shell .aee-account-settings .prose{color:var(--text-muted);}
+.aee-account-shell .aee-account-settings button{border-radius:12px!important;}
+.aee-account-shell .aee-account-actions button{min-height:46px;border-radius:13px!important;font-weight:700!important;}
+html[data-theme="light"] .aee-account-card{background:radial-gradient(520px 260px at 100% 0%,rgba(59,130,246,.08),transparent 70%),linear-gradient(150deg,#fff,#f4f7fc);}
+html[data-theme="light"] .aee-account-profile{background:rgba(255,255,255,.68);border-color:rgba(100,116,139,.17);}
+html[data-theme="light"] .aee-account-privacy{background:rgba(255,255,255,.62);border-color:rgba(100,116,139,.16);}
+html[data-theme="light"] .aee-account-shell .aee-account-settings{background:rgba(255,255,255,.72);border-color:rgba(100,116,139,.2);}
 .aee-about-card,.aee-contact-card{position:relative;max-width:100%;margin:0 auto;padding:clamp(26px,4.5vw,50px);
   overflow:hidden;border:1px solid rgba(96,165,250,.2);border-radius:26px;
   background:radial-gradient(480px 240px at 100% 0%,rgba(59,130,246,.12),transparent 70%),
@@ -3411,7 +3454,7 @@ _JS_HEAD = r"""
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
-      if (['Updates','About Us','Contact Us'].includes(name)){
+      if (['Account','Updates','About Us','Contact Us'].includes(name)){
         activateAeeUtilityWindow(name.toLowerCase().replace(/\s+/g, '-')); return;
       }
       const tab = Array.from(document.querySelectorAll('.aee-tabs [role="tab"]'))
@@ -4770,6 +4813,282 @@ def _update_status_html(message, tone="neutral", update=None):
             f'{details}</div>')
 
 
+_ACCOUNT_SETUP_SQL = """create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null default '',
+  avatar_path text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+grant select, insert, update on public.profiles to authenticated;
+
+create policy "Users can read their own profile"
+  on public.profiles for select to authenticated
+  using ((select auth.uid()) = id);
+create policy "Users can create their own profile"
+  on public.profiles for insert to authenticated
+  with check ((select auth.uid()) = id);
+create policy "Users can update their own profile"
+  on public.profiles for update to authenticated
+  using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('profile-photos', 'profile-photos', false, 5242880,
+        array['image/png', 'image/jpeg', 'image/webp'])
+on conflict (id) do update set public = false, file_size_limit = 5242880,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "Users can read their own profile photos"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "Users can upload their own profile photos"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "Users can update their own profile photos"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+"""
+
+
+def _account_status_html(message, tone="neutral"):
+    safe_message = _html.escape(str(message))
+    return (f'<div class="aee-account-status" data-kind="{_html.escape(tone)}" role="status">'
+            f'{safe_message}</div>')
+
+
+def _account_profile_html(session=None, profile=None, avatar_url=""):
+    if not session:
+        return '''<section class="aee-account-profile" aria-label="Guest account">
+          <div class="aee-account-avatar" aria-hidden="true">G</div>
+          <div class="aee-account-identity"><strong>Guest mode</strong>
+            <span>No sign-in required. Continue using the app on this computer.</span>
+            <span class="aee-account-mode">LOCAL ONLY</span></div>
+        </section>'''
+    profile = profile if isinstance(profile, dict) else {}
+    name = str(profile.get("display_name") or session.get("display_name") or "Your account")
+    email = str(session.get("email") or "")
+    initials = "".join(part[0] for part in name.split()[:2] if part) or "A"
+    avatar = (f'<img src="{_html.escape(avatar_url, quote=True)}" alt="" '
+              'referrerpolicy="no-referrer">') if avatar_url else _html.escape(initials[:2].upper())
+    return (f'<section class="aee-account-profile" aria-label="Signed-in account">'
+            f'<div class="aee-account-avatar">{avatar}</div>'
+            f'<div class="aee-account-identity"><strong>{_html.escape(name)}</strong>'
+            f'<span>{_html.escape(email)}</span><span class="aee-account-mode">SIGNED IN</span></div>'
+            f'</section>')
+
+
+def _account_profile_name_value(session):
+    return str(session.get("display_name", "")) if isinstance(session, dict) else ""
+
+
+def _account_initial_session():
+    try:
+        session = _account_client.load_session()
+        status = ("Saved account session restored." if session
+                  else "You are in guest mode. Sign in or create an account whenever you like.")
+        tone = "success" if session else "neutral"
+        return session, _account_status_html(status, tone), _account_profile_html(session)
+    except _account_client.AccountError as exc:
+        log.warning("Could not restore account session: %s", exc)
+        return None, _account_status_html(str(exc), "error"), _account_profile_html()
+
+
+def _account_render_signed_in(session):
+    try:
+        profile, avatar_url, refreshed = _account_client.current_profile(session)
+        return _account_profile_html(refreshed, profile, avatar_url), refreshed, None
+    except _account_client.AccountError as exc:
+        log.warning("Could not load account profile: %s", exc)
+        return _account_profile_html(session), session, str(exc)
+
+
+def _account_sign_in_ui(email, password, session):
+    try:
+        session = _account_client.sign_in(email, password)
+        profile_html, session, profile_error = _account_render_signed_in(session)
+        message = "Welcome back."
+        if profile_error:
+            message += f" Sign-in succeeded, but the profile could not be loaded: {profile_error}"
+        return (_account_status_html(message, "success" if not profile_error else "error"),
+                profile_html, session, _account_profile_name_value(session),
+                gr.update(visible=False), gr.update(visible=True),
+                gr.update(visible=False), None)
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), gr.update(visible=False), None)
+    except Exception as exc:
+        log.exception("Email sign-in failed")
+        return (_account_status_html(f"Sign-in failed: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.update(visible=False), None)
+
+
+def _account_sign_up_ui(display_name, email, password, session):
+    try:
+        new_session, message = _account_client.sign_up(display_name, email, password)
+        if new_session:
+            profile_html, new_session, profile_error = _account_render_signed_in(new_session)
+            if profile_error:
+                message += f" Profile setup could not be completed: {profile_error}"
+            return (_account_status_html(message, "success" if not profile_error else "error"),
+                    profile_html, new_session, _account_profile_name_value(new_session),
+                    gr.update(visible=False),
+                    gr.update(visible=True), gr.update(visible=False), None)
+        return (_account_status_html(message, "success"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), gr.update(visible=False), None)
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), gr.update(visible=False), None)
+    except Exception as exc:
+        log.exception("Email account creation failed")
+        return (_account_status_html(f"Account creation failed: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.update(visible=False), None)
+
+
+def _account_google_start_ui(session):
+    try:
+        transaction = _account_client.start_google_sign_in()
+        message = ("Google sign-in opened in your default browser. Finish there, then return "
+                   "here and select Complete Google Sign-In.")
+        return (_account_status_html(message, "neutral"), transaction,
+                gr.update(visible=True), _account_profile_html(session))
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), None,
+                gr.update(visible=False), _account_profile_html(session))
+    except Exception as exc:
+        log.exception("Could not start Google sign-in")
+        return (_account_status_html(f"Could not start Google sign-in: {exc}", "error"),
+                None, gr.update(visible=False), _account_profile_html(session))
+
+
+def _account_google_finish_ui(transaction, session):
+    try:
+        new_session = _account_client.finish_google_sign_in(transaction)
+        if new_session is None:
+            return (_account_status_html("Finish sign-in in the browser, then try again.", "neutral"),
+                    _account_profile_html(session), session, _account_profile_name_value(session),
+                    gr.update(visible=not session), gr.update(visible=bool(session)),
+                    gr.update(visible=True), None)
+        profile_html, new_session, profile_error = _account_render_signed_in(new_session)
+        message = "Google sign-in complete."
+        if profile_error:
+            message += f" Your profile could not be loaded: {profile_error}"
+        return (_account_status_html(message, "success" if not profile_error else "error"),
+                profile_html, new_session, _account_profile_name_value(new_session),
+                gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), None)
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), gr.update(visible=False), None)
+    except Exception as exc:
+        log.exception("Could not complete Google sign-in")
+        return (_account_status_html(f"Could not complete Google sign-in: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.update(visible=False), None)
+
+
+def _account_guest_ui(session):
+    try:
+        message = _account_client.sign_out(session)
+        return (_account_status_html(message, "neutral"), _account_profile_html(), None,
+                "", gr.update(visible=True), gr.update(visible=False),
+                gr.update(visible=False), None)
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), gr.update(visible=False), None)
+    except Exception as exc:
+        log.exception("Could not switch to guest mode")
+        return (_account_status_html(f"Could not switch to guest mode: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.update(visible=False), None)
+
+
+def _account_save_name_ui(display_name, session):
+    try:
+        profile, session = _account_client.save_display_name(session, display_name)
+        profile_html, session, profile_error = _account_render_signed_in(session)
+        message = "Profile name saved."
+        if profile_error:
+            message += f" The profile photo could not be refreshed: {profile_error}"
+        return (_account_status_html(message, "success" if not profile_error else "error"),
+                profile_html, session, str(profile.get("display_name", "")))
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, str(display_name or ""))
+    except Exception as exc:
+        log.exception("Could not save the account profile")
+        return (_account_status_html(f"Could not save profile: {exc}", "error"),
+                _account_profile_html(session), session, str(display_name or ""))
+
+
+def _account_upload_photo_ui(image_path, session):
+    try:
+        profile, session = _account_client.upload_profile_photo(session, image_path)
+        profile_html, session, profile_error = _account_render_signed_in(session)
+        message = "Profile photo updated."
+        if profile_error:
+            message += f" The updated photo could not be displayed: {profile_error}"
+        return (_account_status_html(message, "success" if not profile_error else "error"),
+                profile_html, session)
+    except _account_client.AccountError as exc:
+        return _account_status_html(str(exc), "error"), _account_profile_html(session), session
+    except Exception as exc:
+        log.exception("Could not update the account photo")
+        return (_account_status_html(f"Could not update profile photo: {exc}", "error"),
+                _account_profile_html(session), session)
+
+
+def _account_refresh_profile_ui(session):
+    if not session:
+        return (_account_status_html("You are using guest mode.", "neutral"),
+                _account_profile_html(), None, "")
+    profile_html, session, profile_error = _account_render_signed_in(session)
+    message = profile_error or "Account profile refreshed."
+    return (_account_status_html(message, "error" if profile_error else "success"),
+            profile_html, session, _account_profile_name_value(session))
+
+
+def _account_save_config_ui(project_url, anon_key, session):
+    try:
+        changed = _account_client.save_config(project_url, anon_key)
+        try:
+            _account_client.test_connection()
+        except _account_client.AccountError as exc:
+            message = f"Settings saved, but Supabase could not be reached: {exc}"
+            if changed:
+                session = None
+        else:
+            message = "Supabase connection verified. You can now sign in or create an account."
+            if changed:
+                session = None
+        return (_account_status_html(message, "success" if "verified" in message else "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.update(visible=False), None)
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), gr.update(visible=False), None)
+    except Exception as exc:
+        log.exception("Could not configure account connection")
+        return (_account_status_html(f"Could not configure account connection: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.update(visible=False), None)
+
+
 def _check_updates_ui():
     try:
         update = _update_client.check_for_updates()
@@ -4890,6 +5209,10 @@ def _side_navigation_html():
         <div>
           <div class="aee-nav-group-label">Project</div>
           <div class="aee-nav-items">
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Account">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.4 3.2-5.2 7-5.2s6.3 1.8 7 5.2"/></svg>
+              <span>Account</span>
+            </button>
             <button class="aee-nav-item" type="button" data-aee-nav-tab="Updates">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg>
               <span>Updates</span>
@@ -4912,6 +5235,15 @@ def _side_navigation_html():
 
 def build_ui():
     info = Ensemble.get().info
+    account_session_initial, account_status_initial, account_profile_initial = (
+        _account_initial_session()
+    )
+    try:
+        account_config_initial = _account_client.load_config()
+    except _account_client.AccountError as exc:
+        log.warning("Could not load account connection settings: %s", exc)
+        account_config_initial = {"project_url": "", "anon_key": ""}
+        account_status_initial = _account_status_html(str(exc), "error")
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
         gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
         gr.HTML(_hero_html(info))
@@ -5042,6 +5374,100 @@ def build_ui():
                     value=_history_dataframe(), headers=HISTORY_COLUMNS,
                     datatype=["str", "str", "number", "number", "str", "str"],
                     interactive=False, wrap=True, show_row_numbers=True)
+
+        with gr.Group(visible=True, elem_id="aee-account-window",
+                      elem_classes=["aee-utility-window-shell", "aee-account-shell"]):
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.4 3.2-5.2 7-5.2s6.3 1.8 7 5.2"/></svg></span>
+                      <div><small>Workspace</small><h1>Account</h1></div>
+                    </header>''')
+                    account_close_btn = gr.Button(
+                        "Close window", size="sm",
+                        elem_classes=["aee-utility-window-close"], elem_id="aee-account-close")
+                account_status = gr.HTML(value=account_status_initial)
+                gr.HTML('''<section class="aee-account-card">
+                  <div class="aee-account-eyebrow">Your workspace identity</div>
+                  <h2 class="aee-account-title">Your work, your way.</h2>
+                  <div class="aee-account-copy">Sign in with Google or an email and password, or continue
+                    as a guest. A profile photo is optional. Sign-in syncs only your account profile;
+                    videos, analysis history, and reports stay on this computer.</div>
+                </section>''')
+                account_session = gr.State(account_session_initial)
+                account_oauth_state = gr.State(None)
+                with gr.Group(visible=not bool(account_session_initial)) as account_auth_group:
+                    with gr.Row(elem_classes=["aee-account-actions"]):
+                        account_google_btn = gr.Button(
+                            "Continue with Google", variant="primary", size="lg")
+                    gr.HTML('''<div class="aee-account-oauth-note">
+                      Google sign-in opens your default browser and returns to this app.
+                      Finish sign-in in the browser, then return here to complete it.</div>''')
+                    account_google_finish_btn = gr.Button(
+                        "Complete Google Sign-In", variant="secondary",
+                        visible=False, elem_classes=["aee-account-actions"])
+                    with gr.Row():
+                        account_display_name_input = gr.Textbox(
+                            label="Name", placeholder="Only needed when creating an account",
+                            scale=1)
+                        account_email_input = gr.Textbox(
+                            label="Email address", type="email",
+                            placeholder="you@example.com", scale=2)
+                    account_password_input = gr.Textbox(
+                        label="Password", type="password",
+                        placeholder="At least 8 characters for a new account")
+                    with gr.Row(elem_classes=["aee-account-actions"]):
+                        account_signin_btn = gr.Button("Sign in with email", variant="secondary")
+                        account_signup_btn = gr.Button("Create account", variant="primary")
+                        account_guest_btn = gr.Button("Continue as Guest", variant="secondary")
+                with gr.Group(visible=bool(account_session_initial)) as account_profile_group:
+                    account_profile = gr.HTML(value=account_profile_initial)
+                    account_refresh_profile_btn = gr.Button(
+                        "Refresh profile", variant="secondary")
+                    account_profile_name = gr.Textbox(
+                        label="Display name", value=str(
+                            (account_session_initial or {}).get("display_name", "")
+                        ), max_lines=1)
+                    with gr.Row(elem_classes=["aee-account-actions"]):
+                        account_save_name_btn = gr.Button(
+                            "Save profile", variant="primary")
+                    account_photo_input = gr.File(
+                        label="Optional profile photo", file_count="single",
+                        file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
+                    account_photo_btn = gr.Button(
+                        "Upload profile photo", variant="secondary")
+                    account_signout_btn = gr.Button(
+                        "Sign out and continue as guest", variant="secondary")
+                gr.HTML('''<div class="aee-account-privacy">
+                  <strong>Privacy by design.</strong> Only your display name, email identity, and optional
+                  profile photo are stored in your Supabase project. Source footage, generated reports,
+                  analysis results, and history are not uploaded or synchronized.</div>''')
+
+                with gr.Accordion(
+                    "Connection setup",
+                    open=not bool(account_config_initial["project_url"]),
+                    elem_classes=["aee-account-settings"],
+                ):
+                    gr.Markdown(
+                        "Connect the app to **your Supabase project**. Use the project URL and the "
+                        "public **publishable (anon) key** only; never enter a service-role or secret key. "
+                        "Then run the SQL below once in the Supabase SQL Editor. For the full Google "
+                        "OAuth setup, see [SUPABASE_SETUP.md](https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md)."
+                    )
+                    account_project_url = gr.Textbox(
+                        label="Supabase project URL",
+                        value=account_config_initial["project_url"],
+                        placeholder="https://your-project.supabase.co")
+                    account_anon_key = gr.Textbox(
+                        label="Public publishable (anon) key",
+                        type="password", value=account_config_initial["anon_key"],
+                        placeholder="sb_publishable_… or your anon key")
+                    account_save_config_btn = gr.Button(
+                        "Save and test connection", variant="primary")
+                    gr.Code(
+                        value=_ACCOUNT_SETUP_SQL, language="sql",
+                        label="Run once in Supabase SQL Editor",
+                        interactive=False, lines=25)
 
         # Project pages live in independent fullscreen app panels, not workspace tabs.
         with gr.Group(visible=True, elem_id="aee-updates-window",
@@ -5204,6 +5630,64 @@ def build_ui():
         history_refresh.click(fn=_history_dataframe, inputs=[],
                               outputs=[history_table], queue=False)
         process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
+        account_signin_btn.click(
+            fn=_account_sign_in_ui,
+            inputs=[account_email_input, account_password_input, account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_google_finish_btn, account_oauth_state],
+            queue=False)
+        account_signup_btn.click(
+            fn=_account_sign_up_ui,
+            inputs=[account_display_name_input, account_email_input,
+                    account_password_input, account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_google_finish_btn, account_oauth_state],
+            queue=False)
+        account_google_btn.click(
+            fn=_account_google_start_ui, inputs=[account_session],
+            outputs=[account_status, account_oauth_state,
+                     account_google_finish_btn, account_profile],
+            queue=False)
+        account_google_finish_btn.click(
+            fn=_account_google_finish_ui,
+            inputs=[account_oauth_state, account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_google_finish_btn, account_oauth_state],
+            queue=False)
+        account_guest_btn.click(
+            fn=_account_guest_ui, inputs=[account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_google_finish_btn, account_oauth_state],
+            queue=False)
+        account_signout_btn.click(
+            fn=_account_guest_ui, inputs=[account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_google_finish_btn, account_oauth_state],
+            queue=False)
+        account_refresh_profile_btn.click(
+            fn=_account_refresh_profile_ui, inputs=[account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name],
+            queue=False)
+        account_save_name_btn.click(
+            fn=_account_save_name_ui, inputs=[account_profile_name, account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name],
+            queue=False)
+        account_photo_btn.click(
+            fn=_account_upload_photo_ui, inputs=[account_photo_input, account_session],
+            outputs=[account_status, account_profile, account_session],
+            queue=False)
+        account_save_config_btn.click(
+            fn=_account_save_config_ui,
+            inputs=[account_project_url, account_anon_key, account_session],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_google_finish_btn, account_oauth_state],
+            queue=False)
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
                      update_apply_btn], queue=False)

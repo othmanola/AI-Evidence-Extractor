@@ -9,8 +9,9 @@ from typing import Callable
 
 
 ALLOWED = {
-    "app.py", "desktop_launcher.py", "desktop_entry.py", "update_client.py",
-    "update_apply.py", "version.txt", "update_config.json", "assets/aee.ico",
+    "app.py", "account_client.py", "desktop_launcher.py", "desktop_entry.py",
+    "update_client.py", "update_apply.py", "version.txt", "update_config.json",
+    "assets/aee.ico",
 }
 REQUIRED = ALLOWED - {"assets/aee.ico"}
 

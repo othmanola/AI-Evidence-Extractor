@@ -14,7 +14,9 @@ For challenging footage, select **Enhanced accuracy (slower)** before analysis t
 
 FFmpeg is installed as a Python package dependency and added to the process path at startup. User files and generated app data are stored under `%LOCALAPPDATA%\AI Evidence Extractor` and the operating system temporary folder.
 
-The left-side project menu contains **Updates**, **About Us**, and **Contact Us**. Updates checks the HTTPS release feed, verifies an update package, stages it inside app data, and applies it after the app closes. The app then restarts; no setup wizard is used for subsequent updates. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
+The left-side menu contains **Account**, **Updates**, **About Us**, and **Contact Us**. Updates checks the HTTPS release feed, verifies an update package, stages it inside app data, and applies it after the app closes. The app then restarts; no setup wizard is used for subsequent updates. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
+
+The **Account** panel supports guest use, email/password accounts, Google sign-in, and an optional profile photo. Account data is stored in a connected Supabase project; source videos, analysis history, reports, and results remain local. Configure Supabase and Google OAuth using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 
 ## Build the installer
 
