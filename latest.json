@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.9",
+    "version":  "1.1.10",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.9/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "25ba920a24346a2723649a6335e03a375a0b75493d02e1d8da11bedfb894abc2",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.9/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "2f7c8133afdacc33c6f6b955d7694b098e64ee7c5ea5004b9a46193ddd3a02ee",
-    "release_notes":  "Fixes stale update-feed caching and improves reliable discovery of new releases."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.10/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "f3b7cdd64e89bd9a260783ed41c568a434f92736e4bcb481465df1df8242e2bc",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.10/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "dece03573847fae5eac88633dd1f0d5393205731125f0618c5c538a1c12e0eed",
+    "release_notes":  "Fixes app restart by using the installed Python runtime for the detached restart helper."
 }
