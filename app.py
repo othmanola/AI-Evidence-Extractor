@@ -3435,6 +3435,12 @@ _JS_HEAD = r"""
       document.body.appendChild(navigation);
       host.style.display = 'none';
     }
+    const startupMarker = document.querySelector('[data-aee-account-startup]');
+    if (startupMarker && startupMarker.dataset.aeeAccountStartup === 'required' &&
+        !window.__aeeInitialAccountOpened){
+      window.__aeeInitialAccountOpened = true;
+      window.setTimeout(() => activateAeeUtilityWindow('account'), 0);
+    }
   }
   document.addEventListener('click', event => {
     if (event.target.closest('[data-aee-nav-toggle]')){
@@ -5378,6 +5384,11 @@ def build_ui():
         with gr.Group(visible=True, elem_id="aee-account-window",
                       elem_classes=["aee-utility-window-shell", "aee-account-shell"]):
             with gr.Column(elem_classes=["wrap"]):
+                gr.HTML(
+                    '<span data-aee-account-startup="required" hidden></span>'
+                    if not account_session_initial else
+                    '<span data-aee-account-startup="signed-in" hidden></span>'
+                )
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.4 3.2-5.2 7-5.2s6.3 1.8 7 5.2"/></svg></span>
