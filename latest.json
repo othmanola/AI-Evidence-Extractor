@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.0",
+    "version":  "1.2.1",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.0/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "3e6f43406384b4502d95431293869db758d35bb800e3caa63d996f25de55ee54",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.0/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "3d5b787ce256ab025618ae5c78fb6ce11870c4dde2087e75f53d5b5c816ce438",
-    "release_notes":  "Adds guest, email, and Google accounts with optional profile photos and profile-only Supabase sync. Video evidence and analysis data remain local."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.1/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "b1a7d4e3368012a6837868de7c6324e53322d6747afeb450f2c0b59bb1429e49",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.1/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "ede424e0c06306c211b0b4d5af1df8dd2686048f9fedda2bb88396cf7f77ac90",
+    "release_notes":  "Automatically opens the Account sign-in/sign-up screen on startup when no saved account session exists."
 }
