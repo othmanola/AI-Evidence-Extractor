@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.7",
+    "version":  "1.1.8",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.7/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "0bac194273d587676f63ce1503c6b854f7c20a52ae7b92e1a694285d52746864",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.7/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "4f341f83582bcd3c7b0bf1b12fc23d3e918fc04afb8b247abbde290256adba80",
-    "release_notes":  "Adds modern, responsive left-side slide-in panels for Updates, About Us, and Contact Us, with backdrop and Escape dismissal."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.8/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "cea9f2d711a6e08f5aa719d64d1b0aedf063a35d7b447179c91fa157311002a7",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.8/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "d6c3e7414d9c007d7d50408798e06da452a2a90589a3a1ceee9fc252d532d95d",
+    "release_notes":  "Fixes app restart by waiting for the previous process and WebView2 resources to close before relaunching."
 }
