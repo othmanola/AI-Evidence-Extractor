@@ -119,6 +119,23 @@ class AccountClientTests(unittest.TestCase):
                 self.assertEqual(account_client.load_config(), self.config)
                 self.assertFalse(session_file.exists())
 
+    def test_guest_mode_choice_persists_after_sign_out(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            guest_file = root / "guest_mode"
+            session_file = root / "account_session.bin"
+            session_file.write_bytes(b"saved-session")
+            with (
+                patch.object(account_client, "APP_DATA", root),
+                patch.object(account_client, "GUEST_MODE_FILE", guest_file),
+                patch.object(account_client, "SESSION_FILE", session_file),
+            ):
+                self.assertFalse(account_client.guest_mode_selected())
+                account_client.sign_out(None)
+                self.assertTrue(account_client.guest_mode_selected())
+                self.assertTrue(guest_file.is_file())
+                self.assertFalse(session_file.exists())
+
     def test_email_sign_in_saves_session_without_storing_password(self):
         with (
             patch.object(account_client, "_require_config", return_value=self.config),

@@ -1,9 +1,10 @@
-# Account and Google sign-in setup
+# Email account setup
 
-The Account page supports email/password sign-in, Google sign-in, optional profile
-photos, and guest use. Accounts store only a display name and optional profile
-photo in Supabase. Source videos, analysis history, generated reports, and results
-remain on the local computer and are not uploaded or synchronized.
+The app requires either email/password sign-in or an explicit guest-mode choice.
+The Account page supports email/password sign-in, optional profile photos, and
+guest use. Accounts store only a display name and optional profile photo in
+Supabase. Source videos, analysis history, generated reports, and results remain
+on the local computer and are not uploaded or synchronized.
 
 ## 1. Create the Supabase project
 
@@ -73,30 +74,11 @@ the confirmation message, then return to the app and sign in with their email
 and password. Configure a custom SMTP provider before distributing the app to
 many users; Supabase's default email sender has limited delivery.
 
-## 4. Configure Google sign-in
-
-1. In **Authentication > Sign In / Providers**, enable **Google**.
-2. Create a Google OAuth client for a web application in Google Cloud Console.
-3. Add the callback URL displayed in Supabase's Google provider settings to the
-   Google OAuth client's **Authorized redirect URIs**. Put the Google client ID
-   and client secret into the Supabase provider settings. Keep the secret in
-   Supabase; do not put it in this repository or the app.
-4. In **Authentication > URL Configuration**, add this redirect URL pattern to
-   the allowed redirect URLs:
-   `http://127.0.0.1:*/oauth/callback`
-5. Save the Supabase connection settings in the app and select **Continue with
-   Google**. Google authentication opens in the default system browser, then
-   returns to the local desktop app. Do not embed the Google sign-in page in the
-   app's WebView.
-
-The app uses a short-lived local loopback callback and PKCE for Google sign-in.
-It saves refresh tokens encrypted with Windows DPAPI for the current Windows
-user. Signing out removes the saved local session.
-
 ## Guest mode and privacy
 
-Guest mode requires no Supabase project and keeps app usage local. When signed
-in, only the account display name and optional profile photo are stored in the
-connected Supabase project; the email identity is managed by Supabase Auth.
-Analysis history, source footage, reports, and analysis output are never synced
-by this feature.
+Guest mode requires no Supabase project and keeps app usage local. The guest
+choice is saved on the computer so the app does not ask again at every launch.
+When signed in, only the account display name and optional profile photo are
+stored in the connected Supabase project; the email identity is managed by
+Supabase Auth. Analysis history, source footage, reports, and analysis output
+are never synced by this feature.

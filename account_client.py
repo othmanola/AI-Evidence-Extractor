@@ -28,6 +28,7 @@ APP_DATA = Path(os.environ.get(
 ))
 CONFIG_FILE = APP_DATA / "account_config.json"
 SESSION_FILE = APP_DATA / "account_session.bin"
+GUEST_MODE_FILE = APP_DATA / "guest_mode"
 AVATAR_BUCKET = "profile-photos"
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
 GOOGLE_SIGN_IN_TIMEOUT = 180
@@ -40,6 +41,24 @@ class AccountError(RuntimeError):
     def __init__(self, message: str, status: int | None = None):
         super().__init__(message)
         self.status = status
+
+
+def guest_mode_selected() -> bool:
+    try:
+        return GUEST_MODE_FILE.is_file()
+    except OSError as exc:
+        raise AccountError("The saved guest-mode choice could not be read.") from exc
+
+
+def _save_guest_mode() -> None:
+    APP_DATA.mkdir(parents=True, exist_ok=True)
+    temporary = GUEST_MODE_FILE.with_suffix(".tmp")
+    try:
+        temporary.write_text("guest\n", encoding="utf-8")
+        os.replace(temporary, GUEST_MODE_FILE)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise AccountError("Your guest-mode choice could not be saved.") from exc
 
 
 def _validate_config(project_url: str, anon_key: str) -> dict[str, str]:
@@ -554,6 +573,7 @@ def sign_out(session: dict[str, Any] | None) -> str:
         except AccountError as exc:
             warning = f" Local sign-out completed, but the server session could not be revoked: {exc}"
     try:
+        _save_guest_mode()
         SESSION_FILE.unlink(missing_ok=True)
     except OSError as exc:
         raise AccountError("The saved account session could not be removed.") from exc
