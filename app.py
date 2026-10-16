@@ -5043,12 +5043,22 @@ def _account_status_html(message, tone="neutral"):
 
 def _account_profile_html(session=None, profile=None, avatar_url=""):
     if not session:
-        return '''<section class="aee-account-profile" aria-label="Guest account">
-          <div class="aee-account-avatar" aria-hidden="true">G</div>
-          <div class="aee-account-identity"><strong>Guest mode</strong>
+        profile = profile if isinstance(profile, dict) else {}
+        name = str(profile.get("display_name") or "")
+        avatar_url = str(profile.get("avatar_url") or "")
+        initials = "".join(part[0] for part in name.split()[:2] if part) or "G"
+        avatar = (
+            f'<img src="{_html.escape(avatar_url, quote=True)}" alt="" '
+            'referrerpolicy="no-referrer">'
+            if avatar_url else _html.escape(initials[:2].upper())
+        )
+        return ('''<section class="aee-account-profile" aria-label="Guest account">
+          <div class="aee-account-avatar">''' + avatar + '''</div>
+          <div class="aee-account-identity"><strong>''' +
+                _html.escape(name or "Guest mode") + '''</strong>
             <span>No sign-in required. Continue using the app on this computer.</span>
             <span class="aee-account-mode">LOCAL ONLY</span></div>
-        </section>'''
+        </section>''')
     profile = profile if isinstance(profile, dict) else {}
     name = str(profile.get("display_name") or session.get("display_name") or "Your account")
     email = str(session.get("email") or "")
@@ -5100,16 +5110,25 @@ def _account_initial_session():
     try:
         session = _account_client.load_session()
         guest_mode = not session and _account_client.guest_mode_selected()
+        guest_profile = {}
         status = ("Saved account session restored." if session else
                   "Guest mode restored. Your app data stays on this computer." if guest_mode else
                   "")
         tone = "success" if session or guest_mode else "neutral"
+        if guest_mode:
+            try:
+                guest_profile = _account_client.load_guest_profile()
+            except _account_client.AccountError as exc:
+                log.warning("Could not restore guest profile: %s", exc)
+                status = str(exc)
+                tone = "error"
         return (session, _account_status_html(status, tone),
-                _account_profile_html(session), bool(session or guest_mode), guest_mode)
+                _account_profile_html(session, guest_profile), bool(session or guest_mode),
+                guest_mode, guest_profile.get("display_name", ""))
     except _account_client.AccountError as exc:
         log.warning("Could not restore account session: %s", exc)
         return (None, _account_status_html(str(exc), "error"),
-                _account_profile_html(), False, False)
+                _account_profile_html(), False, False, "")
 
 
 def _account_render_signed_in(session):
@@ -5239,10 +5258,12 @@ def _account_sign_up_ui(display_name, email, password, session, access_ready):
 def _account_guest_ui(session, access_ready=True):
     try:
         message = _account_client.sign_out(session)
-        return (_account_status_html(message, "neutral"), _account_profile_html(), None,
-                "", gr.update(visible=False), gr.update(visible=True),
+        profile = _account_client.load_guest_profile()
+        return (_account_status_html(message, "neutral"),
+                _account_profile_html(profile=profile), None,
+                profile.get("display_name", ""), gr.update(visible=False), gr.update(visible=True),
                 _account_access_html(True), True, gr.update(visible=False),
-                gr.update(visible=False))
+                gr.update(visible=True))
     except _account_client.AccountError as exc:
         return (_account_status_html(str(exc), "error"), _account_profile_html(session),
                 session, _account_profile_name_value(session), gr.update(visible=not session),
@@ -5281,6 +5302,12 @@ def _account_change_account_ui(session):
 
 def _account_save_name_ui(display_name, session):
     try:
+        if not session:
+            profile = _account_client.save_guest_display_name(display_name)
+            return (_account_status_html(
+                        "Guest profile saved on this computer.", "success"),
+                    _account_profile_html(profile=profile), None,
+                    profile.get("display_name", ""))
         profile, session = _account_client.save_display_name(session, display_name)
         profile_html, session, profile_error = _account_render_signed_in(session)
         message = "Profile name saved."
@@ -5299,6 +5326,11 @@ def _account_save_name_ui(display_name, session):
 
 def _account_upload_photo_ui(image_path, session):
     try:
+        if not session:
+            profile = _account_client.save_guest_profile_photo(image_path)
+            return (_account_status_html(
+                        "Guest profile photo saved on this computer.", "success"),
+                    _account_profile_html(profile=profile), None)
         profile, session = _account_client.upload_profile_photo(session, image_path)
         profile_html, session, profile_error = _account_render_signed_in(session)
         message = "Profile photo updated."
@@ -5316,8 +5348,15 @@ def _account_upload_photo_ui(image_path, session):
 
 def _account_refresh_profile_ui(session):
     if not session:
-        return (_account_status_html("You are using guest mode.", "neutral"),
-                _account_profile_html(), None, "")
+        try:
+            profile = _account_client.load_guest_profile()
+            message = "Guest profile refreshed from this computer."
+            return (_account_status_html(message, "neutral"),
+                    _account_profile_html(profile=profile), None,
+                    profile.get("display_name", ""))
+        except _account_client.AccountError as exc:
+            return (_account_status_html(str(exc), "error"),
+                    _account_profile_html(), None, "")
     profile_html, session, profile_error = _account_render_signed_in(session)
     message = profile_error or "Account profile refreshed."
     return (_account_status_html(message, "error" if profile_error else "success"),
@@ -5339,26 +5378,32 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
                 session = None
         guest_mode = _account_client.guest_mode_selected()
         profile_visible = bool(session) or guest_mode
+        guest_profile = (_account_client.load_guest_profile()
+                         if guest_mode and not session else {})
         access_ready = profile_visible
         return (_account_status_html(message, "success" if "verified" in message else "error"),
-                _account_profile_html(session), session, _account_profile_name_value(session),
+                _account_profile_html(session, guest_profile), session,
+                _account_profile_name_value(session) or guest_profile.get("display_name", ""),
                 gr.update(visible=not profile_visible),
                 gr.update(visible=profile_visible),
                 _account_access_html(access_ready), access_ready,
-                gr.update(visible=bool(session)), gr.update(visible=bool(session)))
+                gr.update(visible=profile_visible),
+                gr.update(visible=bool(session)))
     except _account_client.AccountError as exc:
-        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
-                session, _account_profile_name_value(session), gr.update(visible=not session),
-                gr.update(visible=bool(session)), _account_access_html(access_ready),
-                access_ready, gr.update(visible=bool(session)),
+        profile_visible = bool(session or access_ready)
+        return (_account_status_html(str(exc), "error"), gr.skip(),
+                session, gr.skip(), gr.update(visible=not profile_visible),
+                gr.update(visible=profile_visible), _account_access_html(access_ready),
+                access_ready, gr.update(visible=profile_visible),
                 gr.update(visible=bool(session)))
     except Exception as exc:
         log.exception("Could not configure account connection")
+        profile_visible = bool(session or access_ready)
         return (_account_status_html(f"Could not configure account connection: {exc}", "error"),
-                _account_profile_html(session), session, _account_profile_name_value(session),
-                gr.update(visible=not session), gr.update(visible=bool(session)),
+                gr.skip(), session, gr.skip(),
+                gr.update(visible=not profile_visible), gr.update(visible=profile_visible),
                 _account_access_html(access_ready), access_ready,
-                gr.update(visible=bool(session)), gr.update(visible=bool(session)))
+                gr.update(visible=profile_visible), gr.update(visible=bool(session)))
 
 
 def _check_updates_ui():
@@ -5508,7 +5553,8 @@ def _side_navigation_html():
 def build_ui():
     info = Ensemble.get().info
     (account_session_initial, account_status_initial, account_profile_initial,
-     account_access_ready_initial, account_guest_mode_initial) = (
+     account_access_ready_initial, account_guest_mode_initial,
+     account_profile_name_initial) = (
         _account_initial_session()
     )
     try:
@@ -5724,13 +5770,17 @@ def build_ui():
                     with gr.Accordion(
                         "Settings",
                         open=False,
-                        visible=bool(account_session_initial),
+                        visible=True,
                         elem_classes=["aee-account-settings", "aee-account-profile-settings"],
                     ) as account_profile_settings:
+                        gr.HTML('''<div class="aee-account-settings-copy">
+                          Guest profile changes stay on this computer. Signed-in profile
+                          changes are saved to your account.</div>''')
                         account_refresh_profile_btn = gr.Button(
                             "Refresh profile", variant="secondary")
                         account_profile_name = gr.Textbox(
-                            label="Display name", value=str(
+                            label="Display name",
+                            value=account_profile_name_initial or str(
                                 (account_session_initial or {}).get("display_name", "")
                             ), max_lines=1)
                         with gr.Row(elem_classes=["aee-account-actions"]):
@@ -5740,7 +5790,7 @@ def build_ui():
                             label="Optional profile photo", file_count="single",
                             file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
                         account_photo_btn = gr.Button(
-                            "Upload profile photo", variant="secondary")
+                            "Save profile photo", variant="secondary")
                 with gr.Accordion(
                     "Connection setup",
                     open=False,
@@ -6007,7 +6057,8 @@ def build_ui():
                     account_access_state],
             outputs=[account_status, account_profile, account_session, account_profile_name,
                      account_auth_group, account_profile_group,
-                     account_access_marker, account_access_state],
+                     account_access_marker, account_access_state,
+                     account_profile_settings, account_signout_btn],
             queue=False)
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,

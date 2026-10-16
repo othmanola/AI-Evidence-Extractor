@@ -91,7 +91,8 @@ opens the system browser. Return to the app after Google confirms the sign-in.
 
 Guest mode requires no Supabase project and keeps app usage local. The guest
 choice is saved on the computer so the app does not ask again at every launch.
-When signed in, only the account display name and optional profile photo are
-stored in the connected Supabase project; the email identity is managed by
-Supabase Auth. Analysis history, source footage, reports, and analysis output
-are never synced by this feature.
+Guest profile settings can set a display name and optional photo, stored only
+on that computer. When signed in, only the account display name and optional
+profile photo are stored in the connected Supabase project; the email identity
+is managed by Supabase Auth. Analysis history, source footage, reports, and
+analysis output are never synced by this feature.

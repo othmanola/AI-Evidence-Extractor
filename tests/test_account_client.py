@@ -152,6 +152,44 @@ class AccountClientTests(unittest.TestCase):
             self.assertFalse(guest_file.exists())
             self.assertFalse(session_file.exists())
 
+    def test_guest_profile_name_is_saved_locally(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            with (
+                patch.object(account_client, "APP_DATA", root),
+                patch.object(account_client, "GUEST_PROFILE_FILE",
+                             root / "guest_profile.json"),
+                patch.object(account_client, "GUEST_AVATAR_DIR",
+                             root / "guest_profile_photos"),
+            ):
+                profile = account_client.save_guest_display_name("  Local Guest  ")
+                self.assertEqual(profile["display_name"], "Local Guest")
+                self.assertEqual(account_client.load_guest_profile(), profile)
+                self.assertTrue((root / "guest_profile.json").is_file())
+
+    def test_guest_profile_photo_is_saved_and_loaded_locally(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            photo = root / "guest.png"
+            photo.write_bytes(b"\x89PNG\r\n\x1a\nlocal image bytes")
+            with (
+                patch.object(account_client, "APP_DATA", root),
+                patch.object(account_client, "GUEST_PROFILE_FILE",
+                             root / "guest_profile.json"),
+                patch.object(account_client, "GUEST_AVATAR_DIR",
+                             root / "guest_profile_photos"),
+            ):
+                profile = account_client.save_guest_profile_photo(str(photo))
+                self.assertIn("data:image/png;base64,", profile["avatar_url"])
+                self.assertEqual(
+                    (root / "guest_profile_photos" / "avatar.png").read_bytes(),
+                    photo.read_bytes(),
+                )
+
+    def test_guest_profile_name_rejects_blank_values(self):
+        with self.assertRaises(account_client.AccountError):
+            account_client.save_guest_display_name(" ")
+
     def test_email_sign_in_saves_session_without_storing_password(self):
         with (
             patch.object(account_client, "_require_config", return_value=self.config),

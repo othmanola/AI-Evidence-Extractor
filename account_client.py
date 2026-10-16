@@ -29,6 +29,8 @@ APP_DATA = Path(os.environ.get(
 CONFIG_FILE = APP_DATA / "account_config.json"
 SESSION_FILE = APP_DATA / "account_session.bin"
 GUEST_MODE_FILE = APP_DATA / "guest_mode"
+GUEST_PROFILE_FILE = APP_DATA / "guest_profile.json"
+GUEST_AVATAR_DIR = APP_DATA / "guest_profile_photos"
 AVATAR_BUCKET = "profile-photos"
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
 GOOGLE_SIGN_IN_TIMEOUT = 180
@@ -48,6 +50,123 @@ def guest_mode_selected() -> bool:
         return GUEST_MODE_FILE.is_file()
     except OSError as exc:
         raise AccountError("The saved guest-mode choice could not be read.") from exc
+
+
+def _validate_display_name(display_name: str) -> str:
+    display_name = display_name.strip()
+    if not display_name or len(display_name) > 80:
+        raise AccountError("Your display name must contain 1 to 80 characters.")
+    return display_name
+
+
+def _validate_profile_photo(extension: str, content: bytes) -> str:
+    if not content or len(content) > MAX_AVATAR_BYTES:
+        raise AccountError("Choose a non-empty profile photo smaller than 5 MB.")
+    content_types = {
+        ".jpg": ("image/jpeg", b"\xff\xd8\xff"),
+        ".jpeg": ("image/jpeg", b"\xff\xd8\xff"),
+        ".png": ("image/png", b"\x89PNG\r\n\x1a\n"),
+        ".webp": ("image/webp", b"RIFF"),
+    }
+    spec = content_types.get(extension)
+    if not spec or not content.startswith(spec[1]):
+        raise AccountError("Use a valid JPG, PNG, or WebP image for your profile photo.")
+    if extension == ".webp" and content[8:12] != b"WEBP":
+        raise AccountError("The selected WebP profile photo is invalid.")
+    return spec[0]
+
+
+def _read_profile_photo(image_path: str) -> tuple[str, bytes, str]:
+    if not image_path:
+        raise AccountError("Choose a profile photo to upload.")
+    source = Path(image_path)
+    try:
+        size = source.stat().st_size
+        if not source.is_file() or size <= 0 or size > MAX_AVATAR_BYTES:
+            raise AccountError("Choose a non-empty profile photo smaller than 5 MB.")
+        content = source.read_bytes()
+    except OSError as exc:
+        raise AccountError("The selected profile photo could not be read.") from exc
+    extension = source.suffix.lower()
+    content_type = _validate_profile_photo(extension, content)
+    return extension, content, content_type
+
+
+def _guest_profile_data() -> dict[str, str]:
+    try:
+        data = json.loads(GUEST_PROFILE_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"display_name": "", "avatar_extension": ""}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AccountError("The saved guest profile could not be read.") from exc
+    if (not isinstance(data, dict)
+            or not isinstance(data.get("display_name", ""), str)
+            or not isinstance(data.get("avatar_extension", ""), str)):
+        raise AccountError("The saved guest profile is invalid.")
+    display_name = data.get("display_name", "")
+    avatar_extension = data.get("avatar_extension", "")
+    if (len(display_name) > 80
+            or avatar_extension not in ("", ".jpg", ".jpeg", ".png", ".webp")):
+        raise AccountError("The saved guest profile is invalid.")
+    return {"display_name": display_name, "avatar_extension": avatar_extension}
+
+
+def _save_guest_profile_data(data: dict[str, str]) -> None:
+    APP_DATA.mkdir(parents=True, exist_ok=True)
+    temporary = GUEST_PROFILE_FILE.with_suffix(".tmp")
+    try:
+        temporary.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.replace(temporary, GUEST_PROFILE_FILE)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise AccountError("The guest profile could not be saved.") from exc
+
+
+def load_guest_profile() -> dict[str, str]:
+    data = _guest_profile_data()
+    avatar_url = ""
+    extension = data["avatar_extension"]
+    if extension:
+        photo_path = GUEST_AVATAR_DIR / f"avatar{extension}"
+        try:
+            size = photo_path.stat().st_size
+            if size <= 0 or size > MAX_AVATAR_BYTES:
+                raise AccountError("The saved guest profile photo is invalid.")
+            content = photo_path.read_bytes()
+        except OSError as exc:
+            raise AccountError("The saved guest profile photo could not be read.") from exc
+        content_type = _validate_profile_photo(extension, content)
+        avatar_url = f"data:{content_type};base64,{base64.b64encode(content).decode('ascii')}"
+    return {"display_name": data["display_name"], "avatar_url": avatar_url}
+
+
+def save_guest_display_name(display_name: str) -> dict[str, str]:
+    display_name = _validate_display_name(display_name)
+    data = _guest_profile_data()
+    data["display_name"] = display_name
+    _save_guest_profile_data(data)
+    return load_guest_profile()
+
+
+def save_guest_profile_photo(image_path: str) -> dict[str, str]:
+    extension, content, _content_type = _read_profile_photo(image_path)
+    data = _guest_profile_data()
+    GUEST_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    destination = GUEST_AVATAR_DIR / f"avatar{extension}"
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    try:
+        temporary.write_bytes(content)
+        os.replace(temporary, destination)
+        for old_extension in (".jpg", ".jpeg", ".png", ".webp"):
+            old_photo = GUEST_AVATAR_DIR / f"avatar{old_extension}"
+            if old_photo != destination:
+                old_photo.unlink(missing_ok=True)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise AccountError("The guest profile photo could not be saved.") from exc
+    data["avatar_extension"] = extension
+    _save_guest_profile_data(data)
+    return load_guest_profile()
 
 
 def _save_guest_mode() -> None:
@@ -470,9 +589,7 @@ def current_profile(session: dict[str, Any]) -> tuple[dict[str, Any], str, dict[
 
 
 def save_display_name(session: dict[str, Any], display_name: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    display_name = display_name.strip()
-    if not display_name or len(display_name) > 80:
-        raise AccountError("Your display name must contain 1 to 80 characters.")
+    display_name = _validate_display_name(display_name)
     config = _require_config()
     profile, session = _profile_upsert(config, _require_session(session), display_name)
     session["display_name"] = display_name
@@ -480,29 +597,7 @@ def save_display_name(session: dict[str, Any], display_name: str) -> tuple[dict[
 
 
 def upload_profile_photo(session: dict[str, Any], image_path: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    if not image_path:
-        raise AccountError("Choose a profile photo to upload.")
-    source = Path(image_path)
-    try:
-        size = source.stat().st_size
-        if not source.is_file() or size <= 0 or size > MAX_AVATAR_BYTES:
-            raise AccountError("Choose a non-empty profile photo smaller than 5 MB.")
-        content = source.read_bytes()
-    except OSError as exc:
-        raise AccountError("The selected profile photo could not be read.") from exc
-    extension = source.suffix.lower()
-    content_types = {
-        ".jpg": ("image/jpeg", b"\xff\xd8\xff"),
-        ".jpeg": ("image/jpeg", b"\xff\xd8\xff"),
-        ".png": ("image/png", b"\x89PNG\r\n\x1a\n"),
-        ".webp": ("image/webp", b"RIFF"),
-    }
-    spec = content_types.get(extension)
-    if not spec or not content.startswith(spec[1]):
-        raise AccountError("Use a valid JPG, PNG, or WebP image for your profile photo.")
-    if extension == ".webp" and content[8:12] != b"WEBP":
-        raise AccountError("The selected WebP profile photo is invalid.")
-
+    extension, content, content_type = _read_profile_photo(image_path)
     config = _require_config()
     session = _require_session(session)
     avatar_path = f"{session['user_id']}/avatar{extension}"
@@ -511,7 +606,7 @@ def upload_profile_photo(session: dict[str, Any], image_path: str) -> tuple[dict
         f"/storage/v1/object/{AVATAR_BUCKET}/{urllib.parse.quote(avatar_path, safe='/')}",
         content,
         {
-            "Content-Type": spec[0],
+            "Content-Type": content_type,
             "x-upsert": "true",
         },
     )
