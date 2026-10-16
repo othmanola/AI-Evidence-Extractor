@@ -1557,14 +1557,14 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
     linear-gradient(145deg,#0b1220,#060910 76%)!important;
   transition:opacity .24s ease;}
 .aee-utility-window-shell.aee-utility-window-open{opacity:1;}
-.aee-utility-window-shell .wrap{position:absolute!important;inset:0!important;
+.aee-utility-window-shell .column.wrap{position:absolute!important;inset:0!important;
   width:100vw!important;max-width:100vw!important;height:100%!important;
   max-height:100dvh!important;margin:0!important;padding:0 28px 42px!important;
   overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;box-sizing:border-box!important;
   background:transparent!important;transform:translateY(12px) scale(.995);
   transition:transform .28s cubic-bezier(.2,.75,.25,1);}
-.aee-utility-window-shell.aee-utility-window-open .wrap{transform:translateY(0) scale(1);}
+.aee-utility-window-shell.aee-utility-window-open .column.wrap{transform:translateY(0) scale(1);}
 .aee-utility-window-active{overflow:hidden!important;}
 .aee-utility-window-header{position:sticky;top:0;z-index:12;max-width:none;
   margin:0 -28px 34px;padding:17px clamp(20px,4vw,58px);
@@ -1580,7 +1580,7 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-utility-window-close:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.55)!important;
   background:rgba(59,130,246,.14)!important;}
 html[data-theme="light"] .aee-utility-window-shell{background:rgba(15,23,42,.32)!important;}
-html[data-theme="light"] .aee-utility-window-shell .wrap{
+html[data-theme="light"] .aee-utility-window-shell .column.wrap{
   background:transparent!important;}
 html[data-theme="light"] .aee-utility-window-shell{
   background:radial-gradient(1000px 640px at 92% 0%,rgba(79,70,229,.09),transparent 70%),
@@ -1598,52 +1598,82 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   font-weight:700!important;box-shadow:0 10px 28px -20px rgba(37,99,235,.9);}
 .aee-utility-window-shell .aee-update-actions>div{flex:1 1 220px;}
 .aee-hidden-trigger{display:none!important;}
-.aee-account-auth-layout{max-width:600px;margin:clamp(12px,4vh,42px) auto 24px;}
-.aee-account-intro{position:relative;margin:0 0 18px;padding:5px 8px 3px;text-align:center;}
-.aee-account-intro-mark{width:58px;height:58px;display:grid;place-items:center;margin:0 auto 17px;
-  border:1px solid rgba(96,165,250,.38);border-radius:19px;color:#dbeafe;
-  background:linear-gradient(145deg,rgba(37,99,235,.42),rgba(79,70,229,.28));
-  box-shadow:0 18px 38px -22px rgba(59,130,246,.9),0 1px 0 rgba(255,255,255,.12) inset;}
-.aee-account-intro-mark svg{width:27px;height:27px;}
-.aee-account-intro-eyebrow{margin:0 0 9px;color:#93c5fd;font-size:.67rem;
-  font-weight:800;letter-spacing:.17em;text-transform:uppercase;}
-.aee-account-intro h2{margin:0;color:var(--text);font-size:clamp(1.8rem,4vw,2.45rem);
-  font-weight:850;letter-spacing:-.055em;line-height:1.08;}
-.aee-account-intro p{max-width:480px;margin:12px auto 0;color:var(--text-muted);
-  font-size:.91rem;line-height:1.7;}
-.aee-account-auth-form{max-width:560px;margin:0 auto;padding:clamp(22px,4vw,34px);
-  border:1px solid rgba(148,163,184,.18);border-radius:23px;
-  background:linear-gradient(150deg,rgba(18,27,46,.94),rgba(10,15,28,.97));
-  box-shadow:0 26px 70px -48px rgba(37,99,235,.48),0 1px 0 rgba(255,255,255,.055) inset;}
-.aee-account-auth-form .aee-account-name-field{margin-bottom:4px;}
-.aee-account-auth-form label{color:var(--text-muted)!important;font-size:.76rem!important;
-  font-weight:700!important;letter-spacing:.015em;}
-.aee-account-auth-form input{min-height:49px!important;padding:0 15px!important;
-  border:1px solid rgba(148,163,184,.2)!important;border-radius:13px!important;
-  color:var(--text)!important;background:rgba(3,8,20,.36)!important;
+.aee-account-shell .column.wrap{display:flex!important;flex-direction:column!important;}
+.aee-account-shell .column.wrap>.aee-account-auth-form{box-sizing:border-box!important;
+  width:min(480px,calc(100vw - 36px))!important;max-width:480px;
+  margin:clamp(18px,5vh,52px) auto 24px;padding:clamp(28px,5vw,54px) clamp(18px,6vw,26px) 34px;
+  border:1px solid rgba(148,163,184,.2);border-radius:27px;position:relative;overflow:hidden;
+  background:radial-gradient(440px 200px at 50% -5%,rgba(148,163,184,.17),transparent 75%),
+    radial-gradient(460px 300px at 0% 55%,rgba(37,99,235,.15),transparent 78%),
+    linear-gradient(155deg,#151719 0%,#101113 60%,#0e0f11 100%);
+  box-shadow:0 32px 90px -52px rgba(0,0,0,.94),0 1px 0 rgba(255,255,255,.07) inset;}
+.aee-account-shell .column.wrap>.aee-account-auth-form .aee-account-auth-form{
+  width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+  box-shadow:none!important;overflow:visible!important;}
+.aee-account-shell .aee-account-auth-form .styler{overflow:visible!important;
+  width:100%!important;max-width:100%!important;padding:0!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;}
+.aee-account-auth-form .gr-group{overflow:visible!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;}
+.aee-account-intro{position:relative;margin:0 0 46px;padding:0;text-align:center;}
+.aee-account-intro h2{margin:0;color:#f7f8fa;font-size:clamp(2rem,4.2vw,2.55rem);
+  font-weight:500;letter-spacing:-.045em;line-height:1.08;}
+.aee-account-intro p{max-width:390px;margin:12px auto 0;color:#a0a2a7;
+  font-size:.82rem;line-height:1.55;font-weight:400;}
+.aee-account-auth-form .aee-account-name-field{margin-bottom:0;}
+.aee-account-auth-form label{width:100%!important;min-width:0!important;}
+.aee-account-auth-form label>span[data-testid="block-info"]{position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;border:0!important;}
+.aee-account-auth-form .input-container{width:100%!important;min-width:0!important;}
+.aee-account-auth-form input{min-height:44px!important;padding:0 18px!important;
+  width:100%!important;min-width:0!important;box-sizing:border-box!important;
+  border:1px solid rgba(59,130,246,.66)!important;border-radius:999px!important;
+  color:#f4f6fa!important;background:rgba(11,12,14,.8)!important;
   box-shadow:0 1px 0 rgba(255,255,255,.025) inset!important;transition:border-color .18s,box-shadow .18s!important;}
-.aee-account-auth-form input:focus{border-color:rgba(96,165,250,.72)!important;
+.aee-account-auth-form input:focus{border-color:#3b82f6!important;
   box-shadow:0 0 0 3px rgba(59,130,246,.14)!important;}
-.aee-account-auth-form input::placeholder{color:rgba(148,163,184,.56)!important;}
-.aee-account-auth-form .aee-account-actions{display:flex;flex-direction:column;gap:11px;margin-top:17px;}
+.aee-account-auth-form input::placeholder{color:#767b85!important;font-size:.78rem;}
+.aee-account-auth-form .aee-account-actions{display:flex;flex-direction:column;gap:7px;margin-top:46px;}
 .aee-account-auth-form .aee-account-actions>div{width:100%;flex:none;}
-.aee-account-auth-form .aee-account-submit button{width:100%;min-height:51px;border-radius:14px!important;
-  font-size:.92rem!important;font-weight:800!important;letter-spacing:.01em;
-  box-shadow:0 14px 32px -19px rgba(59,130,246,.88)!important;transition:transform .18s,filter .18s!important;}
-.aee-account-auth-form .aee-account-submit button:hover{transform:translateY(-1px);filter:brightness(1.08);}
-.aee-account-auth-form .aee-account-mode-switch button{min-height:38px;padding:4px 8px!important;
-  border:0!important;color:#93c5fd!important;background:transparent!important;
-  box-shadow:none!important;font-size:.82rem!important;font-weight:700!important;}
-.aee-account-auth-form .aee-account-mode-switch button:hover{color:#dbeafe!important;background:rgba(59,130,246,.08)!important;}
-.aee-account-auth-form .aee-account-divider{margin:18px auto 12px;}
-.aee-account-auth-form .aee-account-guest button{width:100%;min-height:47px;border:1px solid rgba(148,163,184,.2)!important;
-  border-radius:13px!important;color:var(--text)!important;background:rgba(148,163,184,.055)!important;
-  font-weight:700!important;transition:border-color .18s,background .18s!important;}
-.aee-account-auth-form .aee-account-guest button:hover{border-color:rgba(96,165,250,.48)!important;
-  background:rgba(59,130,246,.09)!important;}
-.aee-account-auth-privacy{max-width:560px;margin:14px auto 0;text-align:center;
-  color:var(--text-muted);font-size:.75rem;line-height:1.65;}
-.aee-account-auth-privacy strong{color:var(--text);font-weight:750;}
+.aee-account-auth-form button.aee-account-submit{width:100%!important;min-height:48px;border:1px solid rgba(255,255,255,.045)!important;
+  border-radius:999px!important;color:#f5f6f8!important;background:linear-gradient(180deg,#282a2d,#202123)!important;
+  font-size:.9rem!important;font-weight:500!important;letter-spacing:0;
+  box-shadow:0 8px 22px -16px rgba(0,0,0,.8)!important;transition:transform .18s,filter .18s!important;}
+.aee-account-auth-form button.aee-account-submit:hover{transform:translateY(-1px);filter:brightness(1.12);}
+.aee-account-auth-form button.aee-account-mode-switch{width:100%!important;min-height:31px;padding:2px 5px!important;
+  border:0!important;color:#b7b9bf!important;background:transparent!important;
+  box-shadow:none!important;font-size:.76rem!important;font-weight:400!important;}
+.aee-account-auth-form button.aee-account-mode-switch:hover{color:#fff!important;background:transparent!important;}
+.aee-account-auth-form .aee-account-divider{margin:14px auto 11px;color:#85878d;font-size:.69rem;
+  font-weight:400;letter-spacing:0;text-transform:none;}
+.aee-account-auth-form .aee-account-divider:before,.aee-account-auth-form .aee-account-divider:after{
+  background:linear-gradient(90deg,transparent,rgba(148,163,184,.17),transparent);}
+.aee-account-auth-form button.aee-account-guest{width:100%!important;min-height:40px;border:1px solid rgba(255,255,255,.055)!important;
+  border-radius:999px!important;color:#aeb0b5!important;background:rgba(255,255,255,.025)!important;
+  font-size:.75rem!important;font-weight:500!important;transition:border-color .18s,background .18s,color .18s!important;}
+.aee-account-auth-form button.aee-account-guest:hover{border-color:rgba(59,130,246,.42)!important;
+  color:#fff!important;background:rgba(59,130,246,.07)!important;}
+.aee-account-auth-privacy{max-width:410px;margin:13px auto 0;text-align:center;
+  color:#777a82;font-size:.68rem;line-height:1.55;}
+.aee-account-auth-privacy strong{color:#a6a8ad;font-weight:600;}
+.aee-account-setup-hint{margin:13px auto 0;text-align:center;color:#8c9098;
+  font-size:.68rem;line-height:1.55;}
+.aee-account-setup-hint strong{color:#c3c7cf;font-weight:650;}
+.aee-account-auth-form .aee-account-status{margin:0 0 18px;padding:12px 14px;font-size:.76rem;}
+.aee-account-auth-form .aee-account-status[hidden]{display:none!important;}
+body.aee-access-required #aee-account-window{z-index:12000!important;
+  background:radial-gradient(860px 520px at 8% 100%,rgba(20,42,82,.75),transparent 76%),
+    radial-gradient(820px 520px at 95% 100%,rgba(17,37,72,.62),transparent 78%),
+    linear-gradient(145deg,#08090b 0%,#090a0d 55%,#0e1729 100%)!important;}
+body.aee-access-required #aee-account-window .column.wrap{display:flex!important;
+  align-items:center!important;justify-content:center!important;overflow-y:auto!important;
+  padding:26px 16px!important;}
+body.aee-access-required #aee-account-window .aee-utility-window-header{display:none!important;}
+body.aee-access-required #aee-account-window .column.wrap>.aee-account-auth-form{margin:0 auto!important;}
+body.aee-access-required #aee-account-window .aee-account-auth-form .aee-account-intro{margin-bottom:42px;}
+body.aee-access-required .aee-navigation{display:none!important;}
 .aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
   border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
 .aee-account-status[data-kind="success"]{color:#a7f3d0;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08);}
@@ -1668,23 +1698,19 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   color:var(--text-muted);font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
 .aee-account-divider:before,.aee-account-divider:after{content:'';height:1px;flex:1;
   background:linear-gradient(90deg,transparent,rgba(148,163,184,.28),transparent);}
-.aee-account-auth-form .aee-account-actions{margin-top:10px;}
-.aee-account-shell .aee-account-settings{max-width:1080px;margin:18px auto 0;border:1px solid rgba(148,163,184,.17);
+.aee-account-shell .aee-account-settings{max-width:1080px;margin:18px auto 0;overflow-x:hidden!important;
+  border:1px solid rgba(148,163,184,.17);
   border-radius:18px;background:rgba(15,23,42,.34);}
+.aee-account-shell .aee-account-settings>.wrap{box-sizing:border-box!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;}
 .aee-account-shell .aee-account-settings>div:first-child{color:var(--text);font-weight:750;}
 .aee-account-shell .aee-account-settings .prose{color:var(--text-muted);}
 .aee-account-shell .aee-account-settings button{border-radius:12px!important;}
-.aee-account-shell .aee-account-actions button{min-height:46px;border-radius:13px!important;font-weight:700!important;}
+.aee-account-shell .aee-account-profile-form .aee-account-actions button{
+  min-height:46px;border-radius:13px!important;font-weight:700!important;}
+body.aee-access-required #aee-account-window .aee-account-settings{
+  width:min(480px,calc(100vw - 36px));margin:10px auto 0;}
 html[data-theme="light"] .aee-account-profile{background:rgba(255,255,255,.68);border-color:rgba(100,116,139,.17);}
-html[data-theme="light"] .aee-account-auth-form{border-color:rgba(100,116,139,.18);
-  background:linear-gradient(150deg,rgba(255,255,255,.96),rgba(245,248,253,.98));
-  box-shadow:0 24px 65px -48px rgba(37,99,235,.3),0 1px 0 rgba(255,255,255,.9) inset;}
-html[data-theme="light"] .aee-account-auth-form input{border-color:rgba(100,116,139,.22)!important;
-  color:#0f172a!important;background:rgba(248,250,252,.92)!important;}
-html[data-theme="light"] .aee-account-auth-form input::placeholder{color:rgba(71,85,105,.58)!important;}
-html[data-theme="light"] .aee-account-auth-form .aee-account-mode-switch button{color:#1d4ed8!important;}
-html[data-theme="light"] .aee-account-auth-form .aee-account-guest button{border-color:rgba(100,116,139,.24)!important;
-  color:#0f172a!important;background:rgba(248,250,252,.78)!important;}
 html[data-theme="light"] .aee-account-shell .aee-account-settings{background:rgba(255,255,255,.72);border-color:rgba(100,116,139,.2);}
 html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .aee-account-divider:after{
   background:linear-gradient(90deg,transparent,rgba(100,116,139,.25),transparent);}
@@ -1750,7 +1776,7 @@ html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .a
   .aee-project-feature{min-height:118px;}
 }
 @media(max-width:640px){
-  .aee-utility-window-shell .wrap{width:100vw!important;max-width:100vw!important;
+  .aee-utility-window-shell .column.wrap{width:100vw!important;max-width:100vw!important;
     padding:0 16px 28px!important;}
   .aee-utility-window-header{margin:0 -16px 22px;padding:12px 16px;border-radius:0 0 16px 16px;gap:10px;}
   .aee-utility-window-close{min-width:96px!important;height:40px!important;padding:0 10px!important;}
@@ -1758,9 +1784,11 @@ html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .a
   .aee-update-actions{flex-wrap:wrap!important;}
   .aee-update-actions>div{flex:1 1 100%!important;}
   .aee-account-auth-layout{margin:16px auto 22px;}
-  .aee-account-intro{margin-bottom:14px;}
-  .aee-account-intro-mark{width:52px;height:52px;border-radius:17px;}
-  .aee-account-auth-form{padding:22px 18px;border-radius:19px;}
+  .aee-account-shell .column.wrap>.aee-account-auth-form{width:min(480px,calc(100vw - 28px))!important;
+    margin:14px auto 20px;padding:34px 20px 26px;border-radius:23px;}
+  .aee-account-intro{margin-bottom:34px;}
+  .aee-account-auth-form .aee-account-actions{margin-top:34px;}
+  body.aee-access-required #aee-account-window .column.wrap{padding:14px!important;}
   .aee-about-card,.aee-contact-card{min-height:0;padding:30px 23px;border-radius:20px;}
   .aee-project-feature-grid{grid-template-columns:1fr;}
   .aee-project-feature{min-height:0;}
@@ -1778,9 +1806,9 @@ html[data-theme="light"] .aee-update-step{background:rgba(255,255,255,.62);borde
 html[data-theme="light"] .aee-project-feature:hover{background:linear-gradient(145deg,rgba(219,234,254,.8),rgba(255,255,255,.9));}
 html[data-theme="light"] .aee-about-note{background:rgba(16,185,129,.045);}
 @media(prefers-reduced-motion:reduce){
-  .aee-utility-window-shell,.aee-utility-window-shell .wrap,
+  .aee-utility-window-shell,.aee-utility-window-shell .column.wrap,
   .aee-project-feature,.aee-contact-link{transition:none;}
-  .aee-utility-window-shell .wrap{transform:none;}
+  .aee-utility-window-shell .column.wrap{transform:none;}
   .aee-project-feature:hover,.aee-contact-link:hover{transform:none;}
 }
 .aee-tabs [role="tablist"]{
@@ -3528,7 +3556,10 @@ _JS_HEAD = r"""
     shell.setAttribute('aria-modal', 'true');
     shell.setAttribute('role', 'dialog');
     const close = shell.querySelector('.aee-utility-window-close button');
-    if (close) close.focus({preventScroll:true});
+    const initialFocus = name === 'account' && aeeAccessRequired()
+      ? shell.querySelector('.aee-account-auth-form input:not([disabled])')
+      : close;
+    if (initialFocus) initialFocus.focus({preventScroll:true});
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:true,name}}));
   }
   function closeAeeUtilityWindow(shell){
@@ -4987,8 +5018,9 @@ create policy "Users can update their own profile photos"
 
 def _account_status_html(message, tone="neutral"):
     safe_message = _html.escape(str(message))
-    return (f'<div class="aee-account-status" data-kind="{_html.escape(tone)}" role="status">'
-            f'{safe_message}</div>')
+    hidden = " hidden" if not safe_message else ""
+    return (f'<div class="aee-account-status" data-kind="{_html.escape(tone)}" '
+            f'role="status"{hidden}>{safe_message}</div>')
 
 
 def _account_profile_html(session=None, profile=None, avatar_url=""):
@@ -5023,19 +5055,12 @@ def _account_access_html(ready):
 
 def _account_auth_intro_html(mode="signup"):
     signing_in = mode == "signin"
-    title = "Welcome back" if signing_in else "Your next chapter starts here"
-    copy = ("Sign in with your email to return to your evidence workspace."
+    title = "Log in" if signing_in else "Create your account"
+    copy = ("Log in to your account and continue managing your evidence projects, "
+            "analysis, and progress right where you left off."
             if signing_in else
-            "Create an account to get started, or continue as a guest. Your evidence stays on this device.")
+            "Create an account to start reviewing video evidence and keep your work organized.")
     return ('''<section class="aee-account-intro">
-      <div class="aee-account-intro-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-             stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3.5 19 6v5.2c0 4.4-2.8 7.6-7 9.3-4.2-1.7-7-4.9-7-9.3V6l7-2.5Z"/>
-          <path d="m9 12 2 2 4-4"/>
-        </svg>
-      </div>
-      <div class="aee-account-intro-eyebrow">AI Evidence Extractor</div>
       <h2>''' + _html.escape(title) + '''</h2>
       <p>''' + _html.escape(copy) + '''</p>
     </section>''')
@@ -5044,8 +5069,8 @@ def _account_auth_intro_html(mode="signup"):
 def _account_auth_mode_ui(mode):
     next_mode = "signin" if mode != "signin" else "signup"
     signing_in = next_mode == "signin"
-    toggle_label = ("New here? Create an account" if signing_in else
-                    "Already have an account? Sign in")
+    toggle_label = ("Don't have an account? Sign up" if signing_in else
+                    "Already have an account? Log in")
     return (next_mode, _account_auth_intro_html(next_mode),
             gr.update(visible=not signing_in),
             gr.update(visible=not signing_in),
@@ -5059,7 +5084,7 @@ def _account_initial_session():
         guest_mode = not session and _account_client.guest_mode_selected()
         status = ("Saved account session restored." if session else
                   "Guest mode restored. Your app data stays on this computer." if guest_mode else
-                  "Welcome. Create an account, sign in with email, or continue as a guest.")
+                  "")
         tone = "success" if session or guest_mode else "neutral"
         return (session, _account_status_html(status, tone),
                 _account_profile_html(session), bool(session or guest_mode))
@@ -5529,7 +5554,6 @@ def build_ui():
                     account_close_btn = gr.Button(
                         "Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-account-close")
-                account_status = gr.HTML(value=account_status_initial)
                 account_session = gr.State(account_session_initial)
                 account_access_state = gr.State(account_access_ready_initial)
                 account_auth_mode = gr.State("signup")
@@ -5537,6 +5561,7 @@ def build_ui():
                     visible=not bool(account_session_initial),
                     elem_classes=["aee-account-auth-form"],
                 ) as account_auth_group:
+                    account_status = gr.HTML(value=account_status_initial)
                     account_auth_intro = gr.HTML(value=_account_auth_intro_html())
                     with gr.Group(elem_classes=["aee-account-name-field"]) as account_name_group:
                         account_display_name_input = gr.Textbox(
@@ -5553,10 +5578,10 @@ def build_ui():
                             "Create my account", variant="primary", size="lg",
                             elem_classes=["aee-account-submit"])
                         account_signin_btn = gr.Button(
-                            "Sign in", variant="primary", size="lg", visible=False,
+                            "Log in", variant="primary", size="lg", visible=False,
                             elem_classes=["aee-account-submit"])
                         account_auth_mode_btn = gr.Button(
-                            "Already have an account? Sign in", variant="secondary",
+                            "Already have an account? Log in", variant="secondary",
                             elem_classes=["aee-account-mode-switch"])
                     gr.HTML('<div class="aee-account-divider"><span>or</span></div>')
                     account_guest_btn = gr.Button(
@@ -5565,6 +5590,10 @@ def build_ui():
                     gr.HTML('''<div class="aee-account-auth-privacy">
                       <strong>Your work stays private.</strong> Videos, analysis history, and reports
                       remain on this device, whether you create an account or continue as a guest.</div>''')
+                    if not account_config_initial["project_url"]:
+                        gr.HTML('''<div class="aee-account-setup-hint">
+                          Email accounts need a Supabase connection. Expand
+                          <strong>Connection setup</strong> below, or continue as a guest.</div>''')
                 with gr.Group(
                     visible=bool(account_session_initial),
                     elem_classes=["aee-account-profile-form"],
@@ -5588,7 +5617,7 @@ def build_ui():
                         "Sign out and continue as guest", variant="secondary")
                 with gr.Accordion(
                     "Connection setup",
-                    open=not bool(account_config_initial["project_url"]),
+                    open=False,
                     elem_classes=["aee-account-settings"],
                 ):
                     gr.Markdown(
