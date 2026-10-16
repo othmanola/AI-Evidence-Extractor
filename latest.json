@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.4",
+    "version":  "1.2.5",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.4/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "87ac0ed88f85b597b98890b25b4a1bc144de9c52221e2944c8329ab82f09a2db",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.4/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "7b7ebf755f74ede13e3302417d1f7200b0a216f7ea34e0607244fabaddb2b919",
-    "release_notes":  "Introduces a modern sign-up and sign-in experience with a focused account card, clear mode switching, and a distinct guest option."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.5/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "4eebec7d09836e61c1d71ec70a6e04fa66e885c6742c52532eede73b20cd1354",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.5/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "4b1531b62ff07887b49d262bcac81ae449edb66e1bf6d5dfd037a55d174e074d",
+    "release_notes":  "Matches the sign-up screen to the supplied modern dark login reference, improves the responsive account layout, and removes utility-window horizontal overflow."
 }
