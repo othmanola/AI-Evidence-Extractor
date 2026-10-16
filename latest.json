@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.5",
-    "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.5/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "4eebec7d09836e61c1d71ec70a6e04fa66e885c6742c52532eede73b20cd1354",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.5/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "4b1531b62ff07887b49d262bcac81ae449edb66e1bf6d5dfd037a55d174e074d",
-    "release_notes":  "Matches the sign-up screen to the supplied modern dark login reference, improves the responsive account layout, and removes utility-window horizontal overflow."
+    "version":  "1.2.6",
+    "published_at":  "2026-10-17",
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.6/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "25e70be075d6e3933591d711606934f734dcdee299cebba42ec26b2654dc5154",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.6/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "9c49fed6ef664d806fe373c6a30a186a371318235a21522dc288df5aff3c3a83",
+    "release_notes":  "Adds Google sign-in, profile settings, log out and change-account actions, and a clearer Supabase connection setup panel."
 }
