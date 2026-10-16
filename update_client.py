@@ -351,6 +351,20 @@ def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
     raise UpdateError("The app launcher could not be found. Reinstall the app and try again.")
 
 
+def _restart_helper_interpreter(app_dir: Path) -> str:
+    import sys
+
+    if getattr(sys, "frozen", False):
+        helper_python = app_dir / "runtime" / "python.exe"
+        if not helper_python.is_file():
+            raise UpdateError(
+                "The private Python runtime needed to restart the app is missing. "
+                "Reinstall the app and try again."
+            )
+        return str(helper_python.resolve())
+    return sys.executable
+
+
 def _wait_for_process_exit(pid: int) -> None:
     if os.name == "nt":
         import ctypes
@@ -403,11 +417,11 @@ def _restart_after_exit(pid: int, command: list[str], cwd: str,
 def restart_app() -> None:
     """Close the current process before relaunching to release WebView2 resources."""
     import subprocess
-    import sys
     import threading
 
     data_dir = DATA_DIR
     command, cwd = _restart_command(data_dir, APP_DIR)
+    helper_interpreter = _restart_helper_interpreter(APP_DIR)
 
     env = os.environ.copy()
     env["AEE_DATA_DIR"] = str(data_dir)
@@ -426,7 +440,7 @@ def restart_app() -> None:
         with log_path.open("a", encoding="utf-8") as log_file:
             subprocess.Popen(
                 [
-                    sys.executable, "-c", helper_code, str(os.getpid()),
+                    helper_interpreter, "-c", helper_code, str(os.getpid()),
                     json.dumps(command), str(cwd), "2.0",
                 ],
                 cwd=str(APP_DIR),
