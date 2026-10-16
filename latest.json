@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.6",
+    "version":  "1.1.7",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.6/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "cc33bb48b280a2418de3d78acae2fc64a5fb8f9e1e7377463f7b45ae9b0b444c",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.6/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "259d4bce6d7c9bb7e68e17bf8107363c3e283d722cae5a772a4aa86bac5abc37",
-    "release_notes":  "Fixes update-check status rendering and refreshes the Update and About panels with a clearer, responsive design."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.7/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "0bac194273d587676f63ce1503c6b854f7c20a52ae7b92e1a694285d52746864",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.7/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "4f341f83582bcd3c7b0bf1b12fc23d3e918fc04afb8b247abbde290256adba80",
+    "release_notes":  "Adds modern, responsive left-side slide-in panels for Updates, About Us, and Contact Us, with backdrop and Escape dismissal."
 }
