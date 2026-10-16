@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.0",
+    "version":  "1.1.12",
     "published_at":  "2026-10-16",
     "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.0/AI_Evidence_Extractor_Setup.exe",
     "sha256":  "3e6f43406384b4502d95431293869db758d35bb800e3caa63d996f25de55ee54",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.0/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "3d5b787ce256ab025618ae5c78fb6ce11870c4dde2087e75f53d5b5c816ce438",
-    "release_notes":  "Adds guest, email, and Google accounts with optional profile photos and profile-only Supabase sync. Video evidence and analysis data remain local."
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.12/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "64b583cfa695fd213e637186e7c5b7cfd9aebbf8a6d0c9ed1f7c56ea1f601bb6",
+    "release_notes":  "Compatibility step for older updaters. Install and restart, then check again for v1.2.0."
 }
