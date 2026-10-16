@@ -1598,17 +1598,53 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   font-weight:700!important;box-shadow:0 10px 28px -20px rgba(37,99,235,.9);}
 .aee-utility-window-shell .aee-update-actions>div{flex:1 1 220px;}
 .aee-hidden-trigger{display:none!important;}
-.aee-account-card{position:relative;max-width:1080px;margin:0 auto 24px;padding:clamp(30px,5vw,58px);
-  overflow:hidden;border:1px solid rgba(96,165,250,.2);border-radius:26px;
-  background:radial-gradient(520px 260px at 100% 0%,rgba(59,130,246,.13),transparent 70%),
-    linear-gradient(150deg,rgba(15,23,42,.95),rgba(8,12,23,.98));
-  box-shadow:0 30px 90px -55px rgba(37,99,235,.55),0 1px 0 rgba(255,255,255,.04) inset;}
-.aee-account-eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:12px;color:#93c5fd;
-  font-size:.68rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
-.aee-account-title{margin:0;color:var(--text);font-size:clamp(1.7rem,4vw,2.5rem);
-  font-weight:850;letter-spacing:-.05em;line-height:1.1;}
-.aee-account-copy{max-width:680px;margin-top:12px;color:var(--text-muted);font-size:.9rem;line-height:1.7;}
-.aee-account-status{max-width:1080px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
+.aee-account-auth-layout{max-width:600px;margin:clamp(12px,4vh,42px) auto 24px;}
+.aee-account-intro{position:relative;margin:0 0 18px;padding:5px 8px 3px;text-align:center;}
+.aee-account-intro-mark{width:58px;height:58px;display:grid;place-items:center;margin:0 auto 17px;
+  border:1px solid rgba(96,165,250,.38);border-radius:19px;color:#dbeafe;
+  background:linear-gradient(145deg,rgba(37,99,235,.42),rgba(79,70,229,.28));
+  box-shadow:0 18px 38px -22px rgba(59,130,246,.9),0 1px 0 rgba(255,255,255,.12) inset;}
+.aee-account-intro-mark svg{width:27px;height:27px;}
+.aee-account-intro-eyebrow{margin:0 0 9px;color:#93c5fd;font-size:.67rem;
+  font-weight:800;letter-spacing:.17em;text-transform:uppercase;}
+.aee-account-intro h2{margin:0;color:var(--text);font-size:clamp(1.8rem,4vw,2.45rem);
+  font-weight:850;letter-spacing:-.055em;line-height:1.08;}
+.aee-account-intro p{max-width:480px;margin:12px auto 0;color:var(--text-muted);
+  font-size:.91rem;line-height:1.7;}
+.aee-account-auth-form{max-width:560px;margin:0 auto;padding:clamp(22px,4vw,34px);
+  border:1px solid rgba(148,163,184,.18);border-radius:23px;
+  background:linear-gradient(150deg,rgba(18,27,46,.94),rgba(10,15,28,.97));
+  box-shadow:0 26px 70px -48px rgba(37,99,235,.48),0 1px 0 rgba(255,255,255,.055) inset;}
+.aee-account-auth-form .aee-account-name-field{margin-bottom:4px;}
+.aee-account-auth-form label{color:var(--text-muted)!important;font-size:.76rem!important;
+  font-weight:700!important;letter-spacing:.015em;}
+.aee-account-auth-form input{min-height:49px!important;padding:0 15px!important;
+  border:1px solid rgba(148,163,184,.2)!important;border-radius:13px!important;
+  color:var(--text)!important;background:rgba(3,8,20,.36)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.025) inset!important;transition:border-color .18s,box-shadow .18s!important;}
+.aee-account-auth-form input:focus{border-color:rgba(96,165,250,.72)!important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.14)!important;}
+.aee-account-auth-form input::placeholder{color:rgba(148,163,184,.56)!important;}
+.aee-account-auth-form .aee-account-actions{display:flex;flex-direction:column;gap:11px;margin-top:17px;}
+.aee-account-auth-form .aee-account-actions>div{width:100%;flex:none;}
+.aee-account-auth-form .aee-account-submit button{width:100%;min-height:51px;border-radius:14px!important;
+  font-size:.92rem!important;font-weight:800!important;letter-spacing:.01em;
+  box-shadow:0 14px 32px -19px rgba(59,130,246,.88)!important;transition:transform .18s,filter .18s!important;}
+.aee-account-auth-form .aee-account-submit button:hover{transform:translateY(-1px);filter:brightness(1.08);}
+.aee-account-auth-form .aee-account-mode-switch button{min-height:38px;padding:4px 8px!important;
+  border:0!important;color:#93c5fd!important;background:transparent!important;
+  box-shadow:none!important;font-size:.82rem!important;font-weight:700!important;}
+.aee-account-auth-form .aee-account-mode-switch button:hover{color:#dbeafe!important;background:rgba(59,130,246,.08)!important;}
+.aee-account-auth-form .aee-account-divider{margin:18px auto 12px;}
+.aee-account-auth-form .aee-account-guest button{width:100%;min-height:47px;border:1px solid rgba(148,163,184,.2)!important;
+  border-radius:13px!important;color:var(--text)!important;background:rgba(148,163,184,.055)!important;
+  font-weight:700!important;transition:border-color .18s,background .18s!important;}
+.aee-account-auth-form .aee-account-guest button:hover{border-color:rgba(96,165,250,.48)!important;
+  background:rgba(59,130,246,.09)!important;}
+.aee-account-auth-privacy{max-width:560px;margin:14px auto 0;text-align:center;
+  color:var(--text-muted);font-size:.75rem;line-height:1.65;}
+.aee-account-auth-privacy strong{color:var(--text);font-weight:750;}
+.aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
   border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
 .aee-account-status[data-kind="success"]{color:#a7f3d0;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08);}
 .aee-account-status[data-kind="error"]{color:#fecaca;border-color:rgba(248,113,113,.26);background:rgba(239,68,68,.08);}
@@ -1627,10 +1663,7 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   font-size:.68rem;font-weight:750;letter-spacing:.04em;}
 .aee-account-mode:before{content:'';width:7px;height:7px;border-radius:50%;background:#34d399;
   box-shadow:0 0 10px rgba(52,211,153,.7);}
-.aee-account-privacy{margin:18px 0 0;padding:14px 16px;border:1px solid rgba(148,163,184,.13);
-  border-radius:14px;color:var(--text-muted);background:rgba(148,163,184,.045);font-size:.76rem;line-height:1.65;}
-.aee-account-oauth-note{margin:8px 0 16px;color:var(--text-muted);font-size:.76rem;line-height:1.55;}
-.aee-account-auth-form,.aee-account-profile-form{max-width:1080px;margin:0 auto;}
+.aee-account-profile-form{max-width:1080px;margin:0 auto;}
 .aee-account-divider{display:flex;align-items:center;gap:14px;max-width:1080px;margin:18px auto;
   color:var(--text-muted);font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
 .aee-account-divider:before,.aee-account-divider:after{content:'';height:1px;flex:1;
@@ -1642,9 +1675,16 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
 .aee-account-shell .aee-account-settings .prose{color:var(--text-muted);}
 .aee-account-shell .aee-account-settings button{border-radius:12px!important;}
 .aee-account-shell .aee-account-actions button{min-height:46px;border-radius:13px!important;font-weight:700!important;}
-html[data-theme="light"] .aee-account-card{background:radial-gradient(520px 260px at 100% 0%,rgba(59,130,246,.08),transparent 70%),linear-gradient(150deg,#fff,#f4f7fc);}
 html[data-theme="light"] .aee-account-profile{background:rgba(255,255,255,.68);border-color:rgba(100,116,139,.17);}
-html[data-theme="light"] .aee-account-privacy{background:rgba(255,255,255,.62);border-color:rgba(100,116,139,.16);}
+html[data-theme="light"] .aee-account-auth-form{border-color:rgba(100,116,139,.18);
+  background:linear-gradient(150deg,rgba(255,255,255,.96),rgba(245,248,253,.98));
+  box-shadow:0 24px 65px -48px rgba(37,99,235,.3),0 1px 0 rgba(255,255,255,.9) inset;}
+html[data-theme="light"] .aee-account-auth-form input{border-color:rgba(100,116,139,.22)!important;
+  color:#0f172a!important;background:rgba(248,250,252,.92)!important;}
+html[data-theme="light"] .aee-account-auth-form input::placeholder{color:rgba(71,85,105,.58)!important;}
+html[data-theme="light"] .aee-account-auth-form .aee-account-mode-switch button{color:#1d4ed8!important;}
+html[data-theme="light"] .aee-account-auth-form .aee-account-guest button{border-color:rgba(100,116,139,.24)!important;
+  color:#0f172a!important;background:rgba(248,250,252,.78)!important;}
 html[data-theme="light"] .aee-account-shell .aee-account-settings{background:rgba(255,255,255,.72);border-color:rgba(100,116,139,.2);}
 html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .aee-account-divider:after{
   background:linear-gradient(90deg,transparent,rgba(100,116,139,.25),transparent);}
@@ -1717,7 +1757,10 @@ html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .a
   .aee-project-page-mark{width:46px;height:46px;border-radius:14px;}
   .aee-update-actions{flex-wrap:wrap!important;}
   .aee-update-actions>div{flex:1 1 100%!important;}
-  .aee-account-card{padding:28px 22px;border-radius:20px;}
+  .aee-account-auth-layout{margin:16px auto 22px;}
+  .aee-account-intro{margin-bottom:14px;}
+  .aee-account-intro-mark{width:52px;height:52px;border-radius:17px;}
+  .aee-account-auth-form{padding:22px 18px;border-radius:19px;}
   .aee-about-card,.aee-contact-card{min-height:0;padding:30px 23px;border-radius:20px;}
   .aee-project-feature-grid{grid-template-columns:1fr;}
   .aee-project-feature{min-height:0;}
@@ -4978,6 +5021,38 @@ def _account_access_html(ready):
     return f'<span data-aee-access-status="{status}" hidden></span>'
 
 
+def _account_auth_intro_html(mode="signup"):
+    signing_in = mode == "signin"
+    title = "Welcome back" if signing_in else "Your next chapter starts here"
+    copy = ("Sign in with your email to return to your evidence workspace."
+            if signing_in else
+            "Create an account to get started, or continue as a guest. Your evidence stays on this device.")
+    return ('''<section class="aee-account-intro">
+      <div class="aee-account-intro-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3.5 19 6v5.2c0 4.4-2.8 7.6-7 9.3-4.2-1.7-7-4.9-7-9.3V6l7-2.5Z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="aee-account-intro-eyebrow">AI Evidence Extractor</div>
+      <h2>''' + _html.escape(title) + '''</h2>
+      <p>''' + _html.escape(copy) + '''</p>
+    </section>''')
+
+
+def _account_auth_mode_ui(mode):
+    next_mode = "signin" if mode != "signin" else "signup"
+    signing_in = next_mode == "signin"
+    toggle_label = ("New here? Create an account" if signing_in else
+                    "Already have an account? Sign in")
+    return (next_mode, _account_auth_intro_html(next_mode),
+            gr.update(visible=not signing_in),
+            gr.update(visible=not signing_in),
+            gr.update(visible=signing_in),
+            gr.update(value=toggle_label))
+
+
 def _account_initial_session():
     try:
         session = _account_client.load_session()
@@ -5455,38 +5530,41 @@ def build_ui():
                         "Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-account-close")
                 account_status = gr.HTML(value=account_status_initial)
-                gr.HTML('''<section class="aee-account-card">
-                  <div class="aee-account-eyebrow">Welcome to AI Evidence Extractor</div>
-                  <h2 class="aee-account-title">''' + (
-                    "Your account" if account_session_initial else "Create your account"
-                  ) + '''</h2>
-                  <div class="aee-account-copy">''' + (
-                    "Manage your profile and optional photo. Your videos, analysis history, and reports stay on this computer."
-                    if account_session_initial else
-                    "Sign up or sign in with your email, or continue as a guest. Your videos, analysis history, and reports stay on this computer."
-                  ) + '''</div>
-                </section>''')
                 account_session = gr.State(account_session_initial)
                 account_access_state = gr.State(account_access_ready_initial)
+                account_auth_mode = gr.State("signup")
                 with gr.Group(
                     visible=not bool(account_session_initial),
                     elem_classes=["aee-account-auth-form"],
                 ) as account_auth_group:
-                    with gr.Row():
+                    account_auth_intro = gr.HTML(value=_account_auth_intro_html())
+                    with gr.Group(elem_classes=["aee-account-name-field"]) as account_name_group:
                         account_display_name_input = gr.Textbox(
-                            label="Name", placeholder="Only needed when creating an account",
-                            scale=1)
-                        account_email_input = gr.Textbox(
-                            label="Email address", type="email",
-                            placeholder="you@example.com", scale=2)
+                            label="Your name", placeholder="Enter your name",
+                            max_lines=1)
+                    account_email_input = gr.Textbox(
+                        label="Email address", type="email",
+                        placeholder="you@example.com", max_lines=1)
                     account_password_input = gr.Textbox(
                         label="Password", type="password",
-                        placeholder="At least 8 characters for a new account")
+                        placeholder="Enter your password", max_lines=1)
                     with gr.Row(elem_classes=["aee-account-actions"]):
-                        account_signup_btn = gr.Button("Create account", variant="primary")
-                        account_signin_btn = gr.Button("Already have an account? Sign in",
-                                                       variant="secondary")
-                        account_guest_btn = gr.Button("Continue as Guest", variant="secondary")
+                        account_signup_btn = gr.Button(
+                            "Create my account", variant="primary", size="lg",
+                            elem_classes=["aee-account-submit"])
+                        account_signin_btn = gr.Button(
+                            "Sign in", variant="primary", size="lg", visible=False,
+                            elem_classes=["aee-account-submit"])
+                        account_auth_mode_btn = gr.Button(
+                            "Already have an account? Sign in", variant="secondary",
+                            elem_classes=["aee-account-mode-switch"])
+                    gr.HTML('<div class="aee-account-divider"><span>or</span></div>')
+                    account_guest_btn = gr.Button(
+                        "Continue as a guest", variant="secondary",
+                        elem_classes=["aee-account-guest"])
+                    gr.HTML('''<div class="aee-account-auth-privacy">
+                      <strong>Your work stays private.</strong> Videos, analysis history, and reports
+                      remain on this device, whether you create an account or continue as a guest.</div>''')
                 with gr.Group(
                     visible=bool(account_session_initial),
                     elem_classes=["aee-account-profile-form"],
@@ -5508,11 +5586,6 @@ def build_ui():
                         "Upload profile photo", variant="secondary")
                     account_signout_btn = gr.Button(
                         "Sign out and continue as guest", variant="secondary")
-                gr.HTML('''<div class="aee-account-privacy">
-                  <strong>Privacy by design.</strong> Only your display name, email identity, and optional
-                  profile photo are stored in your Supabase project. Source footage, generated reports,
-                  analysis results, and history are not uploaded or synchronized.</div>''')
-
                 with gr.Accordion(
                     "Connection setup",
                     open=not bool(account_config_initial["project_url"]),
@@ -5700,6 +5773,11 @@ def build_ui():
         history_refresh.click(fn=_history_dataframe, inputs=[],
                               outputs=[history_table], queue=False)
         process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
+        account_auth_mode_btn.click(
+            fn=_account_auth_mode_ui, inputs=[account_auth_mode],
+            outputs=[account_auth_mode, account_auth_intro, account_name_group,
+                     account_signup_btn, account_signin_btn, account_auth_mode_btn],
+            queue=False)
         account_signin_btn.click(
             fn=_account_sign_in_ui,
             inputs=[account_email_input, account_password_input, account_session,
