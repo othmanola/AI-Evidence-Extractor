@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.2",
+    "version":  "1.2.3",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.2/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "6e9174f903d8c94f27535cf8cf9e5fdc0238b7eb8f9f4797eff6c5bc7d89d01a",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.2/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "3b388e9e04f033efc4abaf58ef1807f168caddad19c193f2ec8649b697e71506",
-    "release_notes":  "Prioritizes sign-up on first launch and displays Account, Updates, About Us, and Contact Us in modern full-screen panels."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.3/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "4855c9eefda5e3a1f384e981793a51c47f8db45dff825447153b0df38395fe9d",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.3/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "f54302ede8c293c55065b343b341a2bdb66c9bb0fd4fbe922c9cb9d6b2aac454",
+    "release_notes":  "Requires email sign-in or an explicit guest choice before opening the workspace. Guest access is remembered between launches."
 }
