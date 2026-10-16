@@ -327,3 +327,48 @@ def apply_staged_update(staged: dict, progress: Callable | None = None) -> None:
         apply(stage_dir, APP_DIR, version, progress)
     except Exception as exc:
         raise UpdateError(f"The update could not be installed: {exc}") from exc
+
+
+def restart_app() -> None:
+    """Relaunch AI Evidence Extractor and terminate current process."""
+    import subprocess
+    import sys
+    import threading
+
+    app_exe = APP_DIR / "AI Evidence Extractor.exe"
+    data_dir = DATA_DIR
+    venv = data_dir / "runtimeenv"
+    cuda_venv = data_dir / "runtimeenv_cuda2"
+    cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
+    cuda_ready = cuda_venv / ".aee_cuda_ready"
+    if cuda_ready.is_file() and cuda_pythonw.is_file():
+        venv = cuda_venv
+    pythonw = venv / "Scripts" / "pythonw.exe"
+    launcher = APP_DIR / "desktop_launcher.py"
+    runtime_dir = APP_DIR / "runtime"
+
+    env = os.environ.copy()
+    env["AEE_DATA_DIR"] = str(data_dir)
+    env["AEE_APP_DIR"] = str(APP_DIR)
+
+    if app_exe.is_file():
+        cmd = [str(app_exe.resolve())]
+        cwd = str(APP_DIR.resolve())
+    elif pythonw.is_file() and launcher.is_file() and runtime_dir.is_dir():
+        cmd = [str(pythonw.resolve()), str(launcher.resolve())]
+        cwd = str(runtime_dir.resolve())
+    else:
+        cmd = [sys.executable, str(launcher.resolve())]
+        cwd = str(APP_DIR.resolve())
+
+    try:
+        subprocess.Popen(cmd, cwd=cwd, env=env, close_fds=True)
+    except Exception as exc:
+        raise UpdateError(f"Could not restart the application automatically: {exc}") from exc
+
+    def _terminate():
+        import time
+        time.sleep(1.0)
+        os._exit(0)
+
+    threading.Thread(target=_terminate, daemon=True).start()

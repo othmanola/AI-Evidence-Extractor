@@ -1609,11 +1609,42 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   background:linear-gradient(145deg,rgba(30,41,59,.58),rgba(15,23,42,.35));}
 .aee-project-feature strong{display:block;color:var(--text);font-size:.88rem;font-weight:750;}
 .aee-project-feature span{display:block;margin-top:6px;color:var(--text-muted);font-size:.8rem;line-height:1.55;}
+.aee-update-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;}
+.aee-update-step{display:flex;align-items:flex-start;gap:12px;min-width:0;padding:15px 16px;
+  border:1px solid rgba(148,163,184,.15);border-radius:16px;background:rgba(15,23,42,.32);}
+.aee-update-step-number{display:grid;place-items:center;flex:none;width:27px;height:27px;border-radius:9px;
+  color:#bfdbfe;background:rgba(59,130,246,.16);font:700 .72rem 'JetBrains Mono',monospace;}
+.aee-update-step strong{display:block;color:var(--text);font-size:.8rem;font-weight:750;}
+.aee-update-step span:last-child{display:block;margin-top:4px;color:var(--text-muted);font-size:.73rem;line-height:1.5;}
+.aee-about-eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:19px;color:#93c5fd;
+  font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
+.aee-about-eyebrow-mark{display:grid;place-items:center;width:27px;height:27px;border:1px solid rgba(96,165,250,.28);
+  border-radius:9px;color:#bfdbfe;background:rgba(59,130,246,.14);font-size:.9rem;}
+.aee-about-title{max-width:760px;font-size:clamp(2rem,5vw,3.4rem);line-height:1.06;}
+.aee-about-copy{max-width:760px;font-size:.96rem;line-height:1.8;}
+.aee-project-feature-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-top:30px;}
+.aee-project-feature{position:relative;min-height:132px;padding:19px 18px;overflow:hidden;
+  transition:transform .2s ease,border-color .2s ease,background .2s ease;}
+.aee-project-feature:hover{transform:translateY(-3px);border-color:rgba(96,165,250,.34);
+  background:linear-gradient(145deg,rgba(37,99,235,.14),rgba(15,23,42,.42));}
+.aee-project-feature-index{display:block;margin-bottom:18px;color:#7dd3fc;
+  font:700 .68rem 'JetBrains Mono',monospace;letter-spacing:.08em;}
+.aee-about-note{display:flex;align-items:flex-start;gap:13px;margin-top:22px;padding:17px 19px;
+  border:1px solid rgba(16,185,129,.2);border-radius:16px;background:rgba(16,185,129,.055);}
+.aee-about-note-mark{display:grid;place-items:center;flex:none;width:27px;height:27px;border-radius:9px;
+  color:#6ee7b7;background:rgba(16,185,129,.12);font-weight:800;}
+.aee-about-note strong{display:block;color:var(--text);font-size:.82rem;font-weight:750;}
+.aee-about-note span{display:block;margin-top:4px;color:var(--text-muted);font-size:.78rem;line-height:1.6;}
 .aee-contact-link{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin-top:25px;padding:13px 18px;
   border:1px solid rgba(191,219,254,.2);border-radius:13px;color:#fff!important;text-decoration:none!important;font-weight:750;
   background:linear-gradient(120deg,#2563eb,#4f46e5);box-shadow:0 14px 34px -19px rgba(59,130,246,.9);
   transition:transform .18s,box-shadow .18s,filter .18s;}
 .aee-contact-link:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 18px 40px -18px rgba(59,130,246,.75);}
+@media(max-width:900px){
+  .aee-project-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .aee-update-steps{grid-template-columns:1fr;}
+  .aee-project-feature{min-height:118px;}
+}
 @media(max-width:640px){
   .aee-utility-window-shell{padding:12px 12px 32px!important;}
   .aee-utility-window-header{top:-12px;margin-bottom:20px;padding:12px;border-radius:0 0 16px 16px;gap:10px;}
@@ -1623,6 +1654,9 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   .aee-update-actions>div{flex:1 1 100%!important;}
   .aee-about-card,.aee-contact-card{padding:25px 22px;border-radius:20px;}
   .aee-project-feature-grid{grid-template-columns:1fr;}
+  .aee-project-feature{min-height:0;}
+  .aee-project-feature-index{margin-bottom:10px;}
+  .aee-about-note{padding:15px;}
 }
 html[data-theme="light"] .aee-nav-toggle{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
 html[data-theme="light"] .aee-nav-drawer{background:linear-gradient(180deg,#fff,#f3f6fb);}
@@ -1631,6 +1665,13 @@ html[data-theme="light"] .aee-nav-item{color:#334155;}
 html[data-theme="light"] .aee-nav-item:hover{color:#0f172a;background:rgba(59,130,246,.08);}
 html[data-theme="light"] .aee-about-card,html[data-theme="light"] .aee-contact-card{background:radial-gradient(480px 240px at 100% 0%,rgba(59,130,246,.08),transparent 70%),linear-gradient(150deg,#fff,#f4f7fc);}
 html[data-theme="light"] .aee-project-feature{background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(241,245,249,.8));border-color:rgba(100,116,139,.16);}
+html[data-theme="light"] .aee-update-step{background:rgba(255,255,255,.62);border-color:rgba(100,116,139,.16);}
+html[data-theme="light"] .aee-project-feature:hover{background:linear-gradient(145deg,rgba(219,234,254,.8),rgba(255,255,255,.9));}
+html[data-theme="light"] .aee-about-note{background:rgba(16,185,129,.045);}
+@media(prefers-reduced-motion:reduce){
+  .aee-project-feature,.aee-contact-link{transition:none;}
+  .aee-project-feature:hover,.aee-contact-link:hover{transform:none;}
+}
 .aee-tabs [role="tablist"]{
   gap:4px!important;padding:5px!important;
   background:linear-gradient(180deg,rgba(15,23,42,.75),rgba(9,12,22,.85))!important;
@@ -4742,13 +4783,28 @@ def _apply_update_ui(staged, progress=gr.Progress(track_tqdm=False)):
         _update_client.apply_staged_update(staged, progress)
         return (_update_status_html(
             f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "
-            "Close and reopen AI Evidence Extractor to load the updated version.",
-            "success"), gr.update(visible=False))
+            "Click Restart App below to load the new version.",
+            "success"), gr.update(visible=False), gr.update(visible=True))
+    except _update_client.UpdateError as exc:
+        return (_update_status_html(str(exc), "error"),
+                gr.update(visible=True), gr.update(visible=False))
+    except Exception as exc:
+        log.exception("Could not start applying the update")
+        return (_update_status_html(f"Could not start the update: {exc}", "error"),
+                gr.update(visible=True), gr.update(visible=False))
+
+
+def _restart_app_ui():
+    try:
+        _update_client.restart_app()
+        return (_update_status_html("Restarting AI Evidence Extractor…", "success"),
+                gr.update(visible=False))
     except _update_client.UpdateError as exc:
         return _update_status_html(str(exc), "error"), gr.update(visible=True)
     except Exception as exc:
-        log.exception("Could not start applying the update")
-        return _update_status_html(f"Could not start the update: {exc}", "error"), gr.update(visible=True)
+        log.exception("Could not restart the app")
+        return (_update_status_html(f"Could not restart: {exc}", "error"),
+                gr.update(visible=True))
 
 
 def _updates_intro_html():
@@ -4757,11 +4813,19 @@ def _updates_intro_html():
     except _update_client.UpdateError:
         version = "unknown"
     return f'''<section class="aee-update-card">
-      <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Desktop app</div>
-      <div class="aee-update-title">Stay up to date</div>
-      <div class="aee-update-copy">Check for updates and download the verified app files here.
-        Downloading and installation happen inside the app with progress shown. Choose Install Update to replace the app files, then restart the app to load them; no setup wizard is opened.</div>
+      <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Update center</div>
+      <h2 class="aee-update-title">A smoother way to stay current.</h2>
+      <div class="aee-update-copy">Check for a release, review it, and install when you are ready.
+        Downloads are verified before installation, and progress is shown right here in the app.</div>
       <div class="aee-version-pill">Installed version&nbsp; v{version}</div>
+      <div class="aee-update-steps" aria-label="How app updates work">
+        <div class="aee-update-step"><span class="aee-update-step-number">01</span>
+          <div><strong>Check</strong><span>Look for the latest release securely.</span></div></div>
+        <div class="aee-update-step"><span class="aee-update-step-number">02</span>
+          <div><strong>Verify</strong><span>Confirm the downloaded package before installing.</span></div></div>
+        <div class="aee-update-step"><span class="aee-update-step-number">03</span>
+          <div><strong>Restart</strong><span>Apply the update, then restart to finish.</span></div></div>
+      </div>
     </section>'''
 
 
@@ -4967,6 +5031,9 @@ def build_ui():
                         "Download Update", variant="secondary", size="lg", visible=False)
                     update_apply_btn = gr.Button(
                         "Install Update", variant="primary", size="lg", visible=False)
+                    update_restart_btn = gr.Button(
+                        "🔄 Restart App", variant="primary", size="lg",
+                        visible=False, elem_classes=["aee-restart-btn"])
 
         with gr.Group(visible=True, elem_id="aee-about-us-window",
                       elem_classes=["aee-utility-window-shell"]) as about_window:
@@ -4979,18 +5046,28 @@ def build_ui():
                     about_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-about-close")
                 gr.HTML('''<section class="aee-about-card">
-                  <h1 class="aee-about-title">About AI Evidence Extractor</h1>
+                  <div class="aee-about-eyebrow"><span class="aee-about-eyebrow-mark">✦</span>
+                    Built for careful review</div>
+                  <h2 class="aee-about-title">Evidence deserves a clearer picture.</h2>
                   <div class="aee-about-copy">
-                    <p>AI Evidence Extractor is a desktop project for reviewing video evidence.
-                    It brings object detection, tracking, model explanations, and report exports
-                    together in one workspace.</p>
-                    <p>The app helps organize observations for human review. AI-generated detections
-                    and scores are review aids and should be checked against the original video.</p>
+                    <p>AI Evidence Extractor brings video analysis and evidence review together in one
+                    desktop workspace. Explore object detections, follow tracks, inspect model
+                    explanations, and prepare reports without losing sight of the source footage.</p>
                   </div>
                   <div class="aee-project-feature-grid" aria-label="Project capabilities">
-                    <div class="aee-project-feature"><strong>Video analysis</strong><span>Review footage with an ensemble of detection models.</span></div>
-                    <div class="aee-project-feature"><strong>Evidence review</strong><span>Explore captures, object tracks, and model explanations.</span></div>
-                    <div class="aee-project-feature"><strong>Report exports</strong><span>Prepare evidence summaries and downloadable reports.</span></div>
+                    <div class="aee-project-feature"><span class="aee-project-feature-index">01 / ANALYZE</span>
+                      <strong>Video analysis</strong><span>Review footage with an ensemble of detection models.</span></div>
+                    <div class="aee-project-feature"><span class="aee-project-feature-index">02 / EXPLORE</span>
+                      <strong>Evidence review</strong><span>Explore captures, object tracks, and model explanations.</span></div>
+                    <div class="aee-project-feature"><span class="aee-project-feature-index">03 / ORGANIZE</span>
+                      <strong>Case context</strong><span>Keep analysis history and case details close at hand.</span></div>
+                    <div class="aee-project-feature"><span class="aee-project-feature-index">04 / EXPORT</span>
+                      <strong>Report exports</strong><span>Prepare evidence summaries and downloadable reports.</span></div>
+                  </div>
+                  <div class="aee-about-note"><span class="aee-about-note-mark">✓</span>
+                    <div><strong>Human review stays in control</strong>
+                      <span>Detections, threat scores, and explanations are decision-support tools.
+                      Always verify findings against the original video.</span></div>
                   </div>
                 </section>''')
 
@@ -5099,7 +5176,9 @@ def build_ui():
         update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
             outputs=[update_status, update_apply_btn, update_state], show_progress="full")
         update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
-            outputs=[update_status, update_apply_btn], show_progress="full")
+            outputs=[update_status, update_apply_btn, update_restart_btn], show_progress="full")
+        update_restart_btn.click(fn=_restart_app_ui, inputs=[],
+            outputs=[update_status, update_restart_btn], queue=False)
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
         cap_filter.change(fn=filter_gallery,
