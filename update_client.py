@@ -35,6 +35,7 @@ UPDATE_FILES = frozenset({
     "update_client.py", "update_apply.py", "version.txt", "update_config.json",
     "assets/aee.ico",
 })
+OPTIONAL_UPDATE_FILES = {"account_client.py", "assets/aee.ico"}
 
 
 class UpdateError(RuntimeError):
@@ -292,7 +293,7 @@ def download_and_stage_update(
                 with archive.open(item) as source, destination.open("xb") as target:
                     shutil.copyfileobj(source, target, length=1024 * 1024)
                 found.add(name)
-        required = UPDATE_FILES - {"assets/aee.ico"}
+        required = UPDATE_FILES - OPTIONAL_UPDATE_FILES
         if not required.issubset(found):
             raise UpdateError("The update package is incomplete.")
         staged_version = (stage_dir / "version.txt").read_text(encoding="utf-8").strip()

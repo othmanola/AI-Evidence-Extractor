@@ -13,7 +13,7 @@ ALLOWED = {
     "update_client.py", "update_apply.py", "version.txt", "update_config.json",
     "assets/aee.ico",
 }
-REQUIRED = ALLOWED - {"assets/aee.ico"}
+REQUIRED = ALLOWED - {"account_client.py", "assets/aee.ico"}
 
 
 def apply_staged_update(stage: Path | str, app_dir: Path | str, expected_version: str,
