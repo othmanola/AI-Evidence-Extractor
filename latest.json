@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.1.8",
+    "version":  "1.1.9",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.8/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "cea9f2d711a6e08f5aa719d64d1b0aedf063a35d7b447179c91fa157311002a7",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.8/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "d6c3e7414d9c007d7d50408798e06da452a2a90589a3a1ceee9fc252d532d95d",
-    "release_notes":  "Fixes app restart by waiting for the previous process and WebView2 resources to close before relaunching."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.9/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "25ba920a24346a2723649a6335e03a375a0b75493d02e1d8da11bedfb894abc2",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.1.9/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "2f7c8133afdacc33c6f6b955d7694b098e64ee7c5ea5004b9a46193ddd3a02ee",
+    "release_notes":  "Fixes stale update-feed caching and improves reliable discovery of new releases."
 }
