@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.1",
+    "version":  "1.2.2",
     "published_at":  "2026-10-16",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.1/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "b1a7d4e3368012a6837868de7c6324e53322d6747afeb450f2c0b59bb1429e49",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.1/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "ede424e0c06306c211b0b4d5af1df8dd2686048f9fedda2bb88396cf7f77ac90",
-    "release_notes":  "Automatically opens the Account sign-in/sign-up screen on startup when no saved account session exists."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.2/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "6e9174f903d8c94f27535cf8cf9e5fdc0238b7eb8f9f4797eff6c5bc7d89d01a",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.2/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "3b388e9e04f033efc4abaf58ef1807f168caddad19c193f2ec8649b697e71506",
+    "release_notes":  "Prioritizes sign-up on first launch and displays Account, Updates, About Us, and Contact Us in modern full-screen panels."
 }
