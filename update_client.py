@@ -329,40 +329,114 @@ def apply_staged_update(staged: dict, progress: Callable | None = None) -> None:
         raise UpdateError(f"The update could not be installed: {exc}") from exc
 
 
+def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
+    import sys
+
+    app_exe = app_dir / "AI Evidence Extractor.exe"
+    launcher = app_dir / "desktop_launcher.py"
+    runtime_dir = app_dir / "runtime"
+    venv = data_dir / "runtimeenv"
+    cuda_venv = data_dir / "runtimeenv_cuda2"
+    cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
+    if (cuda_venv / ".aee_cuda_ready").is_file() and cuda_pythonw.is_file():
+        venv = cuda_venv
+    pythonw = venv / "Scripts" / "pythonw.exe"
+
+    if app_exe.is_file():
+        return [str(app_exe.resolve())], app_dir
+    if pythonw.is_file() and launcher.is_file() and runtime_dir.is_dir():
+        return [str(pythonw.resolve()), str(launcher.resolve())], runtime_dir
+    if launcher.is_file():
+        return [sys.executable, str(launcher.resolve())], app_dir
+    raise UpdateError("The app launcher could not be found. Reinstall the app and try again.")
+
+
+def _wait_for_process_exit(pid: int) -> None:
+    if os.name == "nt":
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+        kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        kernel32.WaitForSingleObject.restype = ctypes.c_ulong
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        kernel32.CloseHandle.restype = ctypes.c_int
+
+        handle = kernel32.OpenProcess(0x00100000, False, pid)
+        if not handle:
+            error = ctypes.get_last_error()
+            if error == 87:
+                return
+            raise OSError(error, ctypes.FormatError(error))
+        try:
+            result = kernel32.WaitForSingleObject(handle, 0xFFFFFFFF)
+            if result != 0:
+                error = ctypes.get_last_error()
+                raise OSError(error, ctypes.FormatError(error))
+        finally:
+            kernel32.CloseHandle(handle)
+        return
+
+    import time
+
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        except PermissionError:
+            pass
+        time.sleep(0.1)
+
+
+def _restart_after_exit(pid: int, command: list[str], cwd: str,
+                        settle_seconds: float) -> None:
+    import subprocess
+    import time
+
+    _wait_for_process_exit(pid)
+    time.sleep(settle_seconds)
+    subprocess.Popen(command, cwd=cwd, env=os.environ.copy(), close_fds=True)
+
+
 def restart_app() -> None:
-    """Relaunch AI Evidence Extractor and terminate current process."""
+    """Close the current process before relaunching to release WebView2 resources."""
     import subprocess
     import sys
     import threading
 
-    app_exe = APP_DIR / "AI Evidence Extractor.exe"
     data_dir = DATA_DIR
-    venv = data_dir / "runtimeenv"
-    cuda_venv = data_dir / "runtimeenv_cuda2"
-    cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
-    cuda_ready = cuda_venv / ".aee_cuda_ready"
-    if cuda_ready.is_file() and cuda_pythonw.is_file():
-        venv = cuda_venv
-    pythonw = venv / "Scripts" / "pythonw.exe"
-    launcher = APP_DIR / "desktop_launcher.py"
-    runtime_dir = APP_DIR / "runtime"
+    command, cwd = _restart_command(data_dir, APP_DIR)
 
     env = os.environ.copy()
     env["AEE_DATA_DIR"] = str(data_dir)
     env["AEE_APP_DIR"] = str(APP_DIR)
-
-    if app_exe.is_file():
-        cmd = [str(app_exe.resolve())]
-        cwd = str(APP_DIR.resolve())
-    elif pythonw.is_file() and launcher.is_file() and runtime_dir.is_dir():
-        cmd = [str(pythonw.resolve()), str(launcher.resolve())]
-        cwd = str(runtime_dir.resolve())
-    else:
-        cmd = [sys.executable, str(launcher.resolve())]
-        cwd = str(APP_DIR.resolve())
-
     try:
-        subprocess.Popen(cmd, cwd=cwd, env=env, close_fds=True)
+        flags = 0
+        if os.name == "nt":
+            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+        helper_code = (
+            "import json,sys; "
+            "from update_client import _restart_after_exit; "
+            "_restart_after_exit(int(sys.argv[1]), json.loads(sys.argv[2]), "
+            "sys.argv[3], float(sys.argv[4]))"
+        )
+        log_path = data_dir / "startup.log"
+        with log_path.open("a", encoding="utf-8") as log_file:
+            subprocess.Popen(
+                [
+                    sys.executable, "-c", helper_code, str(os.getpid()),
+                    json.dumps(command), str(cwd), "2.0",
+                ],
+                cwd=str(APP_DIR),
+                env=env,
+                close_fds=True,
+                creationflags=flags,
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+            )
     except Exception as exc:
         raise UpdateError(f"Could not restart the application automatically: {exc}") from exc
 
