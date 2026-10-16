@@ -1,10 +1,10 @@
 # Email account setup
 
-The app requires either email/password sign-in or an explicit guest-mode choice.
-The Account page supports email/password sign-in, optional profile photos, and
-guest use. Accounts store only a display name and optional profile photo in
-Supabase. Source videos, analysis history, generated reports, and results remain
-on the local computer and are not uploaded or synchronized.
+The app supports email/password sign-in, Google sign-in, or an explicit guest-mode
+choice. The Account page includes profile settings and optional profile photos.
+Accounts store only a display name and optional profile photo in Supabase. Source
+videos, analysis history, generated reports, and results remain on the local
+computer and are not uploaded or synchronized.
 
 ## 1. Create the Supabase project
 
@@ -73,6 +73,19 @@ require email confirmation. If confirmation is enabled, a new user should open
 the confirmation message, then return to the app and sign in with their email
 and password. Configure a custom SMTP provider before distributing the app to
 many users; Supabase's default email sender has limited delivery.
+
+## 4. Enable Google sign-in (optional)
+
+In **Authentication > Sign In / Providers**, enable **Google** and enter the
+OAuth client ID and secret from your Google Cloud project. In Google Cloud,
+add your Supabase project's callback URL
+(`https://<project-ref>.supabase.co/auth/v1/callback`) as an authorized
+redirect URI for the OAuth web client.
+
+In the Supabase project's **Authentication > URL Configuration**, add
+`http://127.0.0.1:*/oauth/callback` to the redirect URL allow list. The app
+uses a temporary local callback port for each sign-in and the Google button
+opens the system browser. Return to the app after Google confirms the sign-in.
 
 ## Guest mode and privacy
 

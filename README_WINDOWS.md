@@ -16,7 +16,7 @@ FFmpeg is installed as a Python package dependency and added to the process path
 
 The left-side menu contains **Account**, **Updates**, **About Us**, and **Contact Us**. Updates checks the HTTPS release feed, verifies an update package, stages it inside app data, and applies it after the app closes. The app then restarts; no setup wizard is used for subsequent updates. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
 
-The app requires either an email/password account or an explicit guest-mode choice before opening the workspace. That choice is remembered between launches. The **Account** panel supports email/password accounts and an optional profile photo; guest use remains local. Account profile data is stored in a connected Supabase project, while source videos, analysis history, reports, and results remain local. Configure email accounts using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
+The app requires an email/password account, Google sign-in, or an explicit guest-mode choice before opening the workspace. That choice is remembered between launches. The **Account** panel supports email/password and Google accounts, profile settings, and an optional profile photo; guest use remains local. Account profile data is stored in a connected Supabase project, while source videos, analysis history, reports, and results remain local. Configure accounts using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 
 ## Build the installer
 

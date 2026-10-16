@@ -564,7 +564,7 @@ def sign_in(email: str, password: str) -> dict[str, Any]:
     return _save_session(_session_from_auth(result))
 
 
-def sign_out(session: dict[str, Any] | None) -> str:
+def _revoke_and_clear_session(session: dict[str, Any] | None) -> str:
     warning = ""
     if isinstance(session, dict) and session.get("access_token"):
         try:
@@ -573,11 +573,28 @@ def sign_out(session: dict[str, Any] | None) -> str:
         except AccountError as exc:
             warning = f" Local sign-out completed, but the server session could not be revoked: {exc}"
     try:
-        _save_guest_mode()
         SESSION_FILE.unlink(missing_ok=True)
     except OSError as exc:
         raise AccountError("The saved account session could not be removed.") from exc
+    return warning
+
+
+def sign_out(session: dict[str, Any] | None) -> str:
+    warning = _revoke_and_clear_session(session)
+    try:
+        _save_guest_mode()
+    except OSError as exc:
+        raise AccountError("Your guest-mode choice could not be saved.") from exc
     return "You are using guest mode. Your local app data remains on this computer." + warning
+
+
+def change_account(session: dict[str, Any] | None) -> str:
+    warning = _revoke_and_clear_session(session)
+    try:
+        GUEST_MODE_FILE.unlink(missing_ok=True)
+    except OSError as exc:
+        raise AccountError("The previous account choice could not be cleared.") from exc
+    return "Signed out. Sign in with another account or continue as a guest." + warning
 
 
 class _OAuthTransaction:

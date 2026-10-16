@@ -136,6 +136,22 @@ class AccountClientTests(unittest.TestCase):
                 self.assertTrue(guest_file.is_file())
                 self.assertFalse(session_file.exists())
 
+    def test_change_account_clears_guest_choice_and_saved_session(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            guest_file = root / "guest_mode"
+            session_file = root / "account_session.bin"
+            guest_file.write_text("guest\n", encoding="utf-8")
+            session_file.write_bytes(b"saved-session")
+            with (
+                patch.object(account_client, "GUEST_MODE_FILE", guest_file),
+                patch.object(account_client, "SESSION_FILE", session_file),
+            ):
+                message = account_client.change_account(None)
+            self.assertIn("Sign in with another account", message)
+            self.assertFalse(guest_file.exists())
+            self.assertFalse(session_file.exists())
+
     def test_email_sign_in_saves_session_without_storing_password(self):
         with (
             patch.object(account_client, "_require_config", return_value=self.config),

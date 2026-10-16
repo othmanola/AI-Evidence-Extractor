@@ -1646,6 +1646,12 @@ html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,
   border:0!important;color:#b7b9bf!important;background:transparent!important;
   box-shadow:none!important;font-size:.76rem!important;font-weight:400!important;}
 .aee-account-auth-form button.aee-account-mode-switch:hover{color:#fff!important;background:transparent!important;}
+.aee-account-auth-form button.aee-account-google{width:100%!important;min-height:44px;
+  border:1px solid rgba(255,255,255,.12)!important;border-radius:999px!important;
+  color:#e5e7eb!important;background:rgba(255,255,255,.055)!important;
+  font-size:.8rem!important;font-weight:550!important;transition:border-color .18s,background .18s!important;}
+.aee-account-auth-form button.aee-account-google:hover{border-color:rgba(148,163,184,.34)!important;
+  background:rgba(255,255,255,.1)!important;}
 .aee-account-auth-form .aee-account-divider{margin:14px auto 11px;color:#85878d;font-size:.69rem;
   font-weight:400;letter-spacing:0;text-transform:none;}
 .aee-account-auth-form .aee-account-divider:before,.aee-account-auth-form .aee-account-divider:after{
@@ -1701,6 +1707,15 @@ body.aee-access-required .aee-navigation{display:none!important;}
 .aee-account-shell .aee-account-settings{max-width:1080px;margin:18px auto 0;overflow-x:hidden!important;
   border:1px solid rgba(148,163,184,.17);
   border-radius:18px;background:rgba(15,23,42,.34);}
+.aee-account-shell .aee-account-settings .label-wrap{padding:17px 20px!important;
+  color:#e5e7eb!important;font-weight:700!important;}
+.aee-account-shell .aee-account-settings .wrap{padding:14px 20px 20px;}
+.aee-account-shell .aee-account-settings .prose{max-width:900px;color:#b8c0cd;line-height:1.65;}
+.aee-account-shell .aee-account-settings a{color:#93c5fd!important;}
+.aee-account-settings-copy{max-width:850px;margin:2px 0 18px;color:#b8c0cd;font-size:.86rem;line-height:1.65;}
+.aee-account-settings-copy strong{color:#f1f5f9;font-size:.95rem;}
+.aee-account-settings-copy p{margin:5px 0 8px;}
+.aee-account-settings-copy a{color:#93c5fd!important;font-weight:650;}
 .aee-account-shell .aee-account-settings>.wrap{box-sizing:border-box!important;
   width:100%!important;max-width:100%!important;min-width:0!important;}
 .aee-account-shell .aee-account-settings>div:first-child{color:var(--text);font-weight:750;}
@@ -1708,6 +1723,9 @@ body.aee-access-required .aee-navigation{display:none!important;}
 .aee-account-shell .aee-account-settings button{border-radius:12px!important;}
 .aee-account-shell .aee-account-profile-form .aee-account-actions button{
   min-height:46px;border-radius:13px!important;font-weight:700!important;}
+.aee-account-profile-actions{max-width:1080px;margin:10px auto 0;gap:10px;}
+.aee-account-profile-actions>div{flex:1 1 180px;}
+.aee-account-profile-actions button{min-height:44px;border-radius:13px!important;}
 body.aee-access-required #aee-account-window .aee-account-settings{
   width:min(480px,calc(100vw - 36px));margin:10px auto 0;}
 html[data-theme="light"] .aee-account-profile{background:rgba(255,255,255,.68);border-color:rgba(100,116,139,.17);}
@@ -5126,6 +5144,59 @@ def _account_sign_in_ui(email, password, session, access_ready):
                 _account_access_html(access_ready), access_ready)
 
 
+def _account_google_start_ui():
+    try:
+        transaction_id = _account_client.start_google_sign_in()
+        return (transaction_id,
+                _account_status_html(
+                    "Google sign-in opened in your browser. Complete it there to continue.",
+                    "neutral"),
+                gr.update(interactive=False), gr.update(active=True))
+    except _account_client.AccountError as exc:
+        return (None, _account_status_html(str(exc), "error"),
+                gr.update(interactive=True), gr.update(active=False))
+    except Exception as exc:
+        log.exception("Could not start Google sign-in")
+        return (None, _account_status_html(f"Could not start Google sign-in: {exc}", "error"),
+                gr.update(interactive=True), gr.update(active=False))
+
+
+def _account_google_poll_ui(transaction_id, session, access_ready):
+    if not transaction_id:
+        return (None, gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(),
+                gr.skip(), gr.skip(), gr.skip(), gr.update(active=False),
+                gr.update(interactive=True))
+    try:
+        google_session = _account_client.finish_google_sign_in(transaction_id)
+        if google_session is None:
+            return (transaction_id, gr.skip(), gr.skip(), gr.skip(), gr.skip(),
+                    gr.skip(), gr.skip(), gr.skip(), gr.skip(),
+                    gr.update(active=True), gr.skip())
+        profile_html, google_session, profile_error = _account_render_signed_in(
+            google_session)
+        message = "Signed in with Google."
+        if profile_error:
+            message += f" Sign-in succeeded, but the profile could not be loaded: {profile_error}"
+        return (None, _account_status_html(
+                    message, "success" if not profile_error else "error"),
+                profile_html, google_session, _account_profile_name_value(google_session),
+                gr.update(visible=False), gr.update(visible=True),
+                _account_access_html(True), True, gr.update(active=False),
+                gr.update(interactive=True))
+    except _account_client.AccountError as exc:
+        return (None, _account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), _account_access_html(access_ready),
+                access_ready, gr.update(active=False), gr.update(interactive=True))
+    except Exception as exc:
+        log.exception("Google sign-in did not complete")
+        return (None, _account_status_html(f"Google sign-in failed: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                _account_access_html(access_ready), access_ready,
+                gr.update(active=False), gr.update(interactive=True))
+
+
 def _account_sign_up_ui(display_name, email, password, session, access_ready):
     try:
         new_session, message = _account_client.sign_up(display_name, email, password)
@@ -5171,6 +5242,24 @@ def _account_guest_ui(session, access_ready=True):
                 _account_profile_html(session), session, _account_profile_name_value(session),
                 gr.update(visible=not session), gr.update(visible=bool(session)),
                 _account_access_html(access_ready), access_ready)
+
+
+def _account_change_account_ui(session):
+    try:
+        message = _account_client.change_account(session)
+        return (_account_status_html(message, "neutral"), _account_profile_html(), None,
+                "", gr.update(visible=True), gr.update(visible=False),
+                _account_access_html(False), False)
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), _account_profile_html(session),
+                session, _account_profile_name_value(session), gr.update(visible=not session),
+                gr.update(visible=bool(session)), _account_access_html(bool(session)), bool(session))
+    except Exception as exc:
+        log.exception("Could not change account")
+        return (_account_status_html(f"Could not change account: {exc}", "error"),
+                _account_profile_html(session), session, _account_profile_name_value(session),
+                gr.update(visible=not session), gr.update(visible=bool(session)),
+                _account_access_html(bool(session)), bool(session))
 
 
 def _account_save_name_ui(display_name, session):
@@ -5583,6 +5672,10 @@ def build_ui():
                         account_auth_mode_btn = gr.Button(
                             "Already have an account? Log in", variant="secondary",
                             elem_classes=["aee-account-mode-switch"])
+                    gr.HTML('<div class="aee-account-divider"><span>or continue with</span></div>')
+                    account_google_btn = gr.Button(
+                        "Continue with Google", variant="secondary",
+                        elem_classes=["aee-account-google"])
                     gr.HTML('<div class="aee-account-divider"><span>or</span></div>')
                     account_guest_btn = gr.Button(
                         "Continue as a guest", variant="secondary",
@@ -5592,40 +5685,49 @@ def build_ui():
                       remain on this device, whether you create an account or continue as a guest.</div>''')
                     if not account_config_initial["project_url"]:
                         gr.HTML('''<div class="aee-account-setup-hint">
-                          Email accounts need a Supabase connection. Expand
+                          Online accounts need a Supabase connection. Expand
                           <strong>Connection setup</strong> below, or continue as a guest.</div>''')
                 with gr.Group(
                     visible=bool(account_session_initial),
                     elem_classes=["aee-account-profile-form"],
                 ) as account_profile_group:
                     account_profile = gr.HTML(value=account_profile_initial)
-                    account_refresh_profile_btn = gr.Button(
-                        "Refresh profile", variant="secondary")
-                    account_profile_name = gr.Textbox(
-                        label="Display name", value=str(
-                            (account_session_initial or {}).get("display_name", "")
-                        ), max_lines=1)
-                    with gr.Row(elem_classes=["aee-account-actions"]):
-                        account_save_name_btn = gr.Button(
-                            "Save profile", variant="primary")
-                    account_photo_input = gr.File(
-                        label="Optional profile photo", file_count="single",
-                        file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
-                    account_photo_btn = gr.Button(
-                        "Upload profile photo", variant="secondary")
-                    account_signout_btn = gr.Button(
-                        "Sign out and continue as guest", variant="secondary")
+                    with gr.Row(elem_classes=["aee-account-profile-actions"]):
+                        account_signout_btn = gr.Button(
+                            "Log out", variant="secondary")
+                        account_change_account_btn = gr.Button(
+                            "Change account", variant="primary")
+                    with gr.Accordion(
+                        "Settings",
+                        open=False,
+                        elem_classes=["aee-account-settings", "aee-account-profile-settings"],
+                    ):
+                        account_refresh_profile_btn = gr.Button(
+                            "Refresh profile", variant="secondary")
+                        account_profile_name = gr.Textbox(
+                            label="Display name", value=str(
+                                (account_session_initial or {}).get("display_name", "")
+                            ), max_lines=1)
+                        with gr.Row(elem_classes=["aee-account-actions"]):
+                            account_save_name_btn = gr.Button(
+                                "Save profile", variant="primary")
+                        account_photo_input = gr.File(
+                            label="Optional profile photo", file_count="single",
+                            file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
+                        account_photo_btn = gr.Button(
+                            "Upload profile photo", variant="secondary")
                 with gr.Accordion(
                     "Connection setup",
                     open=False,
-                    elem_classes=["aee-account-settings"],
+                    elem_classes=["aee-account-settings", "aee-account-connection-settings"],
                 ):
-                    gr.Markdown(
-                        "Connect the app to **your Supabase project**. Use the project URL and the "
-                        "public **publishable (anon) key** only; never enter a service-role or secret key. "
-                        "Then run the SQL below once in the Supabase SQL Editor. For setup details, see "
-                        "[SUPABASE_SETUP.md](https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md)."
-                    )
+                    gr.HTML('''<div class="aee-account-settings-copy">
+                      <strong>Connect your Supabase project</strong>
+                      <p>Enter the project URL and public publishable (anon) key. Never use a
+                      service-role or secret key. Run the SQL below once in your Supabase SQL Editor.</p>
+                      <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
+                         target="_blank" rel="noopener noreferrer">View setup instructions</a>
+                    </div>''')
                     account_project_url = gr.Textbox(
                         label="Supabase project URL",
                         value=account_config_initial["project_url"],
@@ -5640,6 +5742,8 @@ def build_ui():
                         value=_ACCOUNT_SETUP_SQL, language="sql",
                         label="Run once in Supabase SQL Editor",
                         interactive=False, lines=25)
+                account_oauth_transaction = gr.State(None)
+                account_oauth_timer = gr.Timer(value=1, active=False)
 
         # Project pages live in independent fullscreen app panels, not workspace tabs.
         with gr.Group(visible=True, elem_id="aee-updates-window",
@@ -5807,6 +5911,19 @@ def build_ui():
             outputs=[account_auth_mode, account_auth_intro, account_name_group,
                      account_signup_btn, account_signin_btn, account_auth_mode_btn],
             queue=False)
+        account_google_btn.click(
+            fn=_account_google_start_ui, inputs=[],
+            outputs=[account_oauth_transaction, account_status,
+                     account_google_btn, account_oauth_timer],
+            queue=False)
+        account_oauth_timer.tick(
+            fn=_account_google_poll_ui,
+            inputs=[account_oauth_transaction, account_session, account_access_state],
+            outputs=[account_oauth_transaction, account_status, account_profile,
+                     account_session, account_profile_name, account_auth_group,
+                     account_profile_group, account_access_marker, account_access_state,
+                     account_oauth_timer, account_google_btn],
+            queue=False)
         account_signin_btn.click(
             fn=_account_sign_in_ui,
             inputs=[account_email_input, account_password_input, account_session,
@@ -5831,6 +5948,12 @@ def build_ui():
             queue=False)
         account_signout_btn.click(
             fn=_account_guest_ui, inputs=[account_session, account_access_state],
+            outputs=[account_status, account_profile, account_session, account_profile_name,
+                     account_auth_group, account_profile_group,
+                     account_access_marker, account_access_state],
+            queue=False)
+        account_change_account_btn.click(
+            fn=_account_change_account_ui, inputs=[account_session],
             outputs=[account_status, account_profile, account_session, account_profile_name,
                      account_auth_group, account_profile_group,
                      account_access_marker, account_access_state],
