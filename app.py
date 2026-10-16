@@ -4737,30 +4737,26 @@ def _check_updates_ui():
         update = _update_client.check_for_updates()
     except _update_client.UpdateNotConfigured as exc:
         return (_update_status_html(str(exc), "neutral"), gr.update(visible=False),
-                None, gr.update(visible=False), gr.update(visible=True))
+                None, gr.update(visible=False))
     except _update_client.UpdateError as exc:
         return (_update_status_html(str(exc), "error"), gr.update(visible=False),
-                None, gr.update(visible=False), gr.update(visible=True))
+                None, gr.update(visible=False))
     except Exception as exc:
         log.exception("Update check failed")
         return (_update_status_html(f"Update check failed: {exc}", "error"),
-                gr.update(visible=False), None, gr.update(visible=False),
-                gr.update(visible=True))
+                gr.update(visible=False), None, gr.update(visible=False))
 
     if update["available"]:
         if not update.get("package_url"):
             return (_update_status_html(
                 "This release needs the one-time updater migration before it can be applied in-app.",
-                "error"), gr.update(visible=False), update, gr.update(visible=False),
-                gr.update(visible=True))
+                "error"), gr.update(visible=False), update, gr.update(visible=False))
         return (_update_status_html("A new version is available.", "available", update),
-                gr.update(visible=True), update, gr.update(visible=False),
-                gr.update(visible=True))
+                gr.update(visible=True), update, gr.update(visible=False))
     current = _html.escape(update["installed_version"])
     return (_update_status_html(
         f"No updates right now. You are using the latest version ({current}).", "success"),
-        gr.update(visible=False), update, gr.update(visible=False),
-        gr.update(visible=True))
+        gr.update(visible=False), update, gr.update(visible=False))
 
 
 def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
