@@ -568,6 +568,11 @@ def _session_from_auth(data: dict[str, Any]) -> dict[str, Any]:
         )
     metadata = user.get("user_metadata")
     metadata = metadata if isinstance(metadata, dict) else {}
+    app_metadata = user.get("app_metadata")
+    app_metadata = app_metadata if isinstance(app_metadata, dict) else {}
+    auth_provider = str(app_metadata.get("provider") or "").strip().lower()
+    if auth_provider not in {"google", "email"}:
+        auth_provider = ""
     expires_in = data.get("expires_in", 3600)
     try:
         expires_at = int(data.get("expires_at") or time.time() + int(expires_in))
@@ -586,6 +591,7 @@ def _session_from_auth(data: dict[str, Any]) -> dict[str, Any]:
         "phone_number": str(metadata.get("phone_number") or ""),
         "time_zone": str(metadata.get("time_zone") or "UTC"),
         "created_at": str(user.get("created_at") or ""),
+        "auth_provider": auth_provider,
         "access_token": str(data["access_token"]),
         "refresh_token": str(data["refresh_token"]),
         "expires_at": expires_at,
@@ -593,6 +599,29 @@ def _session_from_auth(data: dict[str, Any]) -> dict[str, Any]:
     if not session["user_id"]:
         raise AccountError("The account service returned an invalid user identity.")
     return session
+
+
+def session_auth_provider(session: dict[str, Any] | None) -> str:
+    if not isinstance(session, dict):
+        return ""
+    provider = str(session.get("auth_provider") or "").strip().lower()
+    if provider in {"google", "email"}:
+        return provider
+    token = session.get("access_token")
+    if not isinstance(token, str) or len(token) > 32768:
+        return ""
+    parts = token.split(".")
+    if len(parts) != 3:
+        return ""
+    try:
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload).decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    app_metadata = claims.get("app_metadata") if isinstance(claims, dict) else None
+    provider = app_metadata.get("provider") if isinstance(app_metadata, dict) else None
+    provider = str(provider or "").strip().lower()
+    return provider if provider in {"google", "email"} else ""
 
 
 def _refresh_session(config: dict[str, str], session: dict[str, Any]) -> dict[str, Any]:

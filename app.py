@@ -1766,11 +1766,17 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-account-identity{min-width:0;}
 .aee-account-identity strong{display:block;overflow-wrap:anywhere;color:var(--text);font-size:1rem;font-weight:800;}
 .aee-account-identity span{display:block;margin-top:5px;overflow-wrap:anywhere;color:var(--text-muted);font-size:.82rem;}
+.aee-account-identity .aee-account-mode{display:inline-flex;margin-top:7px;overflow-wrap:normal;}
+.aee-account-identity .aee-account-mode>span{display:inline;margin:0;overflow-wrap:normal;}
 .aee-account-mode{display:inline-flex;align-items:center;gap:7px;margin-top:11px;padding:6px 10px;
   border:1px solid rgba(16,185,129,.2);border-radius:999px;color:#6ee7b7;background:rgba(16,185,129,.07);
   font-size:.68rem;font-weight:750;letter-spacing:.04em;}
 .aee-account-mode:before{content:'';width:7px;height:7px;border-radius:50%;background:#34d399;
   box-shadow:0 0 10px rgba(52,211,153,.7);}
+.aee-account-mode[data-provider="google"]{border-color:rgba(66,133,244,.24);
+  color:#dbeafe;background:rgba(66,133,244,.09);}
+.aee-account-mode[data-provider="google"]:before{display:none;}
+.aee-account-mode[data-provider="google"] svg{width:14px;height:14px;flex:none;}
 .aee-account-profile-form{max-width:1080px;margin:0 auto;}
 .aee-settings-layout{max-width:1280px;margin:0 auto;align-items:flex-start;gap:18px!important;}
 .aee-settings-layout>.aee-settings-sidebar{position:sticky;top:92px;flex:0 0 208px!important;
@@ -1888,10 +1894,9 @@ body.aee-photo-editor-open{overflow:hidden!important;}
 .aee-account-profile-form{max-width:none;margin:0;}
 .aee-account-shell .aee-account-profile{position:relative;min-height:132px;box-sizing:border-box;
   align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 160px 17px 20px;
-  overflow:hidden;border-color:rgba(148,163,184,.15);border-radius:18px;
-  background:linear-gradient(180deg,rgba(28,36,57,.96),rgba(18,26,43,.97));}
-.aee-account-shell .aee-account-profile:before{position:absolute;inset:0 0 auto;height:64%;content:"";
-  background:linear-gradient(110deg,rgba(225,75,91,.36),rgba(126,75,126,.32) 55%,rgba(74,81,152,.26));}
+  overflow:hidden;border-color:rgba(148,163,184,.16);border-radius:18px;
+  background:#172033;}
+.aee-account-shell .aee-account-profile:before{display:none;}
 .aee-account-shell .aee-account-avatar,.aee-account-shell .aee-account-identity{position:relative;z-index:1;}
 .aee-account-shell .aee-account-avatar{width:62px;height:62px;border-radius:50%;border:2px solid rgba(248,113,113,.75);
   color:#fff;background:linear-gradient(145deg,#fa665f,#cb3f54);box-shadow:0 8px 24px -12px rgba(248,113,113,.7);}
@@ -2011,9 +2016,9 @@ html[data-theme="light"] .aee-settings-language-control select{color:#172033;bac
   border-color:rgba(15,23,42,.13);color-scheme:light;}
 html[data-theme="light"] .aee-settings-language-control select option{
   color:#172033;background:#f1f4f9;}
-html[data-theme="light"] .aee-account-shell .aee-account-profile{background:linear-gradient(180deg,#f5f6fb,#fff);}
-html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
-  background:linear-gradient(110deg,rgba(225,75,91,.21),rgba(126,75,126,.18) 55%,rgba(74,81,152,.15));}
+html[data-theme="light"] .aee-account-shell .aee-account-profile{background:#f1f5f9;}
+html[data-theme="light"] .aee-account-shell .aee-account-mode[data-provider="google"]{
+  color:#1e3a8a;border-color:rgba(66,133,244,.22);background:rgba(66,133,244,.08);}
 html[data-theme="light"] .aee-settings-card{background:rgba(255,255,255,.84);border-color:rgba(100,116,139,.17);}
 html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
 html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
@@ -5823,6 +5828,18 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
     initials = "".join(part[0] for part in name.split()[:2] if part) or "A"
     avatar = (f'<img src="{_html.escape(avatar_url, quote=True)}" alt="" '
               'referrerpolicy="no-referrer">') if avatar_url else _html.escape(initials[:2].upper())
+    auth_provider = _account_client.session_auth_provider(session)
+    if auth_provider == "google":
+        signed_in_badge = ('''<span class="aee-account-mode" data-provider="google"
+          aria-label="Signed in with Google">
+          <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+            <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11.1c-.5 2.5-1.9 4.6-4 6v5h6.5c3.8-3.5 6-8.6 6-14.7z"/>
+            <path fill="#34A853" d="M24 44c5.4 0 10-1.8 13.4-4.8l-6.5-5c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.8-3.6-11.4-8.4H6v5.2C9.4 39.6 16.1 44 24 44z"/>
+            <path fill="#FBBC05" d="M12.6 27.8a12 12 0 0 1 0-7.6V15H6a20 20 0 0 0 0 18l6.6-5.2z"/>
+            <path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.4 4 24 4 16.1 4 9.4 8.4 6 15l6.6 5.2c1.6-4.8 6.1-8.4 11.4-8.4z"/>
+          </svg><span>SIGNED IN WITH GOOGLE</span></span>''')
+    else:
+        signed_in_badge = '<span class="aee-account-mode">SIGNED IN</span>'
     created_at = str(session.get("created_at") or "")
     joined = ""
     if created_at:
@@ -5835,7 +5852,7 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
             f'<div class="aee-account-avatar">{avatar}</div>'
             f'<div class="aee-account-identity"><strong>{_html.escape(name)}</strong>'
             f'<span>{_html.escape(email)}{_html.escape(joined)}</span>'
-            f'<span class="aee-account-mode">SIGNED IN</span></div>'
+            f'{signed_in_badge}</div>'
             f'</section>')
 
 

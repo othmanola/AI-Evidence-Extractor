@@ -56,6 +56,22 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn(".aee-utility-window-shell .aee-project-page-heading p{", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell .aee-project-page-heading h1", app.CSS)
 
+    def test_google_signed_in_profile_has_google_badge_and_solid_background(self):
+        session = {
+            "auth_provider": "google",
+            "display_name": "Alex User",
+            "email": "alex@example.com",
+        }
+        profile_html = app._account_profile_html(session)
+
+        self.assertIn('data-provider="google"', profile_html)
+        self.assertIn("SIGNED IN WITH GOOGLE", profile_html)
+        self.assertIn("<svg viewBox=\"0 0 48 48\"", profile_html)
+        self.assertIn(".aee-account-shell .aee-account-profile:before{display:none;}", app.CSS)
+        self.assertIn(".aee-account-shell .aee-account-profile{", app.CSS)
+        self.assertIn("background:#172033;", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-account-shell .aee-account-profile{background:#f1f5f9;}", app.CSS)
+
     def test_settings_page_has_navigable_language_and_security_sections(self):
         navigation = app._settings_navigation_html()
         self.assertIn('<span>Language</span>', navigation)

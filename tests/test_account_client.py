@@ -1,3 +1,4 @@
+import base64
 import threading
 import time
 import unittest
@@ -26,6 +27,28 @@ class AccountClientTests(unittest.TestCase):
         )
 
         self.assertEqual(message, "OAuth request was cancelled")
+
+    def test_session_records_google_auth_provider(self):
+        response = {
+            **self.auth_response,
+            "user": {
+                **self.auth_response["user"],
+                "app_metadata": {"provider": "google"},
+            },
+        }
+
+        session = account_client._session_from_auth(response)
+
+        self.assertEqual(session["auth_provider"], "google")
+        self.assertEqual(account_client.session_auth_provider(session), "google")
+
+    def test_session_auth_provider_reads_existing_google_access_token(self):
+        claims = base64.urlsafe_b64encode(
+            b'{"app_metadata":{"provider":"google"}}'
+        ).decode("ascii").rstrip("=")
+        session = {"access_token": f"header.{claims}.signature"}
+
+        self.assertEqual(account_client.session_auth_provider(session), "google")
 
     def setUp(self):
         self.config = {

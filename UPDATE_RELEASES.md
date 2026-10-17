@@ -2,7 +2,9 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
-Version 1.2.24 replaces the decorative utility-page headers with a compact,
+Version 1.2.25 gives the account profile card a calm, solid background and
+identifies Google sign-ins with a Google icon and provider badge. Version
+1.2.24 replaces the decorative utility-page headers with a compact,
 consistent navigation bar, clearer back-to-app actions, and refined dark/light
 and mobile styling. Version 1.2.23 refreshed the Settings, Updates, About Us,
 and Contact Us headers with section labels and descriptions. Version 1.2.22
