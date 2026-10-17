@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -85,8 +86,13 @@ def _manifest_url() -> str:
 def check_for_updates() -> dict:
     url = _manifest_url()
     request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "AI-Evidence-Extractor-Updater/1", "Accept": "application/json"},
+        f"{url}{'&' if '?' in url else '?'}aee_check={time.time_ns()}",
+        headers={
+            "User-Agent": "AI-Evidence-Extractor-Updater/1",
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store, max-age=0",
+            "Pragma": "no-cache",
+        },
     )
     try:
         with urllib.request.urlopen(request, timeout=15) as response:

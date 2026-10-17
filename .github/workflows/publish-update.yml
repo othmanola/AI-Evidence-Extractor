@@ -1,0 +1,115 @@
+name: Publish update release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - version.txt
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Validate release sources
+        shell: pwsh
+        run: |
+          python -m py_compile app.py update_client.py build_update_package.py
+          if ($LASTEXITCODE -ne 0) { throw "Python source validation failed." }
+
+      - name: Build installer and update package
+        shell: pwsh
+        run: |
+          & .\build_windows.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Release asset build failed." }
+
+      - name: Create release manifest and notes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = (Get-Content -Raw .\version.txt).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "version.txt must contain a three-part version."
+          }
+          $tag = "v$version"
+          $setup = Get-Item .\dist\AI_Evidence_Extractor_Setup.exe
+          $package = Get-Item .\dist\AI_Evidence_Extractor_Update.zip
+          $releaseUrl = "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/$tag"
+          $manifest = [ordered]@{
+            app_id = "ai-evidence-extractor"
+            version = $version
+            published_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
+            download_url = "$releaseUrl/AI_Evidence_Extractor_Setup.exe"
+            sha256 = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            package_url = "$releaseUrl/AI_Evidence_Extractor_Update.zip"
+            package_sha256 = (Get-FileHash $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            release_notes = "Includes the latest app fixes and improvements."
+          }
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          $manifestJson = $manifest | ConvertTo-Json -Depth 5
+          [System.IO.File]::WriteAllText(
+            (Join-Path $PWD "dist\latest.json"),
+            ($manifestJson + [Environment]::NewLine),
+            $utf8NoBom
+          )
+          @"
+          Includes the latest AI Evidence Extractor fixes and improvements.
+
+          Existing users can use the in-app updater. The setup installer is for new installations and recovery.
+          "@ | Set-Content .\dist\release-notes.md -Encoding utf8
+
+      - name: Publish GitHub release and update feed
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = (Get-Content -Raw .\version.txt).Trim()
+          $tag = "v$version"
+          $assets = @(
+            ".\dist\AI_Evidence_Extractor_Setup.exe",
+            ".\dist\AI_Evidence_Extractor_Update.zip",
+            ".\dist\latest.json"
+          )
+          gh release view $tag --repo othmanola/AI-Evidence-Extractor *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --repo othmanola/AI-Evidence-Extractor --clobber
+            if ($LASTEXITCODE -ne 0) { throw "Could not refresh release assets for $tag." }
+            gh release edit $tag --repo othmanola/AI-Evidence-Extractor `
+              --title "AI Evidence Extractor $tag" `
+              --notes-file .\dist\release-notes.md --latest
+          } else {
+            gh release create $tag @assets --repo othmanola/AI-Evidence-Extractor `
+              --title "AI Evidence Extractor $tag" `
+              --notes-file .\dist\release-notes.md `
+              --target $env:GITHUB_SHA --latest
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Could not publish release $tag." }
+
+          Copy-Item .\dist\latest.json .\latest.json -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .\latest.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Publish $tag update feed"
+            if ($LASTEXITCODE -ne 0) { throw "Could not commit the release manifest." }
+            git push origin HEAD:main
+            if ($LASTEXITCODE -ne 0) { throw "Could not push the release manifest." }
+          }
