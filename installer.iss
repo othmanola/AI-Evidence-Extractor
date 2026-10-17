@@ -22,6 +22,7 @@ SolidCompression=yes
 WizardStyle=modern dark polar hidebevels includetitlebar
 WizardImageFile=assets\setup_wizard.png
 WizardSmallImageFile=assets\aee.png
+SetupLogging=yes
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 
@@ -62,4 +63,4 @@ Name: "{autodesktop}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Paramete
 [Run]
 Filename: "{tmp}\python-3.13.16-amd64.exe"; Parameters: "/quiet InstallAllUsers=0 TargetDir=""{app}\runtime"" Include_launcher=0 Include_pip=1 Include_test=0"; StatusMsg: "Installing the private Python runtime..."; Flags: waituntilterminated; Check: not FileExists(ExpandConstant('{app}\runtime\python.exe'))
 Filename: "{tmp}\MicrosoftEdgeWebView2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Checking the Microsoft WebView desktop component..."; Flags: waituntilterminated
-Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; Description: "Launch AI Evidence Extractor"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent
+Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; Description: "Launch AI Evidence Extractor"; WorkingDir: "{app}"; Flags: postinstall unchecked nowait skipifsilent
