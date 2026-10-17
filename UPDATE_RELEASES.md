@@ -2,11 +2,13 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
-Version 1.2.19 adds crop and resize controls before applying a profile photo,
-hides email for guest profiles, adds an English/Arabic language selector, and
-accepts common Supabase dashboard and project URL formats. Version 1.2.18 adds
-a dedicated profile photo picker, improves app-wide visual consistency, and
-verifies Supabase connection settings before saving. Version
+Version 1.2.20 adds a full-screen square profile-photo crop editor with
+positioning and zoom controls inspired by X. Version 1.2.19 added crop and
+resize controls before applying a profile photo, hid email for guest profiles,
+added an English/Arabic language selector, and accepted common Supabase
+dashboard and project URL formats. Version 1.2.18 adds a dedicated profile
+photo picker, improves app-wide visual consistency, and verifies Supabase
+connection settings before saving. Version
 1.2.17 simplified profile settings and made Supabase connection setup safe to
 rerun. Version 1.2.16 refined the profile dashboard with a cleaner, compact
 photo picker and more consistent responsive card styling. Version 1.2.15 added
@@ -22,7 +24,7 @@ persistence.
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version (this release is `1.2.19`) and include that change in a push to `main`.
+1. Increase `version.txt` to the next three-part version (this release is `1.2.20`) and include that change in a push to `main`.
 2. The **Publish update release** GitHub Actions workflow automatically builds the installer and in-app update archive, calculates their SHA-256 checksums, creates the matching GitHub Release, and publishes `latest.json` both as a release asset and on `main`.
 3. Confirm the workflow completed successfully and that the release is marked latest. Do not manually reuse a release tag or upload assets from a different build.
 4. If automatic publishing needs to be retried, use the workflow's **Run workflow** action on `main` after fixing the failure. It refreshes the assets and manifest for that version in place.

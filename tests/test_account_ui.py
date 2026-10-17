@@ -1,3 +1,5 @@
+import base64
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
@@ -228,47 +230,57 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Local Guest", result[1])
         self.assertIsNone(result[2])
 
-    def test_profile_photo_picker_previews_selected_image(self):
-        editor, panel = app._account_preview_photo_ui("profile.png")
-        self.assertEqual(editor, {"value": "profile.png", "__type__": "update"})
-        self.assertEqual(panel, {"visible": True, "__type__": "update"})
+    def test_profile_photo_editor_has_square_crop_and_zoom_controls(self):
+        editor = app._account_photo_editor_html()
+        self.assertIn('aria-modal="true"', editor)
+        self.assertIn('id="aee-photo-crop-canvas"', editor)
+        self.assertIn('type="range" min="1" max="3"', editor)
+        self.assertIn('data-aee-photo-apply', editor)
+        self.assertIn('data-aee-photo-cancel', editor)
+        self.assertIn("function initializeAeePhotoEditor()", app._JS_HEAD)
+        self.assertIn("drawImage(image, sourceX, sourceY, sourceSize", app._JS_HEAD)
+        self.assertIn("data-aee-photo-zoom", app._JS_HEAD)
 
-        editor, panel = app._account_preview_photo_ui(None)
-        self.assertEqual(editor, {"value": None, "__type__": "update"})
-        self.assertEqual(panel, {"visible": False, "__type__": "update"})
+    def test_profile_photo_apply_uploads_validated_cropped_jpeg(self):
+        image_bytes = b"\xff\xd8\xffcropped photo bytes"
+        image_data = "data:image/jpeg;base64," + base64.b64encode(
+            image_bytes
+        ).decode("ascii")
+        uploaded_path = []
 
-    def test_profile_photo_apply_uploads_edited_composite_and_closes_editor(self):
-        with patch.object(
-            app, "_account_upload_photo_ui",
-            return_value=(
-                app._account_status_html("Profile photo updated.", "success"),
+        def upload(image_path, session):
+            uploaded_path.append(image_path)
+            self.assertEqual(Path(image_path).read_bytes(), image_bytes)
+            return (
+                app._account_status_html(
+                    "Profile photo updated.", "success", profile_saved=True,
+                ),
                 "<section>Updated profile</section>",
-                None,
-            ),
-        ) as apply_photo:
-            result = app._account_apply_photo_ui(
-                {"composite": "cropped-profile.webp"}, None
+                session,
             )
 
-        apply_photo.assert_called_once_with("cropped-profile.webp", None)
+        with patch.object(
+            app, "_account_upload_photo_ui", side_effect=upload,
+        ):
+            result = app._account_apply_photo_data_ui(image_data, None)
+
         self.assertIn("Profile photo updated", result[0])
         self.assertEqual(result[1], "<section>Updated profile</section>")
-        self.assertEqual(result[3], {"value": None, "__type__": "update"})
-        self.assertEqual(result[4], {"visible": False, "__type__": "update"})
+        self.assertIn('data-photo-applied="true"', result[3]["value"])
+        self.assertFalse(Path(uploaded_path[0]).exists())
 
-    def test_profile_photo_apply_keeps_editor_open_when_upload_fails(self):
-        status = app._account_status_html("Photo upload failed.", "error")
+    def test_profile_photo_apply_rejects_invalid_image_payload(self):
+        image_data = "data:image/jpeg;base64," + base64.b64encode(
+            b"not a jpeg"
+        ).decode("ascii")
         with patch.object(
             app, "_account_upload_photo_ui",
-            return_value=(status, "<section>Profile</section>", None),
-        ):
-            result = app._account_apply_photo_ui(
-                {"composite": "cropped-profile.webp"}, None
-            )
+        ) as apply_photo:
+            result = app._account_apply_photo_data_ui(image_data, None)
 
-        self.assertIn("Photo upload failed", result[0])
-        self.assertEqual(result[3], {"__type__": "update", "skip": True})
-        self.assertEqual(result[4], {"visible": True, "__type__": "update"})
+        apply_photo.assert_not_called()
+        self.assertIn('data-kind="error"', result[0])
+        self.assertIn('data-photo-applied="false"', result[3]["value"])
 
     def test_signed_in_profile_email_change_is_reported_as_pending(self):
         session = {"user_id": "user-123", "email": "person@example.com"}

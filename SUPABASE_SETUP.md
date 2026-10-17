@@ -82,9 +82,10 @@ create policy "Users can update their own profile photos"
 ```
 
 The SQL safely recreates its named policies, so it can be rerun after an
-interrupted setup. The settings screen uploads only validated PNG, JPEG, or
-WebP photos up to 5 MB. Usernames are written to Supabase Auth metadata using
-the user's own session.
+interrupted setup. The settings screen uploads only validated PNG, JPEG, or WebP photos up to
+5 MB. Before saving a photo, use the square crop frame to reposition and zoom
+the image, then select **Apply**. Usernames are written to Supabase Auth
+metadata using the user's own session.
 
 ## 3. Enable email/password accounts
 

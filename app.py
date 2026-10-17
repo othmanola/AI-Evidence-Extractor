@@ -1807,14 +1807,43 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-photo-preview .image-container img{object-fit:cover!important;}
 .aee-settings-photo-preview .wrap{padding:3px!important;}
 .aee-settings-photo-preview label{display:none!important;}
-.aee-photo-editor-panel{padding:16px!important;border:1px solid rgba(148,163,184,.16)!important;
-  border-radius:16px!important;background:rgba(20,28,45,.88)!important;}
-.aee-photo-editor-panel .image-editor{border-radius:12px!important;overflow:hidden;}
-.aee-photo-editor-actions{justify-content:flex-end!important;gap:9px!important;margin-top:10px!important;}
-.aee-photo-editor-actions button{width:auto!important;min-width:108px!important;min-height:40px!important;
-  border-radius:10px!important;font-weight:650!important;}
-.aee-photo-apply-button button{color:#fff!important;
-  background:linear-gradient(120deg,#ef665f,#dc4c59)!important;}
+.aee-photo-editor-modal{position:fixed;inset:0;z-index:10000;display:grid;
+  grid-template-rows:58px minmax(0,1fr) 64px;color:#f4f6f8;background:#090b0e;
+  font-family:Inter,system-ui,sans-serif;}
+body.aee-photo-editor-open{overflow:hidden!important;}
+.aee-photo-editor-modal[hidden]{display:none!important;}
+.aee-photo-editor-header{display:flex;align-items:center;justify-content:space-between;
+  gap:14px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.08);
+  background:#121417;}
+.aee-photo-editor-heading{display:flex;align-items:center;gap:18px;min-width:0;}
+.aee-photo-editor-back,.aee-photo-editor-apply,.aee-photo-zoom-button{
+  display:grid;place-items:center;border:0;cursor:pointer;font:inherit;}
+.aee-photo-editor-back{width:36px;height:36px;border-radius:50%;color:#e7ebf0;
+  background:transparent;font-size:23px;line-height:1;}
+.aee-photo-editor-back:hover{background:rgba(255,255,255,.1);}
+.aee-photo-editor-title{font-size:17px;font-weight:700;letter-spacing:-.015em;}
+.aee-photo-editor-apply{min-width:72px;height:36px;padding:0 17px;border-radius:999px;
+  color:#101316;background:#eff3f4;font-size:13px;font-weight:750;}
+.aee-photo-editor-apply:hover{background:#dce3e6;}
+.aee-photo-editor-stage{position:relative;display:grid;place-items:center;min-height:0;
+  padding:14px 18px;background:#090b0e;}
+.aee-photo-crop-canvas{display:block;width:min(100%,680px);height:min(100%,68vh);
+  min-height:220px;touch-action:none;cursor:grab;}
+.aee-photo-crop-canvas:active{cursor:grabbing;}
+.aee-photo-editor-error{position:absolute;bottom:12px;left:50%;max-width:calc(100% - 32px);
+  transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(248,113,113,.35);
+  border-radius:10px;color:#fecaca;background:rgba(69,20,25,.94);font-size:12px;}
+.aee-photo-editor-error[hidden]{display:none;}
+.aee-photo-editor-zoom{display:flex;align-items:center;justify-content:center;gap:13px;
+  padding:0 20px;border-top:1px solid rgba(255,255,255,.06);background:#0b0d10;}
+.aee-photo-zoom-button{width:30px;height:30px;border:1px solid #394149;border-radius:50%;
+  color:#aab3bb;background:transparent;font-size:20px;line-height:1;}
+.aee-photo-zoom-button:hover{border-color:#6b7781;color:#fff;}
+.aee-photo-zoom-range{width:min(54vw,300px);height:4px;accent-color:#1d9bf0;
+  cursor:pointer;touch-action:pan-y;}
+.aee-photo-transfer{display:none!important;}
+.aee-photo-editor-result{display:none!important;}
+.aee-photo-hidden-file{display:none!important;}
 .aee-settings-profile-header .aee-account-profile{height:auto;margin:0;}
 .aee-account-shell .aee-account-profile-form{
   border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
@@ -2059,9 +2088,15 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-settings-profile-header>#aee-account-profile-source{
     flex:1 1 0!important;width:auto!important;min-width:0!important;}
   .aee-account-shell .aee-account-profile{padding-right:116px;}
-  .aee-photo-editor-panel{padding:10px!important;}
   .aee-settings-photo-actions{right:9px;bottom:10px;width:96px!important;gap:7px!important;}
   .aee-settings-photo-button button{min-height:36px!important;padding:0 6px!important;font-size:.66rem!important;}
+  .aee-photo-editor-header{height:54px;padding:0 12px;}
+  .aee-photo-editor-heading{gap:11px;}
+  .aee-photo-editor-title{font-size:16px;}
+  .aee-photo-editor-stage{padding:10px;}
+  .aee-photo-crop-canvas{height:min(70vh,560px);min-height:220px;}
+  .aee-photo-editor-zoom{height:58px;padding:0 12px;gap:9px;}
+  .aee-photo-zoom-range{width:min(58vw,300px);}
   .aee-settings-photo-preview{width:58px!important;min-width:58px!important;max-width:58px!important;}
   .aee-settings-photo-preview .image-container{min-height:56px!important;max-height:56px!important;}
   .aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}
@@ -3932,7 +3967,7 @@ _JS_HEAD = r"""
   function markAeeProfileFieldChanges(event){
     const field = event.target.closest(
       '.aee-settings-fields input, .aee-settings-fields select') ||
-      (event.target.matches('.aee-settings-photo-button input[type="file"]')
+      (event.target.matches('#aee-photo-file-input')
         ? event.target : null);
     if (!field) return;
     const form = field.closest('#aee-settings-profile-section') ||
@@ -3952,6 +3987,255 @@ _JS_HEAD = r"""
     form.dataset.aeeDirty = changed ? 'true' : 'false';
     const notice = form.querySelector('[data-aee-settings-dirty]');
     if (notice) notice.hidden = !changed;
+  }
+  function initializeAeePhotoEditor(){
+    const openButton = document.getElementById('aee-photo-change-button');
+    const fileInput = document.getElementById('aee-photo-file-input');
+    const modal = document.getElementById('aee-photo-editor-modal');
+    const canvas = document.getElementById('aee-photo-crop-canvas');
+    const zoomRange = document.getElementById('aee-photo-zoom-range');
+    const errorMessage = document.getElementById('aee-photo-editor-error');
+    if (!openButton || !fileInput || !modal || !canvas || !zoomRange) return;
+    if (openButton.dataset.aeePhotoEditorBound) return;
+    openButton.dataset.aeePhotoEditorBound = 'true';
+    document.body.append(modal, fileInput);
+    const context = canvas.getContext('2d');
+    const picker = fileInput;
+    let image = null;
+    let objectUrl = '';
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let drag = null;
+    const maximumPhotoBytes = 5 * 1024 * 1024;
+
+    function geometry(){
+      const bounds = canvas.getBoundingClientRect();
+      const width = bounds.width;
+      const height = bounds.height;
+      const side = Math.min(width, height) * .82;
+      const x = (width - side) / 2;
+      const y = (height - side) / 2;
+      const scale = image
+        ? Math.max(side / image.naturalWidth, side / image.naturalHeight) * zoom
+        : 1;
+      const left = width / 2 - image.naturalWidth * scale / 2 + panX;
+      const top = height / 2 - image.naturalHeight * scale / 2 + panY;
+      return {width, height, side, x, y, scale, left, top};
+    }
+    function constrainPan(layout){
+      const leftAtCenter = layout.width / 2 - image.naturalWidth * layout.scale / 2;
+      const topAtCenter = layout.height / 2 - image.naturalHeight * layout.scale / 2;
+      panX = Math.max(layout.x + layout.side - leftAtCenter - image.naturalWidth * layout.scale,
+        Math.min(layout.x - leftAtCenter, panX));
+      panY = Math.max(layout.y + layout.side - topAtCenter - image.naturalHeight * layout.scale,
+        Math.min(layout.y - topAtCenter, panY));
+    }
+    function draw(){
+      if (!image || !image.complete || !image.naturalWidth) return;
+      const bounds = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const pixelWidth = Math.round(bounds.width * dpr);
+      const pixelHeight = Math.round(bounds.height * dpr);
+      if (canvas.width !== pixelWidth || canvas.height !== pixelHeight){
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+      }
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const layout = geometry();
+      constrainPan(layout);
+      layout.left = bounds.width / 2 -
+        image.naturalWidth * layout.scale / 2 + panX;
+      layout.top = bounds.height / 2 -
+        image.naturalHeight * layout.scale / 2 + panY;
+      context.clearRect(0, 0, layout.width, layout.height);
+      context.drawImage(image, layout.left, layout.top,
+        image.naturalWidth * layout.scale, image.naturalHeight * layout.scale);
+      context.fillStyle = 'rgba(7,10,13,.62)';
+      context.fillRect(0, 0, layout.width, layout.y);
+      context.fillRect(0, layout.y + layout.side, layout.width,
+        layout.height - layout.y - layout.side);
+      context.fillRect(0, layout.y, layout.x, layout.side);
+      context.fillRect(layout.x + layout.side, layout.y,
+        layout.width - layout.x - layout.side, layout.side);
+      context.strokeStyle = '#1d9bf0';
+      context.lineWidth = 3;
+      context.strokeRect(layout.x + 1.5, layout.y + 1.5,
+        layout.side - 3, layout.side - 3);
+    }
+    function showError(message){
+      errorMessage.textContent = message;
+      errorMessage.hidden = !message;
+    }
+    function closeEditor(){
+      modal.hidden = true;
+      document.body.classList.remove('aee-photo-editor-open');
+      image = null;
+      drag = null;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = '';
+      picker.value = '';
+      showError('');
+      window.__aeePhotoApplyInProgress = false;
+      const section = document.getElementById('aee-settings-profile-section');
+      if (section){
+        section.dataset.aeePhotoDirty = 'false';
+        const changed = section.querySelector('[data-aee-modified="true"]');
+        section.dataset.aeeDirty = changed ? 'true' : 'false';
+        const notice = section.querySelector('[data-aee-settings-dirty]');
+        if (notice) notice.hidden = !changed;
+      }
+      openButton.querySelector('button')?.focus({preventScroll:true});
+    }
+    function openEditor(file){
+      if (!file) return;
+      const validType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+        (!file.type && /\.(jpe?g|png|webp)$/i.test(file.name));
+      if (!validType || file.size <= 0 || file.size > maximumPhotoBytes){
+        showError('Choose a JPG, PNG, or WebP photo smaller than 5 MB.');
+        modal.hidden = false;
+        document.body.classList.add('aee-photo-editor-open');
+        return;
+      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(file);
+      modal.hidden = false;
+      document.body.classList.add('aee-photo-editor-open');
+      showError('');
+      const nextImage = new Image();
+      nextImage.onload = () => {
+        if (nextImage.naturalWidth * nextImage.naturalHeight > 40000000){
+          showError('This photo is too large to edit. Choose an image with fewer pixels.');
+          return;
+        }
+        image = nextImage;
+        zoom = 1;
+        panX = 0;
+        panY = 0;
+        zoomRange.value = '1';
+        document.querySelector('#aee-photo-apply-result')?.replaceChildren();
+        showError('');
+        requestAnimationFrame(draw);
+        canvas.focus({preventScroll:true});
+      };
+      nextImage.onerror = () => showError('This image could not be opened. Choose another photo.');
+      nextImage.src = objectUrl;
+    }
+    function applyCrop(){
+      if (!image) return;
+      const layout = geometry();
+      constrainPan(layout);
+      const left = layout.width / 2 -
+        image.naturalWidth * layout.scale / 2 + panX;
+      const top = layout.height / 2 -
+        image.naturalHeight * layout.scale / 2 + panY;
+      const sourceX = (layout.x - left) / layout.scale;
+      const sourceY = (layout.y - top) / layout.scale;
+      const sourceSize = layout.side / layout.scale;
+      const output = document.createElement('canvas');
+      output.width = 512;
+      output.height = 512;
+      output.getContext('2d').drawImage(image, sourceX, sourceY, sourceSize,
+        sourceSize, 0, 0, output.width, output.height);
+      output.toBlob(blob => {
+        if (!blob || blob.size > maximumPhotoBytes){
+          showError('The edited photo could not be prepared. Try a different crop.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const transfer = document.querySelector(
+            '#aee-photo-payload textarea, #aee-photo-payload input');
+          const submit = document.querySelector('#aee-photo-submit button');
+          if (!transfer || !submit){
+            showError('The photo editor could not connect to the app. Please try again.');
+            return;
+          }
+          const valuePrototype = transfer instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(valuePrototype, 'value').set;
+          setter.call(transfer, reader.result);
+          transfer.dispatchEvent(new Event('input', {bubbles:true}));
+          transfer.dispatchEvent(new Event('change', {bubbles:true}));
+          window.__aeePhotoApplyInProgress = true;
+          showError('');
+          submit.click();
+        };
+        reader.onerror = () => showError('The edited photo could not be read. Please try again.');
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', .92);
+    }
+    openButton.addEventListener('click', event => {
+      event.preventDefault();
+      picker.click();
+    });
+    picker.addEventListener('change', () => openEditor(picker.files[0]));
+    modal.addEventListener('click', event => {
+      if (event.target.closest('[data-aee-photo-cancel]')){
+        event.preventDefault();
+        closeEditor();
+      } else if (event.target.closest('[data-aee-photo-apply]')){
+        event.preventDefault();
+        applyCrop();
+      } else {
+        const zoomButton = event.target.closest('[data-aee-photo-zoom]');
+        if (zoomButton){
+          zoom = Math.max(1, Math.min(3, zoom + Number(zoomButton.dataset.aeePhotoZoom)));
+          zoomRange.value = String(zoom);
+          draw();
+        }
+      }
+    });
+    zoomRange.addEventListener('input', () => {
+      zoom = Number(zoomRange.value);
+      draw();
+    });
+    canvas.addEventListener('pointerdown', event => {
+      if (!image) return;
+      drag = {x:event.clientX, y:event.clientY, panX, panY};
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (!drag) return;
+      panX = drag.panX + event.clientX - drag.x;
+      panY = drag.panY + event.clientY - drag.y;
+      draw();
+    });
+    canvas.addEventListener('pointerup', () => { drag = null; });
+    canvas.addEventListener('pointercancel', () => { drag = null; });
+    canvas.addEventListener('keydown', event => {
+      const step = event.shiftKey ? 24 : 8;
+      if (event.key === 'ArrowLeft') panX -= step;
+      else if (event.key === 'ArrowRight') panX += step;
+      else if (event.key === 'ArrowUp') panY -= step;
+      else if (event.key === 'ArrowDown') panY += step;
+      else return;
+      event.preventDefault();
+      draw();
+    });
+    new ResizeObserver(draw).observe(canvas);
+    const status = document.getElementById('aee-account-status');
+    const resultHost = document.getElementById('aee-photo-apply-result');
+    if (status && resultHost && !status.dataset.aeePhotoObserver){
+      status.dataset.aeePhotoObserver = 'true';
+      const updateApplyState = () => {
+        if (!window.__aeePhotoApplyInProgress) return;
+        const result = resultHost.querySelector('[data-photo-applied]');
+        if (result?.dataset.photoApplied === 'true'){
+          closeEditor();
+        } else {
+          const message = status.querySelector('[data-kind="error"]');
+          if (message){
+            showError(message.textContent.trim());
+            window.__aeePhotoApplyInProgress = false;
+          }
+        }
+      };
+      new MutationObserver(updateApplyState).observe(status,
+        {childList:true,subtree:true,attributes:true});
+      new MutationObserver(updateApplyState).observe(resultHost,
+        {childList:true,subtree:true});
+    }
   }
   function refreshAeeProfileFieldBaseline(event){
     const field = event.target.closest(
@@ -4018,6 +4302,7 @@ _JS_HEAD = r"""
   function liftAeeNavigation(){
     applyAeeAccessGate();
     initializeAeeLanguageSelector();
+    initializeAeePhotoEditor();
     syncAeeProfileTool();
     syncAeeTopbarLayout();
     syncAeeUpdateShortcut();
@@ -4081,6 +4366,11 @@ _JS_HEAD = r"""
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape'){
+      const photoEditor = document.getElementById('aee-photo-editor-modal');
+      if (photoEditor && !photoEditor.hidden){
+        photoEditor.querySelector('[data-aee-photo-cancel]')?.click();
+        return;
+      }
       const windowShell = document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
       if (windowShell) closeAeeUtilityWindow(windowShell);
       else setAeeNavigation(false);
@@ -5858,26 +6148,98 @@ def _account_save_profile_settings_ui(display_name, username, email, session):
                 _account_profile_html(session), session)
 
 
-def _account_preview_photo_ui(image_path):
-    if not image_path:
-        return gr.update(value=None), gr.update(visible=False)
-    return gr.update(value=image_path), gr.update(visible=True)
+def _account_photo_editor_html():
+    return '''<section id="aee-photo-editor-modal" class="aee-photo-editor-modal"
+        aria-label="Edit profile photo" aria-modal="true" role="dialog" hidden>
+      <header class="aee-photo-editor-header">
+        <div class="aee-photo-editor-heading">
+          <button class="aee-photo-editor-back" type="button"
+            data-aee-photo-cancel aria-label="Cancel photo edit">‹</button>
+          <strong class="aee-photo-editor-title">Edit media</strong>
+        </div>
+        <button class="aee-photo-editor-apply" type="button"
+          data-aee-photo-apply>Apply</button>
+      </header>
+      <div class="aee-photo-editor-stage">
+        <canvas id="aee-photo-crop-canvas" class="aee-photo-crop-canvas"
+          tabindex="0" role="img"
+          aria-label="Drag to position the photo inside the square crop"></canvas>
+        <p id="aee-photo-editor-error" class="aee-photo-editor-error"
+          role="alert" hidden></p>
+      </div>
+      <footer class="aee-photo-editor-zoom" aria-label="Photo zoom">
+        <button class="aee-photo-zoom-button" type="button"
+          data-aee-photo-zoom="-0.1" aria-label="Zoom out">−</button>
+        <input id="aee-photo-zoom-range" class="aee-photo-zoom-range"
+          type="range" min="1" max="3" step="0.01" value="1"
+          aria-label="Zoom photo">
+        <button class="aee-photo-zoom-button" type="button"
+          data-aee-photo-zoom="0.1" aria-label="Zoom in">+</button>
+      </footer>
+    </section>
+    <input id="aee-photo-file-input" class="aee-photo-hidden-file" type="file"
+      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+      aria-label="Choose a profile photo">'''
 
 
-def _account_apply_photo_ui(image_value, session):
-    image_path = image_value.get("composite") if isinstance(image_value, dict) else None
-    if not image_path:
-        return (_account_status_html("Crop or resize a photo before applying it.", "error"),
-                gr.skip(), gr.skip(), gr.skip(), gr.update(visible=True))
-    status, profile_html, session = _account_upload_photo_ui(image_path, session)
-    if 'data-kind="success"' in status:
-        return (status, profile_html, session, gr.update(value=None),
-                gr.update(visible=False))
-    return status, profile_html, session, gr.skip(), gr.update(visible=True)
-
-
-def _account_cancel_photo_ui():
-    return gr.update(value=None), gr.update(visible=False)
+def _account_apply_photo_data_ui(data_url, session):
+    try:
+        header = "data:image/jpeg;base64,"
+        max_encoded_length = ((_account_client.MAX_AVATAR_BYTES + 2) // 3) * 4
+        if not isinstance(data_url, str) or len(data_url) > len(header) + max_encoded_length:
+            raise _account_client.AccountError(
+                "The edited profile photo is empty or larger than 5 MB."
+            )
+        if not data_url.startswith(header):
+            raise _account_client.AccountError(
+                "The edited profile photo could not be read. Please try again."
+            )
+        encoded = data_url[len(header):]
+        if not re.fullmatch(r"[A-Za-z0-9+/]*={0,2}", encoded):
+            raise _account_client.AccountError(
+                "The edited profile photo data is invalid. Please try again."
+            )
+        image_bytes = base64.b64decode(encoded, validate=True)
+        if not image_bytes or len(image_bytes) > _account_client.MAX_AVATAR_BYTES:
+            raise _account_client.AccountError(
+                "The edited profile photo is empty or larger than 5 MB."
+            )
+        _account_client._validate_profile_photo(".jpg", image_bytes)
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as photo:
+            photo.write(image_bytes)
+            image_path = photo.name
+        try:
+            status, profile_html, session = _account_upload_photo_ui(image_path, session)
+        finally:
+            try:
+                Path(image_path).unlink(missing_ok=True)
+            except OSError:
+                log.warning("Could not remove temporary profile photo: %s", image_path)
+        if 'data-kind="success"' in status:
+            result = gr.update(value=(
+                f'<span data-photo-applied="true" data-version="{time.time_ns()}"></span>'
+            ))
+            return status, profile_html, session, result
+        return status, profile_html, session, gr.update(
+            value='<span data-photo-applied="false"></span>'
+        )
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"), gr.skip(), gr.skip(),
+                gr.update(value='<span data-photo-applied="false"></span>'))
+    except (ValueError, base64.binascii.Error) as exc:
+        log.warning("Could not decode edited profile photo: %s", exc)
+        return (_account_status_html(
+                    "The edited profile photo data is invalid. Please try again.",
+                    "error"),
+                gr.skip(), gr.skip(),
+                gr.update(value='<span data-photo-applied="false"></span>'))
+    except OSError as exc:
+        log.exception("Could not prepare the edited profile photo")
+        return (_account_status_html(
+                    f"Could not prepare the edited profile photo: {exc}",
+                    "error"),
+                gr.skip(), gr.skip(),
+                gr.update(value='<span data-photo-applied="false"></span>'))
 
 
 def _account_upload_photo_ui(image_path, session):
@@ -5885,14 +6247,17 @@ def _account_upload_photo_ui(image_path, session):
         if not session:
             profile = _account_client.save_guest_profile_photo(image_path)
             return (_account_status_html(
-                        "Guest profile photo saved on this computer.", "success"),
+                        "Guest profile photo saved on this computer.", "success",
+                        profile_saved=True),
                     _account_profile_html(profile=profile), None)
         profile, session = _account_client.upload_profile_photo(session, image_path)
         profile_html, session, profile_error = _account_render_signed_in(session)
         message = "Profile photo updated."
         if profile_error:
             message += f" The updated photo could not be displayed: {profile_error}"
-        return (_account_status_html(message, "success" if not profile_error else "error"),
+        return (_account_status_html(
+                    message, "success" if not profile_error else "error",
+                    profile_saved=not profile_error),
                 profile_html, session)
     except _account_client.AccountError as exc:
         return _account_status_html(str(exc), "error"), _account_profile_html(session), session
@@ -6378,32 +6743,23 @@ def build_ui():
                                     with gr.Column(
                                         elem_classes=["aee-settings-photo-actions"]
                                     ):
-                                        account_photo_picker = gr.UploadButton(
+                                        account_photo_picker = gr.Button(
                                             "Change photo",
-                                            file_types=[".jpg", ".jpeg", ".png", ".webp"],
-                                            file_count="single",
-                                            type="filepath",
+                                            elem_id="aee-photo-change-button",
                                             elem_classes=["aee-settings-photo-button"])
-                                with gr.Group(
-                                    visible=False,
-                                    elem_classes=["aee-photo-editor-panel"],
-                                ) as account_photo_editor_panel:
-                                    account_photo_editor = gr.ImageEditor(
-                                        label="Adjust your profile photo",
-                                        sources=["upload"],
-                                        type="filepath",
-                                        transforms=["crop", "resize"],
-                                        layers=False,
-                                        canvas_size=(600, 600),
-                                        fixed_canvas=False,
-                                        height=340,
-                                        elem_classes=["aee-photo-editor"])
-                                    with gr.Row(elem_classes=["aee-photo-editor-actions"]):
-                                        account_cancel_photo_btn = gr.Button(
-                                            "Cancel", variant="secondary")
-                                        account_apply_photo_btn = gr.Button(
-                                            "Apply photo", variant="primary",
-                                            elem_classes=["aee-photo-apply-button"])
+                                account_photo_editor = gr.HTML(
+                                    value=_account_photo_editor_html(),
+                                    elem_id="aee-photo-editor-root")
+                                account_photo_payload = gr.Textbox(
+                                    value="", elem_id="aee-photo-payload",
+                                    elem_classes=["aee-photo-transfer"])
+                                account_apply_photo_btn = gr.Button(
+                                    "Apply edited profile photo",
+                                    elem_id="aee-photo-submit",
+                                    elem_classes=["aee-photo-transfer"])
+                                account_photo_apply_result = gr.HTML(
+                                    value="", elem_id="aee-photo-apply-result",
+                                    elem_classes=["aee-photo-editor-result"])
                                 with gr.Group(elem_classes=["aee-settings-card"]):
                                     with gr.Row(elem_classes=["aee-settings-card-heading"]):
                                         gr.HTML('''<div><h2>Personal information</h2>
@@ -6761,18 +7117,12 @@ def build_ui():
                     account_profile_email, account_session],
             outputs=[account_status, account_profile, account_session],
             queue=False)
-        account_photo_picker.upload(
-            fn=_account_preview_photo_ui, inputs=[account_photo_picker],
-            outputs=[account_photo_editor, account_photo_editor_panel], queue=False)
         account_apply_photo_btn.click(
-            fn=_account_apply_photo_ui,
-            inputs=[account_photo_editor, account_session],
+            fn=_account_apply_photo_data_ui,
+            inputs=[account_photo_payload, account_session],
             outputs=[account_status, account_profile, account_session,
-                     account_photo_editor, account_photo_editor_panel],
+                     account_photo_apply_result],
             queue=False)
-        account_cancel_photo_btn.click(
-            fn=_account_cancel_photo_ui, inputs=[],
-            outputs=[account_photo_editor, account_photo_editor_panel], queue=False)
         account_save_config_event = account_save_config_btn.click(
             fn=_account_save_config_ui,
             inputs=[account_project_url, account_anon_key, account_session,
