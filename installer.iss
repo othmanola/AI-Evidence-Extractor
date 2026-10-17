@@ -47,7 +47,6 @@ Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "run_app.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "assets\aee.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\setup_wizard.png"; DestDir: "{app}\assets"; Flags: ignoreversion
-Source: "dist\AI Evidence Extractor.lnk"; DestDir: "{app}"; DestName: "AI Evidence Extractor.lnk"; Flags: ignoreversion
 Source: "assets\python-3.13.16-amd64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "assets\MicrosoftEdgeWebView2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "README_WINDOWS.md"; DestDir: "{app}"; Flags: ignoreversion
@@ -58,6 +57,7 @@ Source: "UPDATE_RELEASES.md"; DestDir: "{app}"; Flags: ignoreversion
 Type: files; Name: "{app}\AI Evidence Extractor.exe"
 
 [Icons]
+Name: "{app}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
 Name: "{group}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
 Name: "{autodesktop}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
 
