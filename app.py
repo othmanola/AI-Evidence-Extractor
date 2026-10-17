@@ -1615,18 +1615,41 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-utility-window-shell.aee-utility-window-open .column.wrap{transform:translateY(0) scale(1);}
 .aee-utility-window-active{overflow:hidden!important;}
 .aee-utility-window-header{position:sticky;top:0;z-index:12;max-width:none;
-  margin:0 -28px 34px;padding:17px clamp(20px,4vw,58px);
+  isolation:isolate;overflow:hidden;
+  margin:0 -28px 34px;padding:19px clamp(20px,4vw,58px);
   display:flex;align-items:center;gap:18px;
-  border:1px solid rgba(148,163,184,.18);border-top:0;border-radius:0 0 20px 20px;
-  background:linear-gradient(120deg,rgba(14,23,41,.92),rgba(9,14,27,.88));
-  box-shadow:0 18px 50px -32px rgba(0,0,0,.88);backdrop-filter:blur(20px) saturate(1.25);}
-.aee-utility-window-header>div:first-child{flex:1;min-width:0;}
-.aee-utility-window-close{min-width:126px!important;height:44px!important;padding:0 16px!important;
-  border:1px solid rgba(148,163,184,.24)!important;border-radius:13px!important;
-  color:var(--text)!important;background:rgba(148,163,184,.08)!important;
-  transition:transform .18s,border-color .18s,background .18s!important;}
-.aee-utility-window-close:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.55)!important;
-  background:rgba(59,130,246,.14)!important;}
+  border:1px solid rgba(148,163,184,.16);border-top:0;border-radius:0 0 22px 22px;
+  background:radial-gradient(520px 170px at 8% 0%,rgba(248,113,113,.13),transparent 75%),
+    radial-gradient(620px 180px at 92% 0%,rgba(99,102,241,.16),transparent 72%),
+    linear-gradient(120deg,rgba(14,23,41,.96),rgba(9,14,27,.93));
+  box-shadow:0 22px 56px -34px rgba(0,0,0,.92),0 1px 0 rgba(255,255,255,.035) inset;
+  backdrop-filter:blur(22px) saturate(1.35);}
+.aee-utility-window-header:after{position:absolute;z-index:-1;right:clamp(20px,4vw,58px);
+  bottom:0;left:clamp(20px,4vw,58px);height:1px;content:"";
+  background:linear-gradient(90deg,transparent,rgba(248,113,113,.38) 24%,
+    rgba(129,140,248,.36) 74%,transparent);}
+.aee-utility-window-header>div:first-child{position:relative;z-index:1;flex:1;min-width:0;}
+.aee-utility-window-shell .aee-project-page-heading{gap:16px;align-items:center;}
+.aee-utility-window-shell .aee-project-page-mark{width:52px;height:52px;border-radius:16px;
+  color:#ffe4e6;border-color:rgba(251,113,133,.25);
+  background:linear-gradient(145deg,rgba(244,63,94,.17),rgba(99,102,241,.2));
+  box-shadow:0 12px 28px -18px rgba(129,140,248,.82),0 1px 0 rgba(255,255,255,.09) inset;}
+.aee-utility-window-shell .aee-project-page-mark svg{width:22px;height:22px;}
+.aee-utility-window-shell .aee-project-page-heading small{width:max-content;max-width:100%;
+  margin-bottom:4px;padding:4px 8px;border:1px solid rgba(148,163,184,.13);
+  border-radius:999px;color:#aebbd0;background:rgba(148,163,184,.07);
+  font-size:.59rem;letter-spacing:.13em;}
+.aee-utility-window-shell .aee-project-page-heading h1{margin:0;color:#f8fafc;
+  font-size:clamp(1.35rem,2.5vw,1.72rem);font-weight:750;letter-spacing:-.045em;line-height:1.08;}
+.aee-utility-window-shell .aee-project-page-heading p{margin:5px 0 0;
+  color:#929eb2;font-size:.76rem;line-height:1.45;}
+.aee-utility-window-close{position:relative;z-index:1;min-width:108px!important;height:42px!important;
+  padding:0 14px!important;border:1px solid rgba(148,163,184,.17)!important;
+  border-radius:12px!important;color:#dbe3ef!important;background:rgba(148,163,184,.065)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.035) inset;
+  transition:transform .18s,border-color .18s,background .18s,color .18s!important;}
+.aee-utility-window-close:hover{transform:translateY(-1px);border-color:rgba(248,113,133,.35)!important;
+  color:#fff!important;background:rgba(248,113,133,.1)!important;}
 html[data-theme="light"] .aee-utility-window-shell{background:rgba(15,23,42,.32)!important;}
 html[data-theme="light"] .aee-utility-window-shell .column.wrap{
   background:transparent!important;}
@@ -1634,9 +1657,20 @@ html[data-theme="light"] .aee-utility-window-shell{
   background:radial-gradient(1000px 640px at 92% 0%,rgba(79,70,229,.09),transparent 70%),
     radial-gradient(1000px 650px at 0% 100%,rgba(14,165,233,.07),transparent 70%),
     linear-gradient(145deg,#f8faff,#edf2fa 76%)!important;}
-html[data-theme="light"] .aee-utility-window-header{background:rgba(255,255,255,.88);
-  border-color:rgba(100,116,139,.2);box-shadow:0 18px 50px -36px rgba(15,23,42,.34);}
-.aee-utility-window-shell .aee-project-page-heading{margin:0;}
+html[data-theme="light"] .aee-utility-window-header{
+  background:radial-gradient(520px 170px at 8% 0%,rgba(248,113,113,.09),transparent 75%),
+    radial-gradient(620px 180px at 92% 0%,rgba(99,102,241,.09),transparent 72%),
+    linear-gradient(120deg,rgba(255,255,255,.97),rgba(247,249,253,.94));
+  border-color:rgba(100,116,139,.18);box-shadow:0 22px 56px -38px rgba(15,23,42,.42),
+    0 1px 0 rgba(255,255,255,.8) inset;}
+html[data-theme="light"] .aee-utility-window-shell .aee-project-page-heading h1{color:#172033;}
+html[data-theme="light"] .aee-utility-window-shell .aee-project-page-heading p{color:#64748b;}
+html[data-theme="light"] .aee-utility-window-shell .aee-project-page-heading small{
+  color:#596579;background:rgba(100,116,139,.07);border-color:rgba(100,116,139,.14);}
+html[data-theme="light"] .aee-utility-window-close{color:#334155!important;
+  background:rgba(100,116,139,.055)!important;border-color:rgba(100,116,139,.2)!important;}
+html[data-theme="light"] .aee-utility-window-close:hover{color:#9f1239!important;
+  background:rgba(244,63,94,.08)!important;border-color:rgba(244,63,94,.28)!important;}
 .aee-utility-window-shell .aee-update-card{max-width:1180px;margin:0 auto 24px;padding:clamp(30px,5vw,64px);
   border-radius:30px;box-shadow:0 30px 90px -55px rgba(37,99,235,.6);}
 .aee-utility-window-shell .aee-update-copy{max-width:760px;}
@@ -1780,9 +1814,6 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-layout select:focus-visible{outline:2px solid #ff7770!important;outline-offset:2px!important;}
 .aee-settings-nav svg{width:16px;height:16px;flex:none;color:#a9b7cb;}
 .aee-settings-panel{min-width:0;scroll-margin-top:90px;}
-.aee-account-shell .aee-utility-window-header{
-  position:sticky;top:0;z-index:5;backdrop-filter:blur(18px);
-  background:rgba(9,15,28,.86);border-color:rgba(148,163,184,.12);}
 .aee-account-shell .aee-project-page-heading{gap:13px;}
 .aee-account-shell .aee-project-page-heading h1{font-size:1.55rem;letter-spacing:-.045em;}
 .aee-settings-profile-header{position:relative!important;align-items:stretch!important;
@@ -1997,8 +2028,6 @@ html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
 html[data-theme="light"] .aee-settings-card{background:rgba(255,255,255,.84);border-color:rgba(100,116,139,.17);}
 html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
 html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
-html[data-theme="light"] .aee-account-shell .aee-utility-window-header{
-  background:rgba(255,255,255,.9);border-color:rgba(100,116,139,.18);}
 html[data-theme="light"] .aee-settings-photo-button button{
   color:#172033!important;background:rgba(255,255,255,.82)!important;
   border-color:rgba(100,116,139,.2)!important;}
@@ -2075,7 +2104,15 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-utility-window-shell .column.wrap{width:100vw!important;max-width:100vw!important;
     padding:0 16px 28px!important;}
   .aee-utility-window-header{margin:0 -16px 22px;padding:12px 16px;border-radius:0 0 16px 16px;gap:10px;}
-  .aee-utility-window-close{min-width:96px!important;height:40px!important;padding:0 10px!important;}
+  .aee-utility-window-header:after{right:16px;left:16px;}
+  .aee-utility-window-shell .aee-project-page-heading{gap:11px;}
+  .aee-utility-window-shell .aee-project-page-mark{width:44px;height:44px;border-radius:13px;}
+  .aee-utility-window-shell .aee-project-page-mark svg{width:20px;height:20px;}
+  .aee-utility-window-shell .aee-project-page-heading small{margin-bottom:3px;padding:3px 7px;font-size:.55rem;}
+  .aee-utility-window-shell .aee-project-page-heading h1{font-size:1.22rem;}
+  .aee-utility-window-shell .aee-project-page-heading p{max-width:230px;font-size:.68rem;}
+  .aee-utility-window-close{min-width:78px!important;height:38px!important;padding:0 9px!important;
+    border-radius:10px!important;font-size:.73rem!important;}
   .aee-project-page-mark{width:46px;height:46px;border-radius:14px;}
   .aee-update-actions{flex-wrap:wrap!important;}
   .aee-update-actions>div{flex:1 1 100%!important;}
@@ -6692,7 +6729,8 @@ def build_ui():
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z"/></svg></span>
-                      <div><small>Workspace</small><h1>Settings</h1></div>
+                      <div><small>YOUR WORKSPACE</small><h1>Settings</h1>
+                        <p>Manage your profile, preferences, and security.</p></div>
                     </header>''')
                     account_close_btn = gr.Button(
                         "Close window", size="sm",
@@ -6872,7 +6910,8 @@ def build_ui():
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg></span>
-                      <div><small>Project</small><h1>Updates</h1></div>
+                      <div><small>APP CENTER</small><h1>Updates</h1>
+                        <p>Check for the latest improvements and install updates.</p></div>
                     </header>''')
                     update_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-updates-close")
@@ -6898,7 +6937,8 @@ def build_ui():
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.9 1.3-1.9 2.8M12 17h.01"/></svg></span>
-                      <div><small>Project</small><h1>About Us</h1></div>
+                      <div><small>THE PROJECT</small><h1>About Us</h1>
+                        <p>Learn about the workspace and how it supports evidence review.</p></div>
                     </header>''')
                     about_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-about-close")
@@ -6934,7 +6974,8 @@ def build_ui():
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
-                      <div><small>Project</small><h1>Contact Us</h1></div>
+                      <div><small>SUPPORT</small><h1>Contact Us</h1>
+                        <p>Get help, share feedback, or report an issue.</p></div>
                     </header>''')
                     contact_close_btn = gr.Button("Close window", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-contact-close")

@@ -33,6 +33,28 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
 
+    def test_utility_windows_have_distinct_descriptive_headers(self):
+        constants = app.build_ui.__code__.co_consts
+        header_markup = "\n".join(
+            value for value in constants
+            if isinstance(value, str) and "aee-project-page-heading" in value
+        )
+
+        for page_title, eyebrow, subtitle in (
+            ("Settings", "YOUR WORKSPACE", "Manage your profile, preferences, and security."),
+            ("Updates", "APP CENTER", "Check for the latest improvements and install updates."),
+            ("About Us", "THE PROJECT", "Learn about the workspace and how it supports evidence review."),
+            ("Contact Us", "SUPPORT", "Get help, share feedback, or report an issue."),
+        ):
+            with self.subTest(page_title=page_title):
+                self.assertIn(f"<h1>{page_title}</h1>", header_markup)
+                self.assertIn(eyebrow, header_markup)
+                self.assertIn(subtitle, header_markup)
+
+        self.assertIn(".aee-utility-window-header:after{", app.CSS)
+        self.assertIn(".aee-utility-window-shell .aee-project-page-heading p{", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell .aee-project-page-heading h1", app.CSS)
+
     def test_settings_page_has_navigable_language_and_security_sections(self):
         navigation = app._settings_navigation_html()
         self.assertIn('<span>Language</span>', navigation)
@@ -121,7 +143,7 @@ class AccountUiTests(unittest.TestCase):
         )
         self.assertIn("Change photo", app.build_ui.__code__.co_consts)
         self.assertIn(".aee-settings-card>.styler{border-radius:inherit!important;}", app.CSS)
-        self.assertIn("html[data-theme=\"light\"] .aee-account-shell .aee-utility-window-header", app.CSS)
+        self.assertIn(".aee-utility-window-header{position:sticky;top:0;z-index:12;", app.CSS)
 
     def test_update_shortcut_visibility_tracks_update_check(self):
         available = {

@@ -2,10 +2,12 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
-Version 1.2.22 presents the profile-photo editor in a centered window, closes
-it when Apply is clicked, styles Apply to match the app, improves the language
-selector layout, and checks the Supabase Google provider before sign-in with
-actionable setup guidance when it is disabled.
+Version 1.2.23 refreshes the Settings, Updates, About Us, and Contact Us
+headers with section labels, helpful descriptions, and responsive styling for
+both themes. Version 1.2.22 presents the profile-photo editor in a centered window, closes
+it when Apply is clicked, styles Apply to match the app, improves the
+language-selector layout, and checks the Supabase Google provider before
+sign-in with actionable setup guidance when it is disabled.
 Version 1.2.21 fixes the photo editor's Gradio handoff and hides saved
 connection settings from users after the first successful setup. Version
 1.2.20 added a square profile-photo crop editor with positioning and zoom
