@@ -11,7 +11,7 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version (this release is `1.2.13`) and include that change in a push to `main`.
+1. Increase `version.txt` to the next three-part version (this release is `1.2.14`) and include that change in a push to `main`.
 2. The **Publish update release** GitHub Actions workflow automatically builds the installer and in-app update archive, calculates their SHA-256 checksums, creates the matching GitHub Release, and publishes `latest.json` both as a release asset and on `main`.
 3. Confirm the workflow completed successfully and that the release is marked latest. Do not manually reuse a release tag or upload assets from a different build.
 4. If automatic publishing needs to be retried, use the workflow's **Run workflow** action on `main` after fixing the failure. It refreshes the assets and manifest for that version in place.

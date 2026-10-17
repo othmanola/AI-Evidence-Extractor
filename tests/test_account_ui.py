@@ -29,6 +29,19 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
 
+    def test_settings_page_has_navigable_profile_security_updates_and_preferences(self):
+        navigation = app._settings_navigation_html()
+        for section in ("profile", "security", "updates", "preferences"):
+            self.assertIn(f'data-aee-settings-section="{section}"', navigation)
+
+        constants = app.build_ui.__code__.co_consts
+        self.assertIn("aee-settings-profile-section", constants)
+        self.assertIn("aee-settings-security-section", constants)
+        self.assertIn("aee-settings-preferences-section", constants)
+        self.assertIn('data-aee-settings-section', app._JS_HEAD)
+        self.assertIn("section.scrollIntoView", app._JS_HEAD)
+        self.assertIn("window.aeeToggleTheme()", app._JS_HEAD)
+
     def test_update_app_shortcut_opens_updates_and_profile_toolbar_opens_settings(self):
         navigation = app._side_navigation_html()
         hero = app._hero_html({"n_models": 0})

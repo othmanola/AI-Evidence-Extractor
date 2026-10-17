@@ -1737,6 +1737,69 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-account-mode:before{content:'';width:7px;height:7px;border-radius:50%;background:#34d399;
   box-shadow:0 0 10px rgba(52,211,153,.7);}
 .aee-account-profile-form{max-width:1080px;margin:0 auto;}
+.aee-settings-layout{max-width:1280px;margin:0 auto;align-items:flex-start;gap:18px!important;}
+.aee-settings-layout>.aee-settings-sidebar{position:sticky;top:92px;flex:0 0 208px!important;
+  max-width:208px!important;min-width:0!important;}
+.aee-settings-layout>.aee-settings-main{min-width:0!important;flex:1 1 0!important;gap:16px!important;}
+.aee-settings-nav{display:grid;gap:5px;padding:12px;border:1px solid rgba(148,163,184,.14);
+  border-radius:17px;background:rgba(15,23,42,.66);box-shadow:0 18px 44px -34px rgba(0,0,0,.78);}
+.aee-settings-nav-label{padding:4px 9px 9px;color:#818da2;font-size:.66rem;font-weight:800;
+  letter-spacing:.14em;text-transform:uppercase;}
+.aee-settings-nav button{width:100%;display:flex;align-items:center;gap:10px;padding:10px 11px;
+  border:1px solid transparent;border-radius:11px;color:#b8c3d5;background:transparent;
+  text-align:left;font:600 .81rem Inter,system-ui,sans-serif;cursor:pointer;
+  transition:color .16s,border-color .16s,background .16s,transform .16s;}
+.aee-settings-nav button:hover{color:#f8fafc;border-color:rgba(148,163,184,.12);
+  background:rgba(148,163,184,.08);transform:translateX(1px);}
+.aee-settings-nav button[aria-current="page"]{color:#f8fafc;border-color:rgba(248,113,113,.2);
+  background:linear-gradient(90deg,rgba(248,113,113,.13),rgba(148,163,184,.045));}
+.aee-settings-nav svg{width:16px;height:16px;flex:none;color:#a9b7cb;}
+.aee-settings-panel{min-width:0;scroll-margin-top:90px;}
+.aee-account-profile-form{max-width:none;margin:0;}
+.aee-account-shell .aee-account-profile{position:relative;min-height:132px;box-sizing:border-box;
+  align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 20px 17px;
+  overflow:hidden;border-color:rgba(148,163,184,.15);border-radius:18px;
+  background:linear-gradient(180deg,rgba(28,36,57,.96),rgba(18,26,43,.97));}
+.aee-account-shell .aee-account-profile:before{position:absolute;inset:0 0 auto;height:64%;content:"";
+  background:linear-gradient(110deg,rgba(225,75,91,.36),rgba(126,75,126,.32) 55%,rgba(74,81,152,.26));}
+.aee-account-shell .aee-account-avatar,.aee-account-shell .aee-account-identity{position:relative;z-index:1;}
+.aee-account-shell .aee-account-avatar{width:62px;height:62px;border-radius:50%;border:2px solid rgba(248,113,113,.75);
+  color:#fff;background:linear-gradient(145deg,#fa665f,#cb3f54);box-shadow:0 8px 24px -12px rgba(248,113,113,.7);}
+.aee-account-shell .aee-account-identity{padding-bottom:2px;}
+.aee-account-shell .aee-account-identity strong{font-size:1rem;}
+.aee-account-shell .aee-account-identity span{font-size:.77rem;}
+.aee-account-shell .aee-account-mode{margin-top:7px;padding:4px 8px;font-size:.62rem;}
+.aee-settings-card{box-sizing:border-box;min-width:0;margin:0;padding:18px;
+  border:1px solid rgba(148,163,184,.15);border-radius:17px;background:rgba(20,28,45,.78);
+  box-shadow:0 20px 50px -42px rgba(0,0,0,.88);}
+.aee-settings-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  margin:0 0 15px;padding:0 0 13px;border-bottom:1px solid rgba(148,163,184,.1);}
+.aee-settings-card-heading>button{flex:0 0 auto!important;width:auto!important;min-width:104px!important;
+  min-height:38px!important;padding:0 13px!important;border:1px solid rgba(248,113,113,.34)!important;
+  border-radius:10px!important;color:#fff!important;background:linear-gradient(120deg,#ef665f,#dc4c59)!important;
+  box-shadow:0 10px 24px -16px rgba(248,113,113,.9);}
+.aee-settings-card-heading h2{margin:0;color:#edf2fa;font-size:.94rem;font-weight:700;letter-spacing:-.015em;}
+.aee-settings-card-heading p{margin:5px 0 0;color:#909db1;font-size:.76rem;line-height:1.55;}
+.aee-settings-card .aee-settings-option-list{max-width:none;margin:0;gap:8px!important;}
+.aee-settings-card .aee-settings-option-list button{min-height:44px;border-radius:11px!important;}
+.aee-settings-card .aee-account-profile-actions{max-width:none;margin:10px 0 0;}
+.aee-settings-card .aee-account-settings-copy{margin:0 0 14px;}
+.aee-settings-card .aee-account-settings-copy strong{color:#edf2fa;}
+.aee-settings-card .aee-account-settings-copy p{color:#aab5c6;}
+.aee-settings-theme-button{min-height:42px;padding:0 14px;border:1px solid rgba(148,163,184,.18);
+  border-radius:11px;color:#edf2fa;background:rgba(148,163,184,.08);font:650 .79rem Inter,system-ui,sans-serif;
+  cursor:pointer;transition:background .16s,border-color .16s;}
+.aee-settings-theme-button:hover{border-color:rgba(248,113,113,.34);background:rgba(248,113,113,.09);}
+.aee-settings-layout .aee-account-status{max-width:none;margin:0 auto 14px;}
+.aee-settings-layout .aee-account-settings{max-width:none;margin:12px 0 0;}
+.aee-settings-layout .aee-account-settings .label-wrap{padding:14px 16px!important;}
+.aee-settings-layout .aee-account-settings .wrap{padding:12px 16px 17px;}
+.aee-settings-layout .aee-account-settings>.wrap{width:100%!important;max-width:100%!important;min-width:0!important;}
+.aee-settings-layout .aee-account-settings .prose{max-width:100%;}
+.aee-settings-layout .aee-account-settings .gr-code{max-width:100%;overflow:auto;}
+body.aee-access-required #aee-account-window .aee-settings-layout>.aee-settings-sidebar{display:none!important;}
+body.aee-access-required #aee-account-window .aee-settings-layout>.aee-settings-main{
+  width:min(480px,calc(100vw - 36px))!important;max-width:480px;margin:10px auto 0;}
 .aee-settings-section-label{max-width:1080px;margin:24px auto 10px;color:var(--text-muted);
   font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;}
 .aee-settings-option-list{max-width:1080px;margin:0 auto;gap:9px!important;}
@@ -1774,6 +1837,19 @@ html[data-theme="light"] .aee-account-profile{background:rgba(255,255,255,.68);b
 html[data-theme="light"] .aee-account-shell .aee-account-settings{background:rgba(255,255,255,.72);border-color:rgba(100,116,139,.2);}
 html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .aee-account-divider:after{
   background:linear-gradient(90deg,transparent,rgba(100,116,139,.25),transparent);}
+html[data-theme="light"] .aee-settings-nav{background:rgba(255,255,255,.82);border-color:rgba(100,116,139,.17);}
+html[data-theme="light"] .aee-settings-nav button{color:#475569;}
+html[data-theme="light"] .aee-settings-nav button:hover{color:#0f172a;background:rgba(100,116,139,.07);}
+html[data-theme="light"] .aee-settings-nav button[aria-current="page"]{color:#0f172a;background:rgba(248,113,113,.1);}
+html[data-theme="light"] .aee-account-shell .aee-account-profile{background:linear-gradient(180deg,#f5f6fb,#fff);}
+html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
+  background:linear-gradient(110deg,rgba(225,75,91,.21),rgba(126,75,126,.18) 55%,rgba(74,81,152,.15));}
+html[data-theme="light"] .aee-settings-card{background:rgba(255,255,255,.84);border-color:rgba(100,116,139,.17);}
+html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
+html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
+html[data-theme="light"] .aee-settings-theme-button{color:#172033;background:rgba(100,116,139,.07);}
+html[data-theme="light"] .aee-settings-card .aee-account-settings-copy strong{color:#172033;}
+html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#475569;}
 .aee-about-card,.aee-contact-card{position:relative;max-width:1180px;min-height: min(68vh,760px);
   display:flex;flex-direction:column;justify-content:center;margin:0 auto;padding:clamp(34px,6vw,76px);
   overflow:hidden;border:1px solid rgba(96,165,250,.2);border-radius:26px;
@@ -1849,6 +1925,16 @@ html[data-theme="light"] .aee-account-divider:before,html[data-theme="light"] .a
   .aee-account-intro{margin-bottom:34px;}
   .aee-account-auth-form .aee-account-actions{margin-top:34px;}
   body.aee-access-required #aee-account-window .column.wrap{padding:14px!important;}
+  .aee-settings-layout{display:flex!important;flex-direction:column!important;gap:12px!important;}
+  .aee-settings-layout>.aee-settings-sidebar{position:static;flex:0 0 auto!important;
+    width:100%!important;max-width:none!important;}
+  .aee-settings-nav{display:flex;gap:4px;padding:8px;overflow-x:auto;}
+  .aee-settings-nav-label{display:none;}
+  .aee-settings-nav button{width:auto;min-width:max-content;padding:9px 11px;}
+  .aee-settings-layout>.aee-settings-main{width:100%!important;flex:1 1 auto!important;}
+  .aee-account-shell .aee-account-profile{min-height:118px;padding:54px 14px 14px;gap:11px;}
+  .aee-account-shell .aee-account-avatar{width:54px;height:54px;}
+  .aee-settings-card{padding:15px;}
   .aee-about-card,.aee-contact-card{min-height:0;padding:30px 23px;border-radius:20px;}
   .aee-project-feature-grid{grid-template-columns:1fr;}
   .aee-project-feature{min-height:0;}
@@ -3757,6 +3843,22 @@ _JS_HEAD = r"""
         .find(candidate => candidate.textContent.trim() === name);
       if (tab) tab.click();
       setAeeNavigation(false);
+    }
+    const settingsItem = event.target.closest('[data-aee-settings-section]');
+    if (settingsItem){
+      const destination = settingsItem.dataset.aeeSettingsSection;
+      if (destination === 'updates'){
+        activateAeeUtilityWindow('updates'); return;
+      }
+      if (destination === 'theme'){
+        if (window.aeeToggleTheme) window.aeeToggleTheme();
+        return;
+      }
+      const section = document.getElementById('aee-settings-' + destination + '-section');
+      if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
+      document.querySelectorAll('.aee-settings-nav [data-aee-settings-section]')
+        .forEach(button => button.removeAttribute('aria-current'));
+      settingsItem.setAttribute('aria-current', 'page');
     }
   });
   document.addEventListener('keydown', event => {
@@ -5686,6 +5788,28 @@ def _side_navigation_html():
     </div>'''
 
 
+def _settings_navigation_html():
+    return '''<nav class="aee-settings-nav" aria-label="Settings sections">
+      <div class="aee-settings-nav-label">Settings</div>
+      <button type="button" data-aee-settings-section="profile" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.6-3.4 2.8-5.1 6.5-5.1s5.9 1.7 6.5 5.1"/></svg>
+        <span>Profile</span>
+      </button>
+      <button type="button" data-aee-settings-section="security">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span>Security &amp; account</span>
+      </button>
+      <button type="button" data-aee-settings-section="updates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg>
+        <span>App updates</span>
+      </button>
+      <button type="button" data-aee-settings-section="preferences">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.8 1.8 0 0 0-1.9.1 1.8 1.8 0 0 0-.9 1.6v.2h-3.4v-.2a1.8 1.8 0 0 0-1.1-1.6 1.8 1.8 0 0 0-1.9.1l-.2.1-1.7-2.9.1-.1a1.8 1.8 0 0 0 .3-1.9 1.8 1.8 0 0 0-1.6-1H5v-3.4h.2a1.8 1.8 0 0 0 1.6-1.1 1.8 1.8 0 0 0-.1-1.9l-.1-.2 2.9-1.7.1.1a1.8 1.8 0 0 0 1.9.3 1.8 1.8 0 0 0 1-1.6V4h3.4v.2a1.8 1.8 0 0 0 1.1 1.6 1.8 1.8 0 0 0 1.9-.1l.2-.1 1.7 2.9-.1.1a1.8 1.8 0 0 0-.3 1.9 1.8 1.8 0 0 0 1.6 1h.2v3.4H21a1.8 1.8 0 0 0-1.6.1Z"/></svg>
+        <span>Preferences</span>
+      </button>
+    </nav>'''
+
+
 def build_ui():
     info = Ensemble.get().info
     (account_session_initial, account_status_initial, account_profile_initial,
@@ -5892,73 +6016,97 @@ def build_ui():
                         gr.HTML('''<div class="aee-account-setup-hint">
                           Online accounts need a Supabase connection. Expand
                           <strong>Connection setup</strong> below, or continue as a guest.</div>''')
-                with gr.Group(
-                    visible=bool(account_session_initial) or account_guest_mode_initial,
-                    elem_classes=["aee-account-profile-form"],
-                ) as account_profile_group:
-                    account_profile = gr.HTML(
-                        value=account_profile_initial,
-                        elem_id="aee-account-profile-source")
-                    gr.HTML('<div class="aee-settings-section-label">Account options</div>')
-                    with gr.Column(elem_classes=["aee-settings-option-list"]):
-                        account_signout_btn = gr.Button(
-                            "Log out", variant="secondary",
-                            visible=bool(account_session_initial))
-                        account_settings_google_btn = gr.Button(
-                            "Sign in with Google", variant="primary",
-                            visible=account_guest_mode_initial)
-                        account_change_account_btn = gr.Button(
-                            "Change account", variant="secondary")
-                    with gr.Accordion(
-                        "Edit profile",
-                        open=False,
-                        visible=True,
-                        elem_classes=["aee-account-settings", "aee-account-profile-settings"],
-                    ) as account_profile_settings:
-                        gr.HTML('''<div class="aee-account-settings-copy">
-                          Update your display name and optional profile photo. Guest changes
-                          stay on this computer; signed-in changes are saved to your account.</div>''')
-                        account_refresh_profile_btn = gr.Button(
-                            "Refresh profile", variant="secondary")
-                        account_profile_name = gr.Textbox(
-                            label="Display name",
-                            value=account_profile_name_initial or str(
-                                (account_session_initial or {}).get("display_name", "")
-                            ), max_lines=1)
-                        with gr.Row(elem_classes=["aee-account-actions"]):
-                            account_save_name_btn = gr.Button(
-                                "Save profile", variant="primary")
-                        account_photo_input = gr.File(
-                            label="Optional profile photo", file_count="single",
-                            file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
-                        account_photo_btn = gr.Button(
-                            "Save profile photo", variant="secondary")
-                with gr.Accordion(
-                    "Connection setup",
-                    open=False,
-                    elem_classes=["aee-account-settings", "aee-account-connection-settings"],
-                ):
-                    gr.HTML('''<div class="aee-account-settings-copy">
-                      <strong>Connect your Supabase project</strong>
-                      <p>Enter the project URL and public publishable (anon) key. Never use a
-                      service-role or secret key. Run the SQL below once in your Supabase SQL Editor.</p>
-                      <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
-                         target="_blank" rel="noopener noreferrer">View setup instructions</a>
-                    </div>''')
-                    account_project_url = gr.Textbox(
-                        label="Supabase project URL",
-                        value=account_config_initial["project_url"],
-                        placeholder="https://your-project.supabase.co")
-                    account_anon_key = gr.Textbox(
-                        label="Public publishable (anon) key",
-                        type="password", value=account_config_initial["anon_key"],
-                        placeholder="sb_publishable_… or your anon key")
-                    account_save_config_btn = gr.Button(
-                        "Save and test connection", variant="primary")
-                    gr.Code(
-                        value=_ACCOUNT_SETUP_SQL, language="sql",
-                        label="Run once in Supabase SQL Editor",
-                        interactive=False, lines=25)
+                with gr.Row(elem_classes=["aee-settings-layout"]):
+                    with gr.Column(scale=1, min_width=180,
+                                   elem_classes=["aee-settings-sidebar"]):
+                        gr.HTML(_settings_navigation_html())
+                    with gr.Column(scale=4, min_width=0,
+                                   elem_classes=["aee-settings-main"]):
+                        with gr.Group(
+                            visible=bool(account_session_initial) or account_guest_mode_initial,
+                            elem_classes=["aee-account-profile-form"],
+                        ) as account_profile_group:
+                            with gr.Group(
+                                elem_id="aee-settings-profile-section",
+                                elem_classes=["aee-settings-panel"],
+                            ) as account_profile_settings:
+                                account_profile = gr.HTML(
+                                    value=account_profile_initial,
+                                    elem_id="aee-account-profile-source")
+                                with gr.Group(elem_classes=["aee-settings-card"]):
+                                    with gr.Row(elem_classes=["aee-settings-card-heading"]):
+                                        gr.HTML('''<div><h2>Personal information</h2>
+                                          <p>Manage the name and profile photo shown in your workspace.</p></div>''')
+                                        account_save_name_btn = gr.Button(
+                                            "Save changes", variant="primary")
+                                    account_profile_name = gr.Textbox(
+                                        label="Display name",
+                                        value=account_profile_name_initial or str(
+                                            (account_session_initial or {}).get("display_name", "")
+                                        ), max_lines=1)
+                                    gr.HTML('''<div class="aee-account-settings-copy">
+                                      Guest profile details stay on this computer. Signed-in profile
+                                      details are saved to your account.</div>''')
+                                    account_photo_input = gr.File(
+                                        label="Profile photo", file_count="single",
+                                        file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
+                                    with gr.Row(elem_classes=["aee-account-profile-actions"]):
+                                        account_refresh_profile_btn = gr.Button(
+                                            "Refresh profile", variant="secondary")
+                                        account_photo_btn = gr.Button(
+                                            "Save profile photo", variant="secondary")
+                            with gr.Group(
+                                elem_classes=["aee-settings-panel", "aee-settings-card"],
+                            ):
+                                with gr.Row(elem_classes=["aee-settings-card-heading"]):
+                                    gr.HTML('''<div><h2>Security &amp; account</h2>
+                                      <p>Manage how you sign in and connect your account.</p></div>''')
+                                with gr.Column(elem_classes=["aee-settings-option-list"]):
+                                    account_signout_btn = gr.Button(
+                                        "Log out", variant="secondary",
+                                        visible=bool(account_session_initial))
+                                    account_settings_google_btn = gr.Button(
+                                        "Sign in with Google", variant="primary",
+                                        visible=account_guest_mode_initial)
+                                    account_change_account_btn = gr.Button(
+                                        "Change account", variant="secondary")
+                        with gr.Accordion(
+                            "Connection setup",
+                            open=False,
+                            elem_id="aee-settings-security-section",
+                            elem_classes=["aee-settings-panel", "aee-settings-card",
+                                          "aee-account-settings", "aee-account-connection-settings"],
+                        ):
+                            gr.HTML('''<div class="aee-account-settings-copy">
+                              <strong>Connect your Supabase project</strong>
+                              <p>Enter the project URL and public publishable (anon) key. Never use a
+                              service-role or secret key. Run the SQL below once in your Supabase SQL Editor.</p>
+                              <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
+                                 target="_blank" rel="noopener noreferrer">View setup instructions</a>
+                            </div>''')
+                            account_project_url = gr.Textbox(
+                                label="Supabase project URL",
+                                value=account_config_initial["project_url"],
+                                placeholder="https://your-project.supabase.co")
+                            account_anon_key = gr.Textbox(
+                                label="Public publishable (anon) key",
+                                type="password", value=account_config_initial["anon_key"],
+                                placeholder="sb_publishable_… or your anon key")
+                            account_save_config_btn = gr.Button(
+                                "Save and test connection", variant="primary")
+                            gr.Code(
+                                value=_ACCOUNT_SETUP_SQL, language="sql",
+                                label="Run once in Supabase SQL Editor",
+                                interactive=False, lines=25)
+                        with gr.Group(
+                            elem_id="aee-settings-preferences-section",
+                            elem_classes=["aee-settings-panel", "aee-settings-card"],
+                        ):
+                            with gr.Row(elem_classes=["aee-settings-card-heading"]):
+                                gr.HTML('''<div><h2>Preferences</h2>
+                                  <p>Adjust the app appearance for this device.</p></div>''')
+                            gr.HTML('''<button type="button" class="aee-settings-theme-button"
+                              data-aee-settings-section="theme">Toggle light / dark theme</button>''')
                 account_oauth_transaction = gr.State(None)
                 account_oauth_timer = gr.Timer(value=1, active=False)
 
