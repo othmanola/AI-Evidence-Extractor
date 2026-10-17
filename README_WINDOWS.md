@@ -22,7 +22,9 @@ The app requires an email/password account, Google sign-in, or an explicit guest
 
 1. Install Inno Setup 6 or 7.
 2. Run `build_windows.ps1` from PowerShell.
-3. The setup installer and the in-app update archive are written to `dist\AI_Evidence_Extractor_Setup.exe` and `dist\AI_Evidence_Extractor_Update.zip`.
+3. The setup installer, in-app update archive, and standalone desktop shortcut are written to `dist\AI_Evidence_Extractor_Setup.exe`, `dist\AI_Evidence_Extractor_Update.zip`, and `dist\AI Evidence Extractor.lnk`.
+
+The standalone shortcut targets the default install location under `%LOCALAPPDATA%\Programs\AI Evidence Extractor`. Setup also creates a shortcut for the selected install location.
 
 The installer distributes the application source and bootstrap scripts; the model weights and Python dependencies are fetched during first launch. This keeps the setup package smaller and ensures each installation downloads current model repository files. For a controlled academic release, pin and archive the exact model revisions before distributing.
 

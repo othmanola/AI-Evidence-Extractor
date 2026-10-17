@@ -19,3 +19,13 @@ if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
 Write-Host "Installer created at $(Join-Path $PSScriptRoot 'dist\AI_Evidence_Extractor_Setup.exe')"
 & python (Join-Path $PSScriptRoot 'build_update_package.py')
 if ($LASTEXITCODE -ne 0) { throw "In-app update package build failed with exit code $LASTEXITCODE" }
+
+$shortcutPath = Join-Path $PSScriptRoot 'dist\AI Evidence Extractor.lnk'
+$shell = New-Object -ComObject WScript.Shell
+$shortcut = $shell.CreateShortcut($shortcutPath)
+$shortcut.TargetPath = Join-Path $env:WINDIR 'System32\cmd.exe'
+$shortcut.Arguments = '/c ""%LOCALAPPDATA%\Programs\AI Evidence Extractor\run_app.bat""'
+$shortcut.Description = 'Launch AI Evidence Extractor'
+$shortcut.IconLocation = '%LOCALAPPDATA%\Programs\AI Evidence Extractor\assets\aee.ico'
+$shortcut.Save()
+Write-Host "Shortcut created at $shortcutPath"
