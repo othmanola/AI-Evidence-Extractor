@@ -19,7 +19,7 @@ SetupIconFile=assets\aee.ico
 UninstallDisplayIcon={app}\assets\aee.ico
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern dynamic windows11 hidebevels
+WizardStyle=modern dark polar hidebevels includetitlebar
 WizardImageFile=assets\setup_wizard.png
 WizardSmallImageFile=assets\aee.png
 PrivilegesRequired=lowest
@@ -57,10 +57,7 @@ Type: files; Name: "{app}\AI Evidence Extractor.exe"
 
 [Icons]
 Name: "{group}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
-Name: "{autodesktop}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"; Tasks: desktopicon
-
-[Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
+Name: "{autodesktop}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
 
 [Run]
 Filename: "{tmp}\python-3.13.16-amd64.exe"; Parameters: "/quiet InstallAllUsers=0 TargetDir=""{app}\runtime"" Include_launcher=0 Include_pip=1 Include_test=0"; StatusMsg: "Installing the private Python runtime..."; Flags: waituntilterminated; Check: not FileExists(ExpandConstant('{app}\runtime\python.exe'))

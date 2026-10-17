@@ -4,7 +4,7 @@ This is a Windows desktop app for the existing video evidence triage project. It
 
 ## Install and first launch
 
-Run `AI_Evidence_Extractor_Setup.exe`, then open the desktop shortcut. Setup installs a private Python 3.13 runtime and the Microsoft WebView2 runtime if needed. The shortcut starts the installed Python launcher directly instead of unpacking a bundled executable into the Windows temporary folder. The first launch needs internet access and several minutes to prepare the Python environment and download approximately 600 MB of AI model weights from their original Hugging Face repositories into `%LOCALAPPDATA%\AI Evidence Extractor\models`.
+Run `AI_Evidence_Extractor_Setup.exe`, then open the **AI Evidence Extractor** desktop shortcut created by setup. The modern setup wizard uses a dark theme. Setup installs a private Python 3.13 runtime and the Microsoft WebView2 runtime if needed. The shortcut starts the installed Python launcher directly instead of unpacking a bundled executable into the Windows temporary folder. The first launch needs internet access and several minutes to prepare the Python environment and download approximately 600 MB of AI model weights from their original Hugging Face repositories into `%LOCALAPPDATA%\AI Evidence Extractor\models`.
 
 The app runs locally on your computer and does not create a public Gradio share link. Video processing uses CPU by default. GPU inference is not configured in this desktop build.
 

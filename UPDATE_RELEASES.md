@@ -2,6 +2,8 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
+Version 1.2.30 gives the setup wizard a modern dark polar theme and creates
+the desktop AI Evidence Extractor shortcut during installation.
 Version 1.2.29 restores the basic History summary view and adds a separate
 Detailed History page with ZIP exports for an individual analysis or the full
 local archive; source videos are not included in ZIP downloads.
