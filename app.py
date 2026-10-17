@@ -3,6 +3,7 @@
 """AI Evidence Extractor — video evidence triage with visual, audio, and contextual analysis."""
 import os, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, hashlib
 import queue, threading, csv, io, base64, html as _html
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -19,7 +20,7 @@ APP_DATA = Path(os.environ.get("AEE_DATA_DIR", str(Path.home() / "AppData" / "Lo
 MODEL_DIR = APP_DATA / "models"
 OUTPUT_DIR = APP_DATA / "outputs"
 HISTORY_FILE = APP_DATA / "analysis_history.json"
-HISTORY_LIMIT = 100
+HISTORY_DIR = OUTPUT_DIR / "history"
 HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
 _HISTORY_LOCK = threading.Lock()
 MANIFEST = MODEL_DIR / "ensemble_manifest.json"
@@ -73,7 +74,7 @@ def _history_dataframe():
     with _HISTORY_LOCK:
         entries = _read_analysis_history()
     rows = []
-    for entry in reversed(entries[-HISTORY_LIMIT:]):
+    for entry in reversed(entries):
         if not isinstance(entry, dict):
             continue
         try:
@@ -92,39 +93,280 @@ def _history_dataframe():
     return pd.DataFrame(rows, columns=HISTORY_COLUMNS)
 
 
-def _record_analysis_history(results, master_path, report_path, case_number,
-                             high_accuracy=False):
+def _history_entry_id(entry, index):
+    entry_id = str(entry.get("id") or "")
+    if entry_id:
+        return entry_id
+    legacy = f"{entry.get('analyzed_at', '')}\0{entry.get('video', '')}\0{index}"
+    return "legacy-" + hashlib.sha256(legacy.encode("utf-8")).hexdigest()[:20]
+
+
+def _history_choices(selected_id=None):
+    with _HISTORY_LOCK:
+        entries = _read_analysis_history()
+    choices = []
+    for index, entry in reversed(list(enumerate(entries))):
+        if not isinstance(entry, dict):
+            continue
+        entry_id = _history_entry_id(entry, index)
+        title = str(entry.get("video") or "Untitled video")
+        try:
+            date = datetime.fromisoformat(str(entry.get("analyzed_at") or ""))
+            label = f"{date.astimezone().strftime('%b %d, %Y · %H:%M')}  ·  {title}"
+        except (TypeError, ValueError):
+            label = title
+        choices.append((label, entry_id))
+    value = selected_id if any(item[1] == selected_id for item in choices) else (
+        choices[0][1] if choices else None)
+    return choices, value
+
+
+def _history_selector_update(selected_id=None):
+    choices, value = _history_choices(selected_id)
+    return gr.update(choices=choices, value=value)
+
+
+def _history_detail_ui(entry_id):
+    if not entry_id:
+        empty = ('<section class="aee-history-empty"><strong>Select an analysis</strong>'
+                 '<span>Choose a saved video above to browse its captures, summaries, and evidence details.</span></section>')
+        return empty, [], [], pd.DataFrame(), pd.DataFrame()
+    with _HISTORY_LOCK:
+        entries = _read_analysis_history()
+    entry = next(
+        (record for index, record in enumerate(entries)
+         if isinstance(record, dict) and _history_entry_id(record, index) == entry_id),
+        None,
+    )
+    if entry is None:
+        empty = ('<section class="aee-history-empty"><strong>Analysis not found</strong>'
+                 '<span>Refresh History and choose an available saved analysis.</span></section>')
+        return empty, [], [], pd.DataFrame(), pd.DataFrame()
+    details = entry.get("details") if isinstance(entry.get("details"), dict) else {}
+    captures = [path for path in details.get("captures", [])
+                if isinstance(path, str) and Path(path).is_file()]
+    heatmaps = [path for path in details.get("heatmaps", [])
+                if isinstance(path, str) and Path(path).is_file()]
+    summary_files = [path for path in details.get("object_summaries", [])
+                     if isinstance(path, str) and Path(path).is_file()]
+    highlight_files = [path for path in details.get("highlights", [])
+                       if isinstance(path, str) and Path(path).is_file()]
+    other_files = [
+        details.get(key) or entry.get(key, "")
+        for key in ("master_video", "report_pdf", "analysis_json")
+    ]
+    files = [path for path in (*summary_files, *highlight_files, *other_files)
+             if isinstance(path, str) and path and Path(path).is_file()]
+    warnings = details.get("storage_warnings", [])
+    warning_html = ""
+    if warnings:
+        warning_html = ('<div class="aee-history-warning"><strong>Some files were not saved</strong><ul>' +
+                         "".join(f"<li>{_html.escape(str(item))}</li>" for item in warnings) +
+                         "</ul></div>")
+    source_path = str(entry.get("source_path") or "")
+    try:
+        analyzed = datetime.fromisoformat(str(entry.get("analyzed_at") or "")).astimezone().strftime(
+            "%B %d, %Y at %H:%M")
+    except (TypeError, ValueError):
+        analyzed = str(entry.get("analyzed_at") or "Date unavailable")
+    case_details = details.get("case_details") if isinstance(details.get("case_details"), dict) else {}
+    rows = [
+        ("Analyzed", analyzed),
+        ("Duration", f"{float(entry.get('duration_seconds', 0) or 0):.2f} seconds"),
+        ("Detections", str(entry.get("detections", 0))),
+        ("Mode", "Enhanced accuracy" if entry.get("high_accuracy") else "Standard"),
+        ("Case", str(entry.get("case") or "Not specified")),
+        ("Original video", source_path or "Path unavailable (original video was not copied)"),
+        ("Resolution", f"{details.get('width', '—')} × {details.get('height', '—')}"),
+        ("Frame rate", f"{details.get('fps', '—')} fps"),
+    ]
+    for key, label in (("evidence_id", "Evidence ID"), ("examiner", "Examiner"),
+                       ("agency", "Agency")):
+        if case_details.get(key):
+            rows.append((label, str(case_details[key])))
+    metrics = "".join(
+        f'<div class="aee-history-metric"><span>{_html.escape(label)}</span>'
+        f'<strong>{_html.escape(value)}</strong></div>'
+        for label, value in rows[:4]
+    )
+    info = "".join(
+        f'<div><dt>{_html.escape(label)}</dt><dd>{_html.escape(value)}</dd></div>'
+        for label, value in rows[4:]
+    )
+    object_stats = details.get("summary_stats") if isinstance(details.get("summary_stats"), dict) else {}
+    stats_html = "".join(
+        f'<div class="aee-history-stat"><strong>{_html.escape(str(label))}</strong>'
+        f'<span>{_html.escape(str(values.get("clips", 0)))} clips · '
+        f'{_html.escape(str(values.get("duration", 0)))} sec · '
+        f'avg {_html.escape(str(values.get("avg_confidence", 0)))}</span></div>'
+        for label, values in object_stats.items() if isinstance(values, dict)
+    )
+    notes = str(details.get("analysis_notes") or "")
+    notes_html = (f'<p class="aee-history-notes">{_html.escape(notes)}</p>' if notes else "")
+    case_notes = str(details.get("case_notes") or "")
+    case_notes_html = (f'<p class="aee-history-notes"><strong>Case notes:</strong> '
+                       f'{_html.escape(case_notes)}</p>' if case_notes else "")
+    stats_section = (f'<div class="aee-history-stat-list">{stats_html}</div>'
+                     if stats_html else "")
+    html = (f'<section class="aee-history-detail">{metrics}'
+            f'<dl class="aee-history-metadata">{info}</dl>'
+            f'{stats_section}'
+            f'{notes_html}{case_notes_html}{warning_html}</section>')
+    detection_rows = details.get("detections", [])
+    detection_df = pd.DataFrame(detection_rows) if detection_rows else pd.DataFrame()
+    track_rows = details.get("tracks", [])
+    track_df = pd.DataFrame(track_rows) if track_rows else pd.DataFrame()
+    return html, captures + heatmaps, files, detection_df, track_df
+
+
+def _history_refresh_ui(selected_id=None):
+    dropdown = _history_selector_update(selected_id)
+    _, selected = _history_choices(selected_id)
+    return (_history_dataframe(), dropdown, *_history_detail_ui(selected))
+
+
+def _copy_history_artifact(source, destination):
+    if not source:
+        return ""
+    source_path = Path(source)
+    if not source_path.is_file() or source_path.stat().st_size <= 0:
+        return ""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, destination)
+    return str(destination.resolve())
+
+
+def _history_json_default(value):
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, Path):
+        return str(value)
+    raise TypeError(f"Unsupported history value: {type(value).__name__}")
+
+
+def _record_analysis_history(results, master_path, report_path, case_number=None,
+                             high_accuracy=False, *, case_meta=None, case_notes="",
+                             tracker_rows=None, cam_items=None, work_root=None):
     if not results:
-        return
+        return []
     now = datetime.now().astimezone().isoformat(timespec="seconds")
-    additions = [{
-        "analyzed_at": now,
-        "video": result.video_name,
-        "source_path": result.source_path,
-        "duration_seconds": round(float(result.metadata.duration or 0), 2),
-        "detections": len(result.detections),
-        "high_accuracy": bool(high_accuracy),
-        "case": (case_number or "").strip(),
-        "master_video": master_path or "",
-        "report_pdf": report_path or "",
-    } for result in results]
+    run_id = datetime.now().astimezone().strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:10]
+    run_dir = HISTORY_DIR / run_id
+    storage_warnings = []
+    try:
+        shared_dir = run_dir / "reports"
+        saved_master = _copy_history_artifact(
+            master_path, shared_dir / Path(master_path).name) if master_path else ""
+        saved_report = _copy_history_artifact(
+            report_path, shared_dir / Path(report_path).name) if report_path else ""
+    except OSError as exc:
+        log.exception("Could not save shared history report artifacts")
+        storage_warnings.append(f"Report artifact copy failed: {exc}")
+        saved_master = saved_report = ""
+    additions = []
+    for index, result in enumerate(results, 1):
+        video_dir = run_dir / f"{index:03d}-{safe_slug(Path(result.video_name).stem)[:60]}"
+        video_warnings = list(storage_warnings)
+
+        def copy_group(paths, group):
+            saved = []
+            for asset_index, path in enumerate(paths, 1):
+                try:
+                    target = video_dir / group / f"{asset_index:04d}-{Path(path).name}"
+                    copied = _copy_history_artifact(path, target)
+                    if copied:
+                        saved.append(copied)
+                    elif path:
+                        video_warnings.append(f"Could not find generated file: {Path(path).name}")
+                except OSError as exc:
+                    log.exception("Could not store history artifact %s", path)
+                    video_warnings.append(f"Could not save {Path(path).name}: {exc}")
+            return saved
+
+        saved_captures = copy_group(result.captures, "captures")
+        saved_summaries = copy_group(list(result.object_summaries.values()), "summaries")
+        video_cam_items = [item for item in (cam_items or [])
+                           if item.get("video") == result.video_name]
+        saved_heatmaps = copy_group([item.get("heat") for item in video_cam_items], "heatmaps")
+        saved_heatmaps += copy_group([item.get("blend") for item in video_cam_items], "heatmaps")
+        highlights_dir = Path(work_root) / sname(result.video_name) / "highlights" if work_root else None
+        saved_highlights = copy_group(
+            sorted(highlights_dir.glob("*.mp4")) if highlights_dir and highlights_dir.is_dir() else [],
+            "highlights",
+        )
+        video_tracks = [row for row in (tracker_rows or [])
+                        if row.get("Video") == result.video_name]
+        details = {
+            "source_path": result.source_path,
+            "analysis_notes": result.notes,
+            "case_details": dict(case_meta or {}),
+            "case_notes": case_notes,
+            "width": result.metadata.width,
+            "height": result.metadata.height,
+            "fps": result.metadata.fps,
+            "frame_count": result.metadata.frame_count,
+            "summary_stats": result.summary_stats,
+            "detections": result.detections,
+            "tracks": video_tracks,
+            "captures": saved_captures,
+            "heatmaps": saved_heatmaps,
+            "highlights": saved_highlights,
+            "object_summaries": saved_summaries,
+            "master_video": saved_master,
+            "report_pdf": saved_report,
+            "storage_warnings": video_warnings,
+        }
+        entry = {
+            "id": f"{run_id}-{index:03d}",
+            "analyzed_at": now,
+            "video": result.video_name,
+            "source_path": result.source_path,
+            "duration_seconds": round(float(result.metadata.duration or 0), 2),
+            "detections": len(result.detections),
+            "high_accuracy": bool(high_accuracy),
+            "case": (case_number or "").strip(),
+            "master_video": saved_master,
+            "report_pdf": saved_report,
+            "details": details,
+        }
+        try:
+            video_dir.mkdir(parents=True, exist_ok=True)
+            analysis_json = video_dir / "analysis.json"
+            entry["details"]["analysis_json"] = str(analysis_json.resolve())
+            analysis_json.write_text(
+                json.dumps(entry, ensure_ascii=False, indent=2,
+                           default=_history_json_default), encoding="utf-8")
+        except (OSError, TypeError, ValueError) as exc:
+            log.exception("Could not save full history details for %s", result.video_name)
+            entry["details"]["storage_warnings"].append(
+                f"Could not save the analysis detail file: {exc}")
+        additions.append(entry)
     with _HISTORY_LOCK:
         entries = [entry for entry in _read_analysis_history()
                    if isinstance(entry, dict)]
         entries.extend(additions)
-        entries = entries[-HISTORY_LIMIT:]
         partial = HISTORY_FILE.with_suffix(".partial")
         try:
             HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-            partial.write_text(json.dumps(entries, ensure_ascii=False, indent=2),
+            partial.write_text(json.dumps(
+                entries, ensure_ascii=False, indent=2,
+                default=_history_json_default),
                                encoding="utf-8")
             os.replace(partial, HISTORY_FILE)
-        except Exception:
+        except Exception as exc:
             log.exception("Could not save analysis history")
             try:
                 partial.unlink(missing_ok=True)
             except OSError:
                 pass
+            return [f"History index could not be saved: {exc}"]
+    return [
+        f"{entry['video']}: {warning}"
+        for entry in additions
+        for warning in entry.get("details", {}).get("storage_warnings", [])
+    ]
 
 
 class CFG:
@@ -1994,6 +2236,76 @@ button#aee-account-signout,.aee-settings-card .aee-account-signout button,
 .aee-settings-card .aee-settings-option-list button{transition:transform .16s,border-color .16s,background .16s!important;}
 .aee-settings-card .aee-settings-option-list button:hover{transform:translateY(-1px);}
 .aee-settings-card .aee-account-profile-actions{max-width:none;margin:10px 0 0;}
+.aee-history-page{max-width:1280px;margin:0 auto;padding:8px 0 30px;}
+.aee-history-heading{display:flex;align-items:flex-end;justify-content:space-between;
+  gap:18px;margin:4px 0 18px;}
+.aee-history-heading h2{margin:0;color:#f1f5f9;font-size:1.35rem;font-weight:750;letter-spacing:-.03em;}
+.aee-history-heading p{margin:6px 0 0;color:#94a3b8;font-size:.82rem;line-height:1.55;}
+.aee-history-toolbar{display:flex;align-items:flex-end;gap:12px;margin-bottom:16px;}
+.aee-history-toolbar>.block{flex:1 1 auto;min-width:0;}
+.aee-history-toolbar label span{color:#aab5c6!important;font-size:.75rem!important;}
+.aee-history-toolbar input,.aee-history-toolbar select{
+  min-height:42px!important;border:1px solid rgba(148,163,184,.17)!important;
+  border-radius:10px!important;color:#e2e8f0!important;background:#172033!important;}
+.aee-history-refresh button{min-height:42px!important;border-radius:10px!important;
+  border:1px solid rgba(148,163,184,.2)!important;color:#e2e8f0!important;
+  background:rgba(148,163,184,.08)!important;font-weight:650!important;}
+.aee-history-detail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;margin:0 0 16px;padding:16px;border:1px solid rgba(148,163,184,.14);
+  border-radius:16px;background:#111a2a;}
+.aee-history-metric{min-width:0;padding:12px;border:1px solid rgba(148,163,184,.1);
+  border-radius:11px;background:rgba(148,163,184,.045);}
+.aee-history-metric span,.aee-history-metadata dt{display:block;color:#94a3b8;
+  font-size:.68rem;font-weight:650;letter-spacing:.035em;}
+.aee-history-metric strong{display:block;margin-top:5px;color:#e2e8f0;
+  font-size:.9rem;overflow-wrap:anywhere;}
+.aee-history-metadata{grid-column:1/-1;display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0;padding:12px 2px 2px;
+  border-top:1px solid rgba(148,163,184,.1);}
+.aee-history-metadata dd{margin:4px 0 0;color:#cbd5e1;font-size:.76rem;line-height:1.45;
+  overflow-wrap:anywhere;}
+.aee-history-stat-list{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;}
+.aee-history-stat{padding:10px 12px;border:1px solid rgba(96,165,250,.14);
+  border-radius:10px;background:rgba(37,99,235,.055);}
+.aee-history-stat strong,.aee-history-stat span{display:block;font-size:.74rem;}
+.aee-history-stat strong{color:#dbeafe;}
+.aee-history-stat span{margin-top:4px;color:#9eacc1;}
+.aee-history-notes{grid-column:1/-1;margin:0;color:#cbd5e1;font-size:.8rem;line-height:1.6;}
+.aee-history-warning{grid-column:1/-1;padding:10px 12px;border:1px solid rgba(248,113,113,.2);
+  border-radius:10px;color:#fecaca;background:rgba(239,68,68,.07);font-size:.74rem;}
+.aee-history-warning ul{margin:5px 0 0;padding-left:18px;}
+.aee-history-empty{display:grid;gap:6px;padding:26px;border:1px dashed rgba(148,163,184,.2);
+  border-radius:14px;color:#94a3b8;text-align:center;}
+.aee-history-empty strong{color:#e2e8f0;font-size:.9rem;}
+.aee-history-gallery{margin:0 0 16px;border:1px solid rgba(148,163,184,.12);
+  border-radius:14px;background:rgba(15,23,42,.35);}
+.aee-history-files{margin:0 0 16px;}
+.aee-history-detections{overflow:auto;border:1px solid rgba(148,163,184,.12);
+  border-radius:14px;background:rgba(15,23,42,.35);}
+.aee-history-detections table{min-width:720px;}
+html[data-theme="light"] .aee-history-heading h2{color:#172033;}
+html[data-theme="light"] .aee-history-heading p{color:#64748b;}
+html[data-theme="light"] .aee-history-toolbar label span{color:#475569!important;}
+html[data-theme="light"] .aee-history-toolbar input,html[data-theme="light"] .aee-history-toolbar select{
+  color:#172033!important;background:#fff!important;border-color:rgba(100,116,139,.2)!important;}
+html[data-theme="light"] .aee-history-refresh button{color:#334155!important;
+  background:rgba(100,116,139,.07)!important;border-color:rgba(100,116,139,.2)!important;}
+html[data-theme="light"] .aee-history-detail{border-color:rgba(100,116,139,.16);background:#fff;}
+html[data-theme="light"] .aee-history-metric{border-color:rgba(100,116,139,.12);background:#f8fafc;}
+html[data-theme="light"] .aee-history-metric span,html[data-theme="light"] .aee-history-metadata dt{color:#64748b;}
+html[data-theme="light"] .aee-history-metric strong{color:#172033;}
+html[data-theme="light"] .aee-history-metadata{border-color:rgba(100,116,139,.15);}
+html[data-theme="light"] .aee-history-metadata dd,html[data-theme="light"] .aee-history-notes{color:#334155;}
+html[data-theme="light"] .aee-history-stat{border-color:rgba(37,99,235,.13);background:#eff6ff;}
+html[data-theme="light"] .aee-history-stat strong{color:#1e3a8a;}
+html[data-theme="light"] .aee-history-stat span{color:#475569;}
+html[data-theme="light"] .aee-history-empty{border-color:rgba(100,116,139,.25);color:#64748b;}
+html[data-theme="light"] .aee-history-empty strong{color:#172033;}
+@media(max-width:760px){
+  .aee-history-detail{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;}
+  .aee-history-metadata{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .aee-history-toolbar{align-items:stretch;flex-direction:column;}
+}
 .aee-settings-card .aee-account-settings-copy{margin:0 0 14px;}
 .aee-settings-card .aee-account-settings-copy strong{color:#edf2fa;}
 .aee-settings-card .aee-account-settings-copy p{color:#aab5c6;}
@@ -4444,8 +4756,8 @@ _JS_HEAD = r"""
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
-      if (['Settings','Updates','About Us','Contact Us'].includes(name)){
-        const windowName = name === 'Settings' ? 'account' :
+      if (['Account','Settings','Updates','About Us','Contact Us'].includes(name)){
+        const windowName = ['Account', 'Settings'].includes(name) ? 'account' :
           name.toLowerCase().replace(/\s+/g, '-');
         activateAeeUtilityWindow(windowName); return;
       }
@@ -5711,15 +6023,24 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             cam_display.append((c["heat"], "🔥 heat · " + cap))
             cam_display.append((c["blend"], "🎯 blend · " + cap))
 
-        _record_analysis_history(results, master_s, pdf_s, case_number,
-                                 high_accuracy=high_accuracy)
+        history_warnings = _record_analysis_history(
+            results, master_s, pdf_s, case_number,
+            high_accuracy=high_accuracy, case_meta=case_meta,
+            case_notes=case_notes, tracker_rows=track_rows,
+            cam_items=proc.camcache.items, work_root=root)
+        history_status = ""
+        if history_warnings:
+            history_status = (
+                "Analysis completed, but some History files could not be saved. "
+                "Open History to review the storage warnings. "
+                + history_warnings[0][:300])
         yield (master_s, pdf_s, caps, sums, caps[0] if caps else None,
                gr.update(choices=classes, value="All"),
                gr.update(choices=classes, value="All"),
                _det_df(all_rows),
                _overview_html(results, errs, sums, master_s, pdf_s,
                               time.time()-t0, proc.tracker),
-               "",
+               history_status,
                all_rows, caps, sums, master_s,
                cam_heat, cam_blend, cam_display, track_rows,
                proc.tracker.panel_html(), proc.camcache.panel_html(),
@@ -6606,9 +6927,13 @@ def _side_navigation_html():
         <div>
           <div class="aee-nav-group-label">Project</div>
           <div class="aee-nav-items">
-            <button class="aee-nav-item" type="button" data-aee-nav-tab="Settings">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z"/></svg>
-              <span>Settings</span>
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Account">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+              <span>Account</span>
+            </button>
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+              <span>History</span>
             </button>
             <button class="aee-nav-item" type="button" data-aee-nav-tab="Updates">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg>
@@ -6633,6 +6958,10 @@ def _side_navigation_html():
 def _settings_navigation_html():
     return '''<nav class="aee-settings-nav" aria-label="Settings sections">
       <div class="aee-settings-nav-label">Settings</div>
+      <button type="button" data-aee-settings-section="profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+        <span>Account</span>
+      </button>
       <details class="aee-settings-language-control">
         <summary>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
@@ -6795,13 +7124,54 @@ def build_ui():
                 json_file = gr.File(show_label=False)
 
             with gr.Tab("History"):
-                gr.HTML('<div class="aee-card-title">Recent analyzed videos</div>'
-                        '<div class="aee-card-sub">Your latest 100 completed video analyses are saved on this computer.</div>')
-                history_refresh = gr.Button("Refresh history", size="sm")
-                history_table = gr.Dataframe(
-                    value=_history_dataframe(), headers=HISTORY_COLUMNS,
-                    datatype=["str", "str", "number", "number", "str", "str"],
-                    interactive=False, wrap=True, show_row_numbers=True)
+                with gr.Column(elem_classes=["aee-history-page"]):
+                    gr.HTML(
+                        '<header class="aee-history-heading">'
+                        '<div><h2>Analysis history</h2>'
+                        '<p>Browse saved findings, evidence captures, generated files, and full detection details.</p>'
+                        '</div></header>')
+                    history_choices, history_selected = _history_choices()
+                    history_initial = _history_detail_ui(history_selected)
+                    with gr.Row(elem_classes=["aee-history-toolbar"]):
+                        history_selector = gr.Dropdown(
+                            choices=history_choices, value=history_selected,
+                            label="Select an analysis", interactive=True, scale=5)
+                        history_refresh = gr.Button(
+                            "Refresh history", size="sm", scale=1,
+                            elem_classes=["aee-history-refresh"])
+                    history_detail = gr.HTML(value=history_initial[0])
+                    history_gallery = gr.Gallery(
+                        value=history_initial[1],
+                        label="Captures and CAM evidence",
+                        columns=4, rows=2, height=430, object_fit="contain",
+                        allow_preview=True, elem_classes=["aee-history-gallery"])
+                    history_files = gr.File(
+                        value=history_initial[2],
+                        label="Reports and generated files",
+                        file_count="multiple", interactive=False,
+                        elem_classes=["aee-history-files"])
+                    gr.HTML(
+                        '<div class="aee-history-heading"><div><h2>Detection records</h2>'
+                        '<p>Complete saved detections for the selected analysis.</p>'
+                        '</div></div>')
+                    history_detections = gr.Dataframe(
+                        value=history_initial[3], interactive=False, wrap=True,
+                        show_row_numbers=True, elem_classes=["aee-history-detections"])
+                    gr.HTML(
+                        '<div class="aee-history-heading"><div><h2>Object tracks</h2>'
+                        '<p>Saved per-object tracking and threat analytics.</p>'
+                        '</div></div>')
+                    history_tracks = gr.Dataframe(
+                        value=history_initial[4], interactive=False, wrap=True,
+                        show_row_numbers=True, elem_classes=["aee-history-detections"])
+                    gr.HTML(
+                        '<div class="aee-history-heading"><div><h2>All analyses</h2>'
+                        '<p>Saved locally with no automatic history limit.</p>'
+                        '</div></div>')
+                    history_table = gr.Dataframe(
+                        value=_history_dataframe(), headers=HISTORY_COLUMNS,
+                        datatype=["str", "str", "number", "number", "str", "str"],
+                        interactive=False, wrap=True, show_row_numbers=True)
 
         with gr.Group(visible=True, elem_id="aee-account-window",
                       elem_classes=["aee-utility-window-shell", "aee-account-shell"]):
@@ -7146,7 +7516,7 @@ def build_ui():
                   rows, caps_s, sums_s, mv, cam_h, cam_b, cam_disp, tr_rows,
                   tr_html, cam_html_v, tr_df):
             return (master, pdf, caps, sums, sums[0] if sums else None,
-                    capc, evc, df, ov, "", rows, caps, sums, master,
+                    capc, evc, df, ov, prog, rows, caps, sums, master,
                     cam_h, cam_b, cam_disp, tr_rows, tr_html, cam_html_v, tr_df)
         process_event = process_event.then(fn=_post, inputs=OUT, outputs=OUT)
 
@@ -7154,9 +7524,21 @@ def build_ui():
             return gr.update(choices=[Path(s).stem for s in sums] if sums else [],
                              value=Path(sums[0]).stem if sums else None)
         process_event.then(fn=_post2, inputs=[sums_state], outputs=[sum_select])
-        history_refresh.click(fn=_history_dataframe, inputs=[],
-                              outputs=[history_table], queue=False)
-        process_event.then(fn=_history_dataframe, inputs=[], outputs=[history_table])
+        history_selector.change(
+            fn=_history_detail_ui, inputs=[history_selector],
+            outputs=[history_detail, history_gallery, history_files,
+                     history_detections, history_tracks], queue=False)
+        history_refresh.click(
+            fn=_history_refresh_ui, inputs=[history_selector],
+            outputs=[history_table, history_selector, history_detail,
+                     history_gallery, history_files, history_detections,
+                     history_tracks],
+            queue=False)
+        process_event.then(
+            fn=_history_refresh_ui, inputs=[history_selector],
+            outputs=[history_table, history_selector, history_detail,
+                     history_gallery, history_files, history_detections,
+                     history_tracks])
         account_auth_mode_btn.click(
             fn=_account_auth_mode_ui, inputs=[account_auth_mode],
             outputs=[account_auth_mode, account_auth_intro, account_name_group,

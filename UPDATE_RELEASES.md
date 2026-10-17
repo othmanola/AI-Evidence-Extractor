@@ -2,6 +2,9 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
+Version 1.2.28 adds Account and History navigation, a modern analysis detail browser,
+and unlimited local retention of complete analysis records and generated
+evidence artifacts while keeping original videos in their source locations.
 Version 1.2.27 gives Log out explicit ID-based gradient styling and changes
 the language selector to a collapsed, accessible click-to-open menu. Version
 1.2.26 improves profile form field order and responsive spacing,
@@ -40,7 +43,7 @@ persistence.
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version (this release is `1.2.21`) and include that change in a push to `main`.
+1. Increase `version.txt` to the next three-part version and include that change in a push to `main`.
 2. The **Publish update release** GitHub Actions workflow automatically builds the installer and in-app update archive, calculates their SHA-256 checksums, creates the matching GitHub Release, and publishes `latest.json` both as a release asset and on `main`.
 3. Confirm the workflow completed successfully and that the release is marked latest. Do not manually reuse a release tag or upload assets from a different build.
 4. If automatic publishing needs to be retried, use the workflow's **Run workflow** action on `main` after fixing the failure. It refreshes the assets and manifest for that version in place.

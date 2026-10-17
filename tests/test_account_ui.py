@@ -1,5 +1,7 @@
 import base64
+import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -25,10 +27,11 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(result[6]["display_name"], "Local Guest")
         self.assertEqual(set(result[6]), {"display_name", "username", "email"})
 
-    def test_project_navigation_exposes_settings_instead_of_account(self):
+    def test_project_navigation_exposes_account_and_history(self):
         navigation = app._side_navigation_html()
-        self.assertIn('data-aee-nav-tab="Settings"', navigation)
-        self.assertNotIn('data-aee-nav-tab="Account"', navigation)
+        self.assertIn('data-aee-nav-tab="Account"', navigation)
+        self.assertIn('data-aee-nav-tab="History"', navigation)
+        self.assertNotIn('data-aee-nav-tab="Settings"', navigation)
         self.assertIn('<span>Updates</span>', navigation)
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
@@ -78,6 +81,97 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<option value="English">English</option>', navigation)
         self.assertIn('<option value="Arabic">Arabic</option>', navigation)
         self.assertIn('data-aee-settings-section="security"', navigation)
+
+    def test_history_retains_more_than_one_hundred_analyses(self):
+        entries = [
+            {
+                "id": f"history-{index}",
+                "analyzed_at": "2025-01-01T12:00:00+00:00",
+                "video": f"video-{index}.mp4",
+                "duration_seconds": 12.5,
+                "detections": index,
+                "high_accuracy": False,
+                "case": "case-1",
+            }
+            for index in range(101)
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            history_file = Path(temp_dir) / "analysis_history.json"
+            history_file.write_text(json.dumps(entries), encoding="utf-8")
+            with patch.object(app, "HISTORY_FILE", history_file):
+                history = app._history_dataframe()
+                choices, selected = app._history_choices()
+
+        self.assertEqual(len(history), 101)
+        self.assertEqual(len(choices), 101)
+        self.assertEqual(selected, "history-100")
+        self.assertIn(".aee-history-detail", app.CSS)
+
+    def test_analysis_history_copies_generated_artifacts_and_details(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            source_video = temp / "original.mp4"
+            source_video.write_bytes(b"source")
+            capture = temp / "capture.jpg"
+            capture.write_bytes(b"capture")
+            summary = temp / "summary.mp4"
+            summary.write_bytes(b"summary")
+            heat = temp / "heat.jpg"
+            heat.write_bytes(b"heat")
+            blend = temp / "blend.jpg"
+            blend.write_bytes(b"blend")
+            master = temp / "master.mp4"
+            master.write_bytes(b"master")
+            report = temp / "report.pdf"
+            report.write_bytes(b"report")
+            work_root = temp / "work"
+            highlights = work_root / "sample" / "highlights"
+            highlights.mkdir(parents=True)
+            highlight = highlights / "highlight.mp4"
+            highlight.write_bytes(b"highlight")
+
+            result = app.Result(
+                video_name="sample.mp4",
+                source_path=str(source_video),
+                metadata=app.Meta(fps=25.0, frame_count=250, width=640,
+                                  height=480, duration=10.0),
+                detections=[{"timestamp": 1.0, "label": "Firearm",
+                             "confidence": 0.9}],
+                captures=[str(capture)],
+                object_summaries={"Firearm": str(summary)},
+                summary_stats={"Firearm": {"clips": 1, "duration": 3.0,
+                                           "avg_confidence": 0.9}},
+                notes="Analysis notes",
+            )
+            history_file = temp / "analysis_history.json"
+            history_dir = temp / "history"
+            with (
+                patch.object(app, "HISTORY_FILE", history_file),
+                patch.object(app, "HISTORY_DIR", history_dir),
+            ):
+                warnings = app._record_analysis_history(
+                    [result], str(master), str(report), "case-1",
+                    case_meta={"examiner": "Analyst"}, case_notes="Case notes",
+                    tracker_rows=[{"Video": "sample.mp4", "Track": 4}],
+                    cam_items=[{"video": "sample.mp4", "heat": str(heat),
+                                "blend": str(blend)}],
+                    work_root=work_root,
+                )
+                saved_entries = json.loads(history_file.read_text(encoding="utf-8"))
+                detail = app._history_detail_ui(saved_entries[0]["id"])
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(saved_entries[0]["source_path"], str(source_video))
+        self.assertEqual(saved_entries[0]["details"]["case_notes"], "Case notes")
+        self.assertEqual(len(saved_entries[0]["details"]["captures"]), 1)
+        self.assertEqual(len(saved_entries[0]["details"]["highlights"]), 1)
+        self.assertEqual(len(saved_entries[0]["details"]["heatmaps"]), 2)
+        self.assertTrue(Path(saved_entries[0]["details"]["report_pdf"]).is_file())
+        self.assertIn("Case notes", detail[0])
+        self.assertEqual(len(detail[1]), 3)
+        self.assertEqual(len(detail[2]), 5)
+        self.assertEqual(detail[3].iloc[0]["label"], "Firearm")
+        self.assertEqual(detail[4].iloc[0]["Track"], 4)
 
         constants = app.build_ui.__code__.co_consts
         self.assertIn("aee-settings-profile-section", constants)
