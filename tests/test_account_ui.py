@@ -79,6 +79,12 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn(".aee-toolbar{position:fixed;top:12px;right:12px;gap:6px;}", app.CSS)
         self.assertIn(".aee-toolbar .aee-update-app{width:auto!important;min-height:32px!important;", app.CSS)
 
+    def test_profile_dashboard_uses_compact_responsive_photo_picker_and_cards(self):
+        self.assertIn(".aee-account-shell .aee-account-profile-form{", app.CSS)
+        self.assertIn("flex:0 0 120px!important;width:120px!important;height:94px!important;", app.CSS)
+        self.assertIn(".aee-settings-card>.styler{border-radius:inherit!important;}", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-account-shell .aee-utility-window-header", app.CSS)
+
     def test_update_shortcut_visibility_tracks_update_check(self):
         available = {
             "available": True,

@@ -1775,11 +1775,27 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-layout select:focus-visible{outline:2px solid #ff7770!important;outline-offset:2px!important;}
 .aee-settings-nav svg{width:16px;height:16px;flex:none;color:#a9b7cb;}
 .aee-settings-panel{min-width:0;scroll-margin-top:90px;}
+.aee-account-shell .aee-utility-window-header{
+  position:sticky;top:0;z-index:5;backdrop-filter:blur(18px);
+  background:rgba(9,15,28,.86);border-color:rgba(148,163,184,.12);}
+.aee-account-shell .aee-project-page-heading{gap:13px;}
+.aee-account-shell .aee-project-page-heading h1{font-size:1.55rem;letter-spacing:-.045em;}
 .aee-settings-profile-header{align-items:stretch!important;gap:14px!important;margin:0 0 16px!important;}
+.aee-settings-profile-header,.aee-settings-profile-photo{
+  border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-settings-profile-header>#aee-account-profile-source{flex:1 1 auto!important;width:auto!important;min-width:0!important;}
 .aee-settings-profile-header .aee-settings-profile-photo{flex:0 0 174px!important;width:174px!important;
   min-width:0!important;margin:0!important;}
-.aee-settings-profile-header .aee-account-profile{height:100%;margin:0;}
+.aee-settings-profile-header .aee-account-profile{height:auto;margin:0;}
+.aee-account-shell .aee-account-profile-form{
+  border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
+.aee-account-shell .aee-account-profile-form>.styler{
+  border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
+.aee-account-shell [id="aee-settings-profile-section"]>.styler,
+.aee-account-shell .aee-settings-card>.styler{
+  padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;}
+.aee-account-shell [id="aee-settings-profile-section"]{
+  border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-account-profile-form{max-width:none;margin:0;}
 .aee-account-shell .aee-account-profile{position:relative;min-height:132px;box-sizing:border-box;
   align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 20px 17px;
@@ -1797,6 +1813,7 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-card{box-sizing:border-box;min-width:0;margin:0;padding:18px;
   border:1px solid rgba(148,163,184,.15);border-radius:17px;background:rgba(20,28,45,.78);
   box-shadow:0 20px 50px -42px rgba(0,0,0,.88);}
+.aee-settings-card>.styler{border-radius:inherit!important;}
 .aee-settings-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
   margin:0 0 15px;padding:0 0 13px;border-bottom:1px solid rgba(148,163,184,.1);}
 .aee-settings-card-heading>button{flex:0 0 auto!important;width:auto!important;min-width:104px!important;
@@ -1845,6 +1862,7 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   box-shadow:0 10px 24px -16px rgba(255,93,85,.86);transition:background .16s,transform .16s!important;}
 .aee-settings-save-button:hover{background:#f34d49!important;transform:translateY(-1px);}
 .aee-settings-save-button:active{transform:translateY(0);}
+.aee-settings-save-button:disabled{opacity:.58!important;cursor:wait!important;transform:none!important;}
 .aee-settings-language-card{display:flex;align-items:center;justify-content:space-between;gap:14px;}
 .aee-settings-language-card strong{display:block;color:#edf2fa;font-size:.84rem;}
 .aee-settings-language-card span{display:block;margin-top:5px;color:#909db1;font-size:.75rem;}
@@ -1918,6 +1936,8 @@ html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
 html[data-theme="light"] .aee-settings-card{background:rgba(255,255,255,.84);border-color:rgba(100,116,139,.17);}
 html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
 html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
+html[data-theme="light"] .aee-account-shell .aee-utility-window-header{
+  background:rgba(255,255,255,.9);border-color:rgba(100,116,139,.18);}
 html[data-theme="light"] .aee-settings-fields input,html[data-theme="light"] .aee-settings-fields select,
 html[data-theme="light"] .aee-settings-field-row input,html[data-theme="light"] .aee-settings-field-row select{
   color:#172033!important;background:#f1f4f9!important;border-color:rgba(15,23,42,.12)!important;}
@@ -2014,7 +2034,11 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-account-shell .aee-account-avatar{width:54px;height:54px;}
   .aee-settings-card{padding:15px;}
   .aee-settings-profile-header{gap:10px!important;}
-  .aee-settings-profile-header .aee-settings-profile-photo{flex:1 1 100%!important;width:100%!important;}
+  .aee-settings-profile-header>#aee-account-profile-source{
+    flex:1 1 0!important;width:auto!important;min-width:0!important;}
+  .aee-settings-profile-header .aee-settings-profile-photo{
+    flex:0 0 120px!important;width:120px!important;height:94px!important;}
+  .aee-settings-profile-photo .image-container{min-height:68px!important;max-height:70px!important;}
   .aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}
   .aee-settings-field-row{grid-template-columns:minmax(94px,.7fr) minmax(0,1.3fr);gap:8px!important;}
   .aee-settings-profile-photo{max-width:none;}
