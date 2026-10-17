@@ -334,8 +334,8 @@ def apply_staged_update(staged: dict, progress: Callable | None = None) -> None:
 def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
     import sys
 
-    app_exe = app_dir / "AI Evidence Extractor.exe"
     launcher = app_dir / "desktop_launcher.py"
+    batch_launcher = app_dir / "run_app.bat"
     runtime_dir = app_dir / "runtime"
     venv = data_dir / "runtimeenv"
     cuda_venv = data_dir / "runtimeenv_cuda2"
@@ -344,10 +344,10 @@ def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
         venv = cuda_venv
     pythonw = venv / "Scripts" / "pythonw.exe"
 
-    if app_exe.is_file():
-        return [str(app_exe.resolve())], app_dir
     if pythonw.is_file() and launcher.is_file() and runtime_dir.is_dir():
         return [str(pythonw.resolve()), str(launcher.resolve())], runtime_dir
+    if os.name == "nt" and batch_launcher.is_file():
+        return [os.environ.get("COMSPEC", "cmd.exe"), "/c", str(batch_launcher.resolve())], app_dir
     if launcher.is_file():
         return [sys.executable, str(launcher.resolve())], app_dir
     raise UpdateError("The app launcher could not be found. Reinstall the app and try again.")

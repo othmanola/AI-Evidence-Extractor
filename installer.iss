@@ -41,7 +41,6 @@ Source: "version.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "update_config.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "desktop_launcher.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "desktop_entry.py"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\AI Evidence Extractor.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "download_models.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "run_app.bat"; DestDir: "{app}"; Flags: ignoreversion
@@ -53,9 +52,12 @@ Source: "README_WINDOWS.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "SUPABASE_SETUP.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "UPDATE_RELEASES.md"; DestDir: "{app}"; Flags: ignoreversion
 
+[InstallDelete]
+Type: files; Name: "{app}\AI Evidence Extractor.exe"
+
 [Icons]
-Name: "{group}\AI Evidence Extractor"; Filename: "{app}\AI Evidence Extractor.exe"; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
-Name: "{autodesktop}\AI Evidence Extractor"; Filename: "{app}\AI Evidence Extractor.exe"; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"; Tasks: desktopicon
+Name: "{group}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"
+Name: "{autodesktop}\AI Evidence Extractor"; Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\aee.ico"; AppUserModelID: "AI.EvidenceExtractor.Desktop"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
@@ -63,4 +65,4 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 [Run]
 Filename: "{tmp}\python-3.13.16-amd64.exe"; Parameters: "/quiet InstallAllUsers=0 TargetDir=""{app}\runtime"" Include_launcher=0 Include_pip=1 Include_test=0"; StatusMsg: "Installing the private Python runtime..."; Flags: waituntilterminated; Check: not FileExists(ExpandConstant('{app}\runtime\python.exe'))
 Filename: "{tmp}\MicrosoftEdgeWebView2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Checking the Microsoft WebView desktop component..."; Flags: waituntilterminated
-Filename: "{app}\AI Evidence Extractor.exe"; Description: "Launch AI Evidence Extractor"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent
+Filename: "{sys}\cmd.exe"; Parameters: "/c ""{app}\run_app.bat"""; Description: "Launch AI Evidence Extractor"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent

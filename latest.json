@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.9",
+    "version":  "1.2.10",
     "published_at":  "2026-10-17",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.9/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "05de15a35da4dcbfe3589aab38fb70670db37cee23eb859ccea439a83b89d087",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.9/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "7020678a108c9df6ebae9b3db064766e6eb3feb7c45d3bd7328668bcc93844ec",
-    "release_notes":  "Adds Settings navigation with guest Google sign-in, account logout, and profile editing."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.10/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "ef0617db51a2b6f82c2f61f2e40fa4dfddb63e9f4eb90f4dd7aa99bbbd5b4e74",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.10/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "e1e49da6929235c7b807b1d2153c23dbb207ebb493b20a599fb6caed084a9a77",
+    "release_notes":  "Fixes startup by launching the app directly through its installed Python runtime."
 }
