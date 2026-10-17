@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.11",
+    "version":  "1.2.12",
     "published_at":  "2026-10-17",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.11/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "f76b2080000f6d7a37f404785aa1cb16751fdfa7d14f9805e7a9b0952afec5d0",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.11/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "fe4e045677c66066441c50d55c99104adca7dd7fd8b1d3008dac1ce099cfd4e7",
-    "release_notes":  "Fixes startup extraction failures and avoids stale cached update manifests."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.12/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "6945a44e14672f9e997694ec2fb0651145b333d4a90497862a2ae82ae7c6bd38",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.12/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "64861d0cf4f3ff15d8d82da62657bbb4fcf387644f9ad970a3a6772400c85fe7",
+    "release_notes":  "Fixes the mobile top-bar overlap and publishes the responsive update and profile shortcuts."
 }
