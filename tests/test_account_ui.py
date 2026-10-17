@@ -29,6 +29,27 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
 
+    def test_update_app_shortcut_opens_updates_and_profile_toolbar_opens_settings(self):
+        navigation = app._side_navigation_html()
+        hero = app._hero_html({"n_models": 0})
+
+        self.assertIn('data-aee-nav-update', navigation)
+        self.assertIn('<span>Update the app</span>', navigation)
+        self.assertIn('data-aee-nav-update', app._JS_HEAD)
+        self.assertIn("activateAeeUtilityWindow('updates')", app._JS_HEAD)
+        self.assertIn('data-aee-open-settings', hero)
+        self.assertIn('data-aee-profile-avatar', hero)
+        self.assertIn("activateAeeUtilityWindow('account')", app._JS_HEAD)
+        self.assertIn("#aee-account-profile-source .aee-account-profile", app._JS_HEAD)
+        self.assertIn("aee-account-profile-source", app.build_ui.__code__.co_consts)
+
+    def test_topbar_layout_adapts_to_mobile_viewports(self):
+        self.assertIn("function syncAeeTopbarLayout()", app._JS_HEAD)
+        self.assertIn("window.innerWidth <= 640", app._JS_HEAD)
+        self.assertIn("window.innerWidth <= 380", app._JS_HEAD)
+        self.assertIn("update.style.left = mobile ? '60px' : ''", app._JS_HEAD)
+        self.assertIn(".aee-toolbar{position:fixed;top:12px;right:12px;gap:6px;}", app.CSS)
+
     def test_google_sign_in_can_start_from_settings(self):
         with patch.object(
             app._account_client, "start_google_sign_in", return_value="oauth-123"

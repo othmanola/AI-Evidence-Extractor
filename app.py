@@ -1464,6 +1464,40 @@ html[data-theme="light"] .aee-pill{
 html[data-theme="light"] .aee-tool{
   background:linear-gradient(180deg,#ffffff,#f8fafc);
 }
+.aee-profile-tool{padding:3px!important;border-radius:50%!important;overflow:hidden;
+  border-color:rgba(148,163,184,.28)!important;background:rgba(15,23,42,.7)!important;}
+.aee-profile-tool>[data-aee-profile-avatar]{width:100%;height:100%;display:grid;place-items:center;
+  overflow:hidden;border-radius:50%;color:#dbeafe;
+  background:linear-gradient(145deg,rgba(59,130,246,.42),rgba(139,92,246,.4));
+  font-size:.76rem;font-weight:800;letter-spacing:.02em;}
+.aee-profile-tool img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.aee-profile-tool svg{width:19px;height:19px;color:#cbd5e1;}
+.aee-update-app{position:fixed;z-index:10002;top:20px;left:76px;min-height:42px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;
+  border:1px solid rgba(96,165,250,.28);border-radius:13px;color:#dbeafe;
+  background:linear-gradient(145deg,rgba(30,64,120,.92),rgba(17,32,62,.94));
+  box-shadow:0 10px 28px -18px rgba(37,99,235,.8);backdrop-filter:blur(14px);
+  cursor:pointer;font:650 .76rem Inter,system-ui,sans-serif;
+  transition:transform .18s,border-color .18s,box-shadow .18s,background .18s;}
+.aee-update-app:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.62);
+  box-shadow:0 14px 30px -16px rgba(59,130,246,.62);
+  background:linear-gradient(145deg,rgba(37,99,235,.82),rgba(30,64,120,.96));}
+.aee-update-app svg{width:16px;height:16px;flex:none;}
+html[data-theme="light"] .aee-profile-tool{background:rgba(255,255,255,.86)!important;}
+html[data-theme="light"] .aee-profile-tool>[data-aee-profile-avatar]{color:#1e3a8a;}
+html[data-theme="light"] .aee-update-app{color:#1d4ed8;
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(239,246,255,.96));
+  border-color:rgba(59,130,246,.22);}
+html[data-theme="light"] .aee-update-app:hover{background:#eff6ff;border-color:rgba(59,130,246,.5);}
+@media(max-width:640px){
+  .aee-hero{padding:88px 4px 20px;}
+  .aee-workflow{flex-wrap:wrap;justify-content:space-between;}
+  .aee-workflow-step{flex:1 1 calc(50% - 12px);white-space:normal;}
+  .aee-workflow-line{display:none;}
+  .aee-toolbar{position:fixed;top:12px;right:12px;gap:6px;}
+  .aee-toolbar .aee-tool{width:36px;height:36px;border-radius:11px;}
+  .aee-toolbar .aee-profile-tool{border-radius:50%!important;}
+}
 
 .aee-card{
   background:linear-gradient(180deg,rgba(15,23,42,.65),rgba(10,14,26,.78))!important;
@@ -1680,6 +1714,7 @@ body.aee-access-required #aee-account-window .aee-utility-window-header{display:
 body.aee-access-required #aee-account-window .column.wrap>.aee-account-auth-form{margin:0 auto!important;}
 body.aee-access-required #aee-account-window .aee-account-auth-form .aee-account-intro{margin-bottom:42px;}
 body.aee-access-required .aee-navigation{display:none!important;}
+body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
   border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
 .aee-account-status[data-kind="success"]{color:#a7f3d0;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08);}
@@ -2789,6 +2824,10 @@ html[data-theme="light"] .aee-upload-shell{
   .aee-heat-model-chip{padding:2px 5px;}
   .aee-heat-jump{padding:1px 6px;}
 }
+@media(max-width:380px){
+  .aee-toolbar{gap:4px!important;}
+  .aee-toolbar .aee-tool{width:32px!important;height:32px!important;border-radius:10px!important;}
+}
 """
 
 
@@ -2802,6 +2841,15 @@ def _hero_html(info):
       <div class="aee-toolbar">
         <a class="aee-tool" id="theme-toggle" title="Toggle theme (T)">&#9681;</a>
         <a class="aee-tool" id="cmd-open" title="Command palette (Ctrl+K)">&#8981;</a>
+        <button class="aee-tool aee-profile-tool" type="button"
+          data-aee-open-settings aria-label="Open profile settings" title="Profile settings">
+          <span data-aee-profile-avatar aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.4 3.2-5.2 7-5.2s6.3 1.8 7 5.2"/>
+            </svg>
+          </span>
+        </button>
       </div>
       <div class="aee-brand">
         <div class="aee-brand-mark" aria-hidden="true">
@@ -3483,6 +3531,55 @@ _JS_HEAD = r"""
     const toggle = document.querySelector('[data-aee-nav-toggle]');
     if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
+  function syncAeeProfileTool(){
+    const target = document.querySelector('[data-aee-profile-avatar]');
+    const source = document.querySelector('#aee-account-profile-source .aee-account-profile');
+    if (!target || !source) return;
+    const avatar = source.querySelector('.aee-account-avatar');
+    const identity = source.querySelector('.aee-account-identity strong');
+    if (!avatar) return;
+    const image = avatar.querySelector('img');
+    const name = identity ? identity.textContent.trim() : 'Profile';
+    const signature = name + '|' + (image ? image.getAttribute('src') : avatar.textContent.trim());
+    if (target.dataset.profileSignature === signature) return;
+    target.dataset.profileSignature = signature;
+    target.replaceChildren(image ? image.cloneNode(true) : document.createTextNode(
+      avatar.textContent.trim() || 'A'
+    ));
+    const button = target.closest('[data-aee-open-settings]');
+    if (button){
+      button.setAttribute('aria-label', 'Open profile settings for ' + name);
+      button.title = name + ' — Profile settings';
+    }
+  }
+  function syncAeeTopbarLayout(){
+    const mobile = window.innerWidth <= 640;
+    const compact = window.innerWidth <= 380;
+    const toggle = document.querySelector('[data-aee-nav-toggle]');
+    const update = document.querySelector('[data-aee-nav-update]');
+    if (toggle){
+      toggle.style.left = mobile ? '12px' : '';
+      toggle.style.top = mobile ? '12px' : '';
+      toggle.style.width = mobile ? '40px' : '';
+      toggle.style.height = mobile ? '40px' : '';
+      toggle.style.borderRadius = mobile ? '12px' : '';
+    }
+    if (update){
+      update.style.left = mobile ? '60px' : '';
+      update.style.top = mobile ? '12px' : '';
+      update.style.minHeight = mobile ? '38px' : '';
+      update.style.padding = mobile ? (compact ? '0 6px' : '0 8px') : '';
+      update.style.gap = mobile ? (compact ? '4px' : '6px') : '';
+      update.style.borderRadius = mobile ? '11px' : '';
+      update.style.fontSize = mobile ? (compact ? '.64rem' : '.69rem') : '';
+      const icon = update.querySelector('svg');
+      if (icon) {
+        icon.style.width = compact ? '14px' : '';
+        icon.style.height = compact ? '14px' : '';
+      }
+    }
+  }
+  window.addEventListener('resize', syncAeeTopbarLayout, {passive:true});
   function aeeAccessRequired(){
     const marker = document.querySelector('[data-aee-access-status]');
     if (marker) return marker.dataset.aeeAccessStatus !== 'ready';
@@ -3609,6 +3706,8 @@ _JS_HEAD = r"""
   }
   function liftAeeNavigation(){
     applyAeeAccessGate();
+    syncAeeProfileTool();
+    syncAeeTopbarLayout();
     const host = document.getElementById('aee-nav-host');
     const navigation = host && host.querySelector('.aee-navigation');
     if (navigation && navigation.parentElement !== document.body){
@@ -3626,6 +3725,12 @@ _JS_HEAD = r"""
     if (event.target.closest('[data-aee-nav-toggle]')){
       const isOpen = document.body && document.body.classList.contains('aee-nav-open');
       setAeeNavigation(!isOpen); return;
+    }
+    if (event.target.closest('[data-aee-open-settings]')){
+      activateAeeUtilityWindow('account'); return;
+    }
+    if (event.target.closest('[data-aee-nav-update]')){
+      activateAeeUtilityWindow('updates'); return;
     }
     if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
       setAeeNavigation(false); return;
@@ -5527,6 +5632,14 @@ def _side_navigation_html():
           <path d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       </button>
+      <button class="aee-update-app" type="button" data-aee-nav-update
+        aria-label="Update the app" title="Open app updates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/>
+        </svg>
+        <span>Update the app</span>
+      </button>
       <div class="aee-nav-backdrop" data-aee-nav-backdrop></div>
       <aside class="aee-nav-drawer" aria-label="App navigation">
         <div class="aee-nav-head">
@@ -5780,7 +5893,9 @@ def build_ui():
                     visible=bool(account_session_initial) or account_guest_mode_initial,
                     elem_classes=["aee-account-profile-form"],
                 ) as account_profile_group:
-                    account_profile = gr.HTML(value=account_profile_initial)
+                    account_profile = gr.HTML(
+                        value=account_profile_initial,
+                        elem_id="aee-account-profile-source")
                     gr.HTML('<div class="aee-settings-section-label">Account options</div>')
                     with gr.Column(elem_classes=["aee-settings-option-list"]):
                         account_signout_btn = gr.Button(
