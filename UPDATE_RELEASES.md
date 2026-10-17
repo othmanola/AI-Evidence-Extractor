@@ -5,7 +5,7 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 ## Connect this build to your release feed
 
 1. The public repository serves the manifest from its `main` branch. This build is configured to check:
-   `https://raw.githubusercontent.com/othmanola/AI-Evidence-Extractor/main/latest.json`
+   `https://github.com/othmanola/AI-Evidence-Extractor/raw/refs/heads/main/latest.json`
 2. Keep that URL in every installer you distribute. If the repository becomes private or its default branch changes, configure another public HTTPS manifest URL in `update_config.json` and rebuild.
 
 ## Publish a new version

@@ -3,8 +3,8 @@
     "version":  "1.2.12",
     "published_at":  "2026-10-17",
     "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.12/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "6945a44e14672f9e997694ec2fb0651145b333d4a90497862a2ae82ae7c6bd38",
+    "sha256":  "815fbab4847ffb1043ffa7a3c26ed9b69ea929b03de6c75565a8d661e301753b",
     "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.12/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "64861d0cf4f3ff15d8d82da62657bbb4fcf387644f9ad970a3a6772400c85fe7",
+    "package_sha256":  "c29bc025e3ab3d75398f8831e17cef24237ecfd88d184d3dcc1ac2e1ccfa74ed",
     "release_notes":  "Fixes the mobile top-bar overlap and publishes the responsive update and profile shortcuts."
 }
