@@ -51,7 +51,8 @@ class AccountUiTests(unittest.TestCase):
                 self.assertIn(eyebrow, header_markup)
                 self.assertIn(subtitle, header_markup)
 
-        self.assertIn(".aee-utility-window-header:after{", app.CSS)
+        self.assertIn(".aee-utility-window-header{position:sticky;top:0;z-index:12;", app.CSS)
+        self.assertIn("min-height:86px;", app.CSS)
         self.assertIn(".aee-utility-window-shell .aee-project-page-heading p{", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell .aee-project-page-heading h1", app.CSS)
 

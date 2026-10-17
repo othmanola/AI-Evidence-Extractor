@@ -1615,41 +1615,31 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-utility-window-shell.aee-utility-window-open .column.wrap{transform:translateY(0) scale(1);}
 .aee-utility-window-active{overflow:hidden!important;}
 .aee-utility-window-header{position:sticky;top:0;z-index:12;max-width:none;
-  isolation:isolate;overflow:hidden;
-  margin:0 -28px 34px;padding:19px clamp(20px,4vw,58px);
-  display:flex;align-items:center;gap:18px;
-  border:1px solid rgba(148,163,184,.16);border-top:0;border-radius:0 0 22px 22px;
-  background:radial-gradient(520px 170px at 8% 0%,rgba(248,113,113,.13),transparent 75%),
-    radial-gradient(620px 180px at 92% 0%,rgba(99,102,241,.16),transparent 72%),
-    linear-gradient(120deg,rgba(14,23,41,.96),rgba(9,14,27,.93));
-  box-shadow:0 22px 56px -34px rgba(0,0,0,.92),0 1px 0 rgba(255,255,255,.035) inset;
-  backdrop-filter:blur(22px) saturate(1.35);}
-.aee-utility-window-header:after{position:absolute;z-index:-1;right:clamp(20px,4vw,58px);
-  bottom:0;left:clamp(20px,4vw,58px);height:1px;content:"";
-  background:linear-gradient(90deg,transparent,rgba(248,113,113,.38) 24%,
-    rgba(129,140,248,.36) 74%,transparent);}
-.aee-utility-window-header>div:first-child{position:relative;z-index:1;flex:1;min-width:0;}
-.aee-utility-window-shell .aee-project-page-heading{gap:16px;align-items:center;}
-.aee-utility-window-shell .aee-project-page-mark{width:52px;height:52px;border-radius:16px;
-  color:#ffe4e6;border-color:rgba(251,113,133,.25);
-  background:linear-gradient(145deg,rgba(244,63,94,.17),rgba(99,102,241,.2));
-  box-shadow:0 12px 28px -18px rgba(129,140,248,.82),0 1px 0 rgba(255,255,255,.09) inset;}
-.aee-utility-window-shell .aee-project-page-mark svg{width:22px;height:22px;}
-.aee-utility-window-shell .aee-project-page-heading small{width:max-content;max-width:100%;
-  margin-bottom:4px;padding:4px 8px;border:1px solid rgba(148,163,184,.13);
-  border-radius:999px;color:#aebbd0;background:rgba(148,163,184,.07);
-  font-size:.59rem;letter-spacing:.13em;}
-.aee-utility-window-shell .aee-project-page-heading h1{margin:0;color:#f8fafc;
-  font-size:clamp(1.35rem,2.5vw,1.72rem);font-weight:750;letter-spacing:-.045em;line-height:1.08;}
-.aee-utility-window-shell .aee-project-page-heading p{margin:5px 0 0;
-  color:#929eb2;font-size:.76rem;line-height:1.45;}
-.aee-utility-window-close{position:relative;z-index:1;min-width:108px!important;height:42px!important;
-  padding:0 14px!important;border:1px solid rgba(148,163,184,.17)!important;
-  border-radius:12px!important;color:#dbe3ef!important;background:rgba(148,163,184,.065)!important;
-  box-shadow:0 1px 0 rgba(255,255,255,.035) inset;
-  transition:transform .18s,border-color .18s,background .18s,color .18s!important;}
-.aee-utility-window-close:hover{transform:translateY(-1px);border-color:rgba(248,113,133,.35)!important;
-  color:#fff!important;background:rgba(248,113,133,.1)!important;}
+  margin:0 -28px 30px;padding:0 clamp(20px,4vw,58px);
+  display:flex;align-items:center;gap:20px;min-height:86px;
+  border:0;border-bottom:1px solid rgba(148,163,184,.14);border-radius:0;
+  background:rgba(10,16,28,.92);box-shadow:0 12px 32px -28px rgba(0,0,0,.8);
+  backdrop-filter:blur(18px) saturate(1.15);}
+.aee-utility-window-header>div:first-child{flex:1;min-width:0;}
+.aee-utility-window-shell .aee-project-page-heading{width:100%;max-width:1180px;
+  margin:0 auto;gap:14px;align-items:center;}
+.aee-utility-window-shell .aee-project-page-mark{width:44px;height:44px;border-radius:13px;
+  color:#bfdbfe;border-color:rgba(96,165,250,.2);
+  background:rgba(37,99,235,.13);box-shadow:none;}
+.aee-utility-window-shell .aee-project-page-mark svg{width:20px;height:20px;}
+.aee-utility-window-shell .aee-project-page-heading small{display:block;width:auto;
+  max-width:100%;margin:0 0 3px;padding:0;border:0;border-radius:0;
+  color:#8aa4c5;background:none;font-size:.59rem;letter-spacing:.12em;}
+.aee-utility-window-shell .aee-project-page-heading h1{margin:0;color:#f1f5f9;
+  font-size:1.38rem;font-weight:700;letter-spacing:-.035em;line-height:1.2;}
+.aee-utility-window-shell .aee-project-page-heading p{margin:3px 0 0;
+  color:#94a3b8;font-size:.75rem;line-height:1.4;}
+.aee-utility-window-close{position:relative;z-index:1;min-width:112px!important;height:40px!important;
+  padding:0 13px!important;border:1px solid rgba(148,163,184,.2)!important;
+  border-radius:10px!important;color:#dbe3ef!important;background:rgba(148,163,184,.06)!important;
+  box-shadow:none;transition:border-color .18s,background .18s,color .18s!important;}
+.aee-utility-window-close:hover{border-color:rgba(148,163,184,.38)!important;
+  color:#fff!important;background:rgba(148,163,184,.12)!important;}
 html[data-theme="light"] .aee-utility-window-shell{background:rgba(15,23,42,.32)!important;}
 html[data-theme="light"] .aee-utility-window-shell .column.wrap{
   background:transparent!important;}
@@ -1658,19 +1648,18 @@ html[data-theme="light"] .aee-utility-window-shell{
     radial-gradient(1000px 650px at 0% 100%,rgba(14,165,233,.07),transparent 70%),
     linear-gradient(145deg,#f8faff,#edf2fa 76%)!important;}
 html[data-theme="light"] .aee-utility-window-header{
-  background:radial-gradient(520px 170px at 8% 0%,rgba(248,113,113,.09),transparent 75%),
-    radial-gradient(620px 180px at 92% 0%,rgba(99,102,241,.09),transparent 72%),
-    linear-gradient(120deg,rgba(255,255,255,.97),rgba(247,249,253,.94));
-  border-color:rgba(100,116,139,.18);box-shadow:0 22px 56px -38px rgba(15,23,42,.42),
-    0 1px 0 rgba(255,255,255,.8) inset;}
+  background:rgba(255,255,255,.94);border-bottom-color:rgba(100,116,139,.17);
+  box-shadow:0 12px 28px -28px rgba(15,23,42,.42);}
 html[data-theme="light"] .aee-utility-window-shell .aee-project-page-heading h1{color:#172033;}
 html[data-theme="light"] .aee-utility-window-shell .aee-project-page-heading p{color:#64748b;}
 html[data-theme="light"] .aee-utility-window-shell .aee-project-page-heading small{
-  color:#596579;background:rgba(100,116,139,.07);border-color:rgba(100,116,139,.14);}
+  color:#64748b;}
+html[data-theme="light"] .aee-utility-window-shell .aee-project-page-mark{
+  color:#2563eb;background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.14);}
 html[data-theme="light"] .aee-utility-window-close{color:#334155!important;
   background:rgba(100,116,139,.055)!important;border-color:rgba(100,116,139,.2)!important;}
-html[data-theme="light"] .aee-utility-window-close:hover{color:#9f1239!important;
-  background:rgba(244,63,94,.08)!important;border-color:rgba(244,63,94,.28)!important;}
+html[data-theme="light"] .aee-utility-window-close:hover{color:#172033!important;
+  background:rgba(100,116,139,.1)!important;border-color:rgba(100,116,139,.32)!important;}
 .aee-utility-window-shell .aee-update-card{max-width:1180px;margin:0 auto 24px;padding:clamp(30px,5vw,64px);
   border-radius:30px;box-shadow:0 30px 90px -55px rgba(37,99,235,.6);}
 .aee-utility-window-shell .aee-update-copy{max-width:760px;}
@@ -2103,16 +2092,15 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
 @media(max-width:640px){
   .aee-utility-window-shell .column.wrap{width:100vw!important;max-width:100vw!important;
     padding:0 16px 28px!important;}
-  .aee-utility-window-header{margin:0 -16px 22px;padding:12px 16px;border-radius:0 0 16px 16px;gap:10px;}
-  .aee-utility-window-header:after{right:16px;left:16px;}
-  .aee-utility-window-shell .aee-project-page-heading{gap:11px;}
-  .aee-utility-window-shell .aee-project-page-mark{width:44px;height:44px;border-radius:13px;}
-  .aee-utility-window-shell .aee-project-page-mark svg{width:20px;height:20px;}
-  .aee-utility-window-shell .aee-project-page-heading small{margin-bottom:3px;padding:3px 7px;font-size:.55rem;}
-  .aee-utility-window-shell .aee-project-page-heading h1{font-size:1.22rem;}
-  .aee-utility-window-shell .aee-project-page-heading p{max-width:230px;font-size:.68rem;}
-  .aee-utility-window-close{min-width:78px!important;height:38px!important;padding:0 9px!important;
-    border-radius:10px!important;font-size:.73rem!important;}
+  .aee-utility-window-header{margin:0 -16px 22px;padding:0 16px;min-height:72px;gap:10px;}
+  .aee-utility-window-shell .aee-project-page-heading{gap:10px;}
+  .aee-utility-window-shell .aee-project-page-mark{width:40px;height:40px;border-radius:12px;}
+  .aee-utility-window-shell .aee-project-page-mark svg{width:19px;height:19px;}
+  .aee-utility-window-shell .aee-project-page-heading small{margin-bottom:2px;font-size:.53rem;}
+  .aee-utility-window-shell .aee-project-page-heading h1{font-size:1.13rem;}
+  .aee-utility-window-shell .aee-project-page-heading p{max-width:230px;font-size:.65rem;}
+  .aee-utility-window-close{min-width:92px!important;height:38px!important;padding:0 9px!important;
+    border-radius:9px!important;font-size:.72rem!important;}
   .aee-project-page-mark{width:46px;height:46px;border-radius:14px;}
   .aee-update-actions{flex-wrap:wrap!important;}
   .aee-update-actions>div{flex:1 1 100%!important;}
@@ -6733,7 +6721,7 @@ def build_ui():
                         <p>Manage your profile, preferences, and security.</p></div>
                     </header>''')
                     account_close_btn = gr.Button(
-                        "Close window", size="sm",
+                        "Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-account-close")
                 account_session = gr.State(account_session_initial)
                 account_access_state = gr.State(account_access_ready_initial)
@@ -6913,7 +6901,7 @@ def build_ui():
                       <div><small>APP CENTER</small><h1>Updates</h1>
                         <p>Check for the latest improvements and install updates.</p></div>
                     </header>''')
-                    update_close_btn = gr.Button("Close window", size="sm",
+                    update_close_btn = gr.Button("Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-updates-close")
                 gr.HTML(_updates_intro_html())
                 update_status = gr.HTML(
@@ -6940,7 +6928,7 @@ def build_ui():
                       <div><small>THE PROJECT</small><h1>About Us</h1>
                         <p>Learn about the workspace and how it supports evidence review.</p></div>
                     </header>''')
-                    about_close_btn = gr.Button("Close window", size="sm",
+                    about_close_btn = gr.Button("Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-about-close")
                 gr.HTML('''<section class="aee-about-card">
                   <div class="aee-about-eyebrow"><span class="aee-about-eyebrow-mark">✦</span>
@@ -6977,7 +6965,7 @@ def build_ui():
                       <div><small>SUPPORT</small><h1>Contact Us</h1>
                         <p>Get help, share feedback, or report an issue.</p></div>
                     </header>''')
-                    contact_close_btn = gr.Button("Close window", size="sm",
+                    contact_close_btn = gr.Button("Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-contact-close")
                 gr.HTML('''<section class="aee-contact-card">
                   <h1 class="aee-contact-title">Contact the project team</h1>
