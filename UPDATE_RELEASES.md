@@ -2,6 +2,9 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
+Version 1.2.29 restores the basic History summary view and adds a separate
+Detailed History page with ZIP exports for an individual analysis or the full
+local archive; source videos are not included in ZIP downloads.
 Version 1.2.28 adds Account and History navigation, a modern analysis detail browser,
 and unlimited local retention of complete analysis records and generated
 evidence artifacts while keeping original videos in their source locations.

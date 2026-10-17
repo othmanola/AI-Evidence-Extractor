@@ -4,6 +4,7 @@
 import os, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, hashlib
 import queue, threading, csv, io, base64, html as _html
 import uuid
+import zipfile
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -219,10 +220,145 @@ def _history_detail_ui(entry_id):
     return html, captures + heatmaps, files, detection_df, track_df
 
 
-def _history_refresh_ui(selected_id=None):
+def _detailed_history_refresh_ui(selected_id=None):
     dropdown = _history_selector_update(selected_id)
     _, selected = _history_choices(selected_id)
-    return (_history_dataframe(), dropdown, *_history_detail_ui(selected))
+    return (*_history_detail_ui(selected), dropdown, gr.update(value=None), "")
+
+
+def _detailed_history_selection_ui(selected_id=None):
+    return (*_history_detail_ui(selected_id), gr.update(value=None), "")
+
+
+def _history_zip(entry_id=None):
+    with _HISTORY_LOCK:
+        entries = [
+            (index, entry)
+            for index, entry in enumerate(_read_analysis_history())
+            if isinstance(entry, dict)
+        ]
+    if entry_id:
+        selected = next(
+            ((index, entry) for index, entry in entries
+             if _history_entry_id(entry, index) == entry_id),
+            None,
+        )
+        if selected is None:
+            raise ValueError("The selected analysis is no longer in History.")
+        entries = [selected]
+    if not entries:
+        raise ValueError("There are no saved analyses to export.")
+
+    export_dir = OUTPUT_DIR / "history_exports"
+    export_dir.mkdir(parents=True, exist_ok=True)
+    archive_name = (
+        f"{safe_slug(entry_id)}.zip" if entry_id
+        else "all-analysis-history.zip"
+    )
+    archive_path = export_dir / archive_name
+    partial_path = archive_path.with_suffix(".partial")
+    output_root = OUTPUT_DIR.resolve()
+    exported_records = []
+
+    try:
+        with zipfile.ZipFile(partial_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for position, (history_index, entry) in enumerate(entries, 1):
+                entry_id_value = _history_entry_id(entry, history_index)
+                video_name = safe_slug(Path(str(entry.get("video") or "video")).stem)
+                record_dir = (
+                    f"AI Evidence Extractor History/Analyses/"
+                    f"{position:04d}-{video_name}-{safe_slug(entry_id_value)[-12:]}"
+                )
+                record = dict(entry)
+                details = dict(entry.get("details") or {})
+                artifact_paths = {
+                    "captures": details.get("captures", []),
+                    "heatmaps": details.get("heatmaps", []),
+                    "highlights": details.get("highlights", []),
+                    "object_summaries": details.get("object_summaries", []),
+                    "master_video": [details.get("master_video") or entry.get("master_video")],
+                    "report_pdf": [details.get("report_pdf") or entry.get("report_pdf")],
+                }
+                archived = {}
+                missing = []
+                for key, paths in artifact_paths.items():
+                    if not isinstance(paths, list):
+                        paths = [paths]
+                    archived_paths = []
+                    for path_index, source in enumerate(paths, 1):
+                        if not isinstance(source, str) or not source:
+                            continue
+                        source_path = Path(source).resolve()
+                        if not source_path.is_relative_to(output_root):
+                            missing.append(f"{key}: file is outside app output storage")
+                            continue
+                        if not source_path.is_file():
+                            missing.append(f"{key}: {source_path.name} is missing")
+                            continue
+                        category = {
+                            "object_summaries": "summaries",
+                            "master_video": "reports",
+                            "report_pdf": "reports",
+                        }.get(key, key)
+                        filename = f"{path_index:04d}-{safe_slug(source_path.name)}"
+                        arcname = f"{record_dir}/{category}/{filename}"
+                        archive.write(source_path, arcname=arcname)
+                        archived_paths.append(arcname)
+                    archived[key] = archived_paths
+
+                for key in ("captures", "heatmaps", "highlights", "object_summaries"):
+                    details[key] = archived[key]
+                details["master_video"] = archived["master_video"][0] if archived["master_video"] else ""
+                details["report_pdf"] = archived["report_pdf"][0] if archived["report_pdf"] else ""
+                details["analysis_json"] = f"{record_dir}/analysis.json"
+                details["zip_missing_artifacts"] = missing
+                record["details"] = details
+                analysis_json = json.dumps(
+                    record, ensure_ascii=False, indent=2,
+                    default=_history_json_default)
+                archive.writestr(details["analysis_json"], analysis_json)
+                exported_records.append({
+                    "id": entry_id_value,
+                    "video": entry.get("video", ""),
+                    "analysis_json": details["analysis_json"],
+                    "missing_artifacts": missing,
+                })
+
+            archive.writestr(
+                "AI Evidence Extractor History/history_index.json",
+                json.dumps(exported_records, ensure_ascii=False, indent=2),
+            )
+        os.replace(partial_path, archive_path)
+    except Exception:
+        log.exception("Could not create analysis history ZIP")
+        try:
+            partial_path.unlink(missing_ok=True)
+        except OSError:
+            log.exception("Could not remove partial analysis history ZIP")
+        raise
+    return str(archive_path.resolve()), len(entries), sum(
+        len(record["missing_artifacts"]) for record in exported_records)
+
+
+def _history_zip_ui(entry_id=None):
+    try:
+        archive_path, entry_count, missing_count = _history_zip(entry_id)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        log.exception("History ZIP export failed")
+        status = (
+            '<div class="aee-history-warning"><strong>ZIP export failed</strong> '
+            f'{_html.escape(str(exc))}</div>'
+        )
+        return None, status
+    status = (
+        f'<div class="aee-history-export-status">ZIP ready: '
+        f'{entry_count} analysis{"es" if entry_count != 1 else ""} included.'
+    )
+    if missing_count:
+        status += f' {missing_count} generated file(s) were unavailable.</div>'
+    else:
+        status += '</div>'
+    return archive_path, status
 
 
 def _copy_history_artifact(source, destination):
@@ -2274,6 +2410,8 @@ button#aee-account-signout,.aee-settings-card .aee-account-signout button,
 .aee-history-warning{grid-column:1/-1;padding:10px 12px;border:1px solid rgba(248,113,113,.2);
   border-radius:10px;color:#fecaca;background:rgba(239,68,68,.07);font-size:.74rem;}
 .aee-history-warning ul{margin:5px 0 0;padding-left:18px;}
+.aee-history-export-status{margin:6px 0 12px;padding:10px 12px;border:1px solid rgba(96,165,250,.18);
+  border-radius:10px;color:#bfdbfe;background:rgba(37,99,235,.08);font-size:.78rem;}
 .aee-history-empty{display:grid;gap:6px;padding:26px;border:1px dashed rgba(148,163,184,.2);
   border-radius:14px;color:#94a3b8;text-align:center;}
 .aee-history-empty strong{color:#e2e8f0;font-size:.9rem;}
@@ -2299,6 +2437,7 @@ html[data-theme="light"] .aee-history-metadata dd,html[data-theme="light"] .aee-
 html[data-theme="light"] .aee-history-stat{border-color:rgba(37,99,235,.13);background:#eff6ff;}
 html[data-theme="light"] .aee-history-stat strong{color:#1e3a8a;}
 html[data-theme="light"] .aee-history-stat span{color:#475569;}
+html[data-theme="light"] .aee-history-export-status{color:#1e40af;background:#eff6ff;}
 html[data-theme="light"] .aee-history-empty{border-color:rgba(100,116,139,.25);color:#64748b;}
 html[data-theme="light"] .aee-history-empty strong{color:#172033;}
 @media(max-width:760px){
@@ -6935,6 +7074,10 @@ def _side_navigation_html():
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
               <span>History</span>
             </button>
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Detailed History">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              <span>Detailed History</span>
+            </button>
             <button class="aee-nav-item" type="button" data-aee-nav-tab="Updates">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg>
               <span>Updates</span>
@@ -7124,21 +7267,38 @@ def build_ui():
                 json_file = gr.File(show_label=False)
 
             with gr.Tab("History"):
+                gr.HTML('<div class="aee-card-title">Recent analyzed videos</div>'
+                        '<div class="aee-card-sub">A simple overview of completed analyses saved on this computer.</div>')
+                history_refresh = gr.Button("Refresh history", size="sm")
+                history_table = gr.Dataframe(
+                    value=_history_dataframe(), headers=HISTORY_COLUMNS,
+                    datatype=["str", "str", "number", "number", "str", "str"],
+                    interactive=False, wrap=True, show_row_numbers=True)
+
+            with gr.Tab("Detailed History"):
                 with gr.Column(elem_classes=["aee-history-page"]):
                     gr.HTML(
                         '<header class="aee-history-heading">'
-                        '<div><h2>Analysis history</h2>'
-                        '<p>Browse saved findings, evidence captures, generated files, and full detection details.</p>'
+                        '<div><h2>Detailed analysis archive</h2>'
+                        '<p>Review every saved analysis and download its records and generated evidence as a ZIP.</p>'
                         '</div></header>')
                     history_choices, history_selected = _history_choices()
                     history_initial = _history_detail_ui(history_selected)
                     with gr.Row(elem_classes=["aee-history-toolbar"]):
-                        history_selector = gr.Dropdown(
+                        detailed_history_selector = gr.Dropdown(
                             choices=history_choices, value=history_selected,
                             label="Select an analysis", interactive=True, scale=5)
-                        history_refresh = gr.Button(
+                        detailed_history_refresh = gr.Button(
                             "Refresh history", size="sm", scale=1,
                             elem_classes=["aee-history-refresh"])
+                    with gr.Row():
+                        selected_history_zip = gr.DownloadButton(
+                            label="Download selected analysis ZIP",
+                            variant="primary", size="lg")
+                        all_history_zip = gr.DownloadButton(
+                            label="Download all history ZIP",
+                            variant="secondary", size="lg")
+                    history_zip_status = gr.HTML()
                     history_detail = gr.HTML(value=history_initial[0])
                     history_gallery = gr.Gallery(
                         value=history_initial[1],
@@ -7164,14 +7324,6 @@ def build_ui():
                     history_tracks = gr.Dataframe(
                         value=history_initial[4], interactive=False, wrap=True,
                         show_row_numbers=True, elem_classes=["aee-history-detections"])
-                    gr.HTML(
-                        '<div class="aee-history-heading"><div><h2>All analyses</h2>'
-                        '<p>Saved locally with no automatic history limit.</p>'
-                        '</div></div>')
-                    history_table = gr.Dataframe(
-                        value=_history_dataframe(), headers=HISTORY_COLUMNS,
-                        datatype=["str", "str", "number", "number", "str", "str"],
-                        interactive=False, wrap=True, show_row_numbers=True)
 
         with gr.Group(visible=True, elem_id="aee-account-window",
                       elem_classes=["aee-utility-window-shell", "aee-account-shell"]):
@@ -7524,21 +7676,34 @@ def build_ui():
             return gr.update(choices=[Path(s).stem for s in sums] if sums else [],
                              value=Path(sums[0]).stem if sums else None)
         process_event.then(fn=_post2, inputs=[sums_state], outputs=[sum_select])
-        history_selector.change(
-            fn=_history_detail_ui, inputs=[history_selector],
+        history_refresh.click(fn=_history_dataframe, inputs=[],
+                               outputs=[history_table], queue=False)
+        detailed_history_selector.change(
+            fn=_detailed_history_selection_ui, inputs=[detailed_history_selector],
             outputs=[history_detail, history_gallery, history_files,
-                     history_detections, history_tracks], queue=False)
-        history_refresh.click(
-            fn=_history_refresh_ui, inputs=[history_selector],
-            outputs=[history_table, history_selector, history_detail,
-                     history_gallery, history_files, history_detections,
-                     history_tracks],
+                     history_detections, history_tracks,
+                     selected_history_zip, history_zip_status], queue=False)
+        detailed_history_refresh.click(
+            fn=_detailed_history_refresh_ui, inputs=[detailed_history_selector],
+            outputs=[history_detail, history_gallery, history_files,
+                     history_detections, history_tracks,
+                     detailed_history_selector, selected_history_zip,
+                     history_zip_status],
             queue=False)
+        selected_history_zip.click(
+            fn=_history_zip_ui, inputs=[detailed_history_selector],
+            outputs=[selected_history_zip, history_zip_status])
+        all_history_zip.click(
+            fn=lambda: _history_zip_ui(),
+            inputs=[], outputs=[all_history_zip, history_zip_status])
         process_event.then(
-            fn=_history_refresh_ui, inputs=[history_selector],
-            outputs=[history_table, history_selector, history_detail,
-                     history_gallery, history_files, history_detections,
-                     history_tracks])
+            fn=_history_dataframe, inputs=[], outputs=[history_table])
+        process_event.then(
+            fn=_detailed_history_refresh_ui, inputs=[detailed_history_selector],
+            outputs=[history_detail, history_gallery, history_files,
+                     history_detections, history_tracks,
+                     detailed_history_selector, selected_history_zip,
+                     history_zip_status])
         account_auth_mode_btn.click(
             fn=_account_auth_mode_ui, inputs=[account_auth_mode],
             outputs=[account_auth_mode, account_auth_intro, account_name_group,

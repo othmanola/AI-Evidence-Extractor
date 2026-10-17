@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 import app
 import account_client
@@ -31,10 +32,15 @@ class AccountUiTests(unittest.TestCase):
         navigation = app._side_navigation_html()
         self.assertIn('data-aee-nav-tab="Account"', navigation)
         self.assertIn('data-aee-nav-tab="History"', navigation)
+        self.assertIn('data-aee-nav-tab="Detailed History"', navigation)
         self.assertNotIn('data-aee-nav-tab="Settings"', navigation)
         self.assertIn('<span>Updates</span>', navigation)
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
+        ui_constants = app.build_ui.__code__.co_consts
+        self.assertIn("Recent analyzed videos", ui_constants)
+        self.assertIn("Download selected analysis ZIP", ui_constants)
+        self.assertIn("Download all history ZIP", ui_constants)
 
     def test_utility_windows_have_distinct_descriptive_headers(self):
         constants = app.build_ui.__code__.co_consts
@@ -81,6 +87,44 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<option value="English">English</option>', navigation)
         self.assertIn('<option value="Arabic">Arabic</option>', navigation)
         self.assertIn('data-aee-settings-section="security"', navigation)
+        constants = app.build_ui.__code__.co_consts
+        self.assertIn("aee-settings-profile-section", constants)
+        self.assertIn("aee-settings-security-section", constants)
+        self.assertIn('data-aee-settings-section', app._JS_HEAD)
+        self.assertIn("section.scrollIntoView", app._JS_HEAD)
+        self.assertIn("window.aeeToggleTheme = toggleTheme", app._JS_HEAD)
+        self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
+        self.assertIn("applyAeeLanguage", app._JS_HEAD)
+        self.assertIn("aee-language", app._JS_HEAD)
+        self.assertIn(
+            '<details class="aee-settings-language-control">',
+            navigation,
+        )
+        self.assertIn(
+            ".aee-settings-language-control>summary{min-height:42px;",
+            app.CSS,
+        )
+        self.assertIn(
+            ".aee-settings-language-menu{position:absolute;z-index:20;",
+            app.CSS,
+        )
+        self.assertIn(".aee-settings-language-native{display:none!important;}", app.CSS)
+        self.assertIn(".aee-settings-nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px;overflow:visible;}", app.CSS)
+        self.assertIn("data-aee-language-option=\"English\"", navigation)
+        self.assertIn("data-aee-language-option=\"Arabic\"", navigation)
+        self.assertIn("languageDropdown.open = false", app._JS_HEAD)
+        self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
+        self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
+        self.assertIn("Save changes", constants)
+        self.assertNotIn("Country", constants)
+        self.assertNotIn("Dial code", constants)
+        self.assertNotIn("Phone number", constants)
+        self.assertNotIn("Time zone", constants)
+        self.assertIn("Change photo", constants)
+        self.assertTrue(any(
+            isinstance(constant, str) and "Personal information" in constant
+            for constant in constants
+        ))
 
     def test_history_retains_more_than_one_hundred_analyses(self):
         entries = [
@@ -106,6 +150,65 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(choices), 101)
         self.assertEqual(selected, "history-100")
         self.assertIn(".aee-history-detail", app.CSS)
+
+    def test_history_zip_contains_analysis_details_and_generated_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            output_dir = root / "outputs"
+            artifact_dir = output_dir / "history" / "analysis-1"
+            artifact_dir.mkdir(parents=True)
+            capture = artifact_dir / "capture.jpg"
+            capture.write_bytes(b"capture-data")
+            source_video = root / "original.mp4"
+            source_video.write_bytes(b"source-video")
+            history_file = root / "analysis_history.json"
+            history_file.write_text(json.dumps([
+                {
+                    "id": "analysis-1",
+                    "analyzed_at": "2026-10-17T12:00:00+00:00",
+                    "video": "sample.mp4",
+                    "source_path": str(source_video),
+                    "duration_seconds": 8.0,
+                    "detections": 1,
+                    "details": {
+                        "captures": [str(capture)],
+                        "detections": [{"label": "Firearm", "timestamp": 2.0}],
+                        "tracks": [{"Track": 3}],
+                        "case_notes": "Review notes",
+                    },
+                },
+                {
+                    "id": "analysis-2",
+                    "analyzed_at": "2026-10-16T12:00:00+00:00",
+                    "video": "second.mp4",
+                    "duration_seconds": 4.0,
+                    "detections": 0,
+                    "details": {"detections": [], "tracks": []},
+                },
+            ]), encoding="utf-8")
+            with (
+                patch.object(app, "OUTPUT_DIR", output_dir),
+                patch.object(app, "HISTORY_FILE", history_file),
+            ):
+                selected_zip, selected_count, selected_missing = app._history_zip("analysis-1")
+                all_zip, all_count, all_missing = app._history_zip()
+
+            with zipfile.ZipFile(selected_zip) as archive:
+                names = archive.namelist()
+                analysis_path = next(name for name in names if name.endswith("/analysis.json"))
+                analysis = json.loads(archive.read(analysis_path))
+
+        self.assertEqual(selected_count, 1)
+        self.assertEqual(all_count, 2)
+        self.assertEqual(selected_missing, 0)
+        self.assertEqual(all_missing, 0)
+        self.assertTrue(Path(all_zip).is_file())
+        self.assertTrue(any(name.endswith("/captures/0001-capture.jpg") for name in names))
+        self.assertEqual(analysis["details"]["detections"][0]["label"], "Firearm")
+        self.assertEqual(analysis["details"]["tracks"][0]["Track"], 3)
+        self.assertEqual(analysis["details"]["case_notes"], "Review notes")
+        self.assertNotIn(str(source_video), names)
+        self.assertNotIn("original.mp4", names)
 
     def test_analysis_history_copies_generated_artifacts_and_details(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -172,45 +275,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(detail[2]), 5)
         self.assertEqual(detail[3].iloc[0]["label"], "Firearm")
         self.assertEqual(detail[4].iloc[0]["Track"], 4)
-
-        constants = app.build_ui.__code__.co_consts
-        self.assertIn("aee-settings-profile-section", constants)
-        self.assertIn("aee-settings-security-section", constants)
-        self.assertIn('data-aee-settings-section', app._JS_HEAD)
-        self.assertIn("section.scrollIntoView", app._JS_HEAD)
-        self.assertIn("window.aeeToggleTheme = toggleTheme", app._JS_HEAD)
-        self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
-        self.assertIn("applyAeeLanguage", app._JS_HEAD)
-        self.assertIn("aee-language", app._JS_HEAD)
-        self.assertIn(
-            '<details class="aee-settings-language-control">',
-            navigation,
-        )
-        self.assertIn(
-            ".aee-settings-language-control>summary{min-height:42px;",
-            app.CSS,
-        )
-        self.assertIn(
-            ".aee-settings-language-menu{position:absolute;z-index:20;",
-            app.CSS,
-        )
-        self.assertIn(".aee-settings-language-native{display:none!important;}", app.CSS)
-        self.assertIn(".aee-settings-nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px;overflow:visible;}", app.CSS)
-        self.assertIn("data-aee-language-option=\"English\"", navigation)
-        self.assertIn("data-aee-language-option=\"Arabic\"", navigation)
-        self.assertIn("languageDropdown.open = false", app._JS_HEAD)
-        self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
-        self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
-        self.assertIn("Save changes", constants)
-        self.assertNotIn("Country", constants)
-        self.assertNotIn("Dial code", constants)
-        self.assertNotIn("Phone number", constants)
-        self.assertNotIn("Time zone", constants)
-        self.assertIn("Change photo", constants)
-        self.assertTrue(any(
-            isinstance(constant, str) and "Personal information" in constant
-            for constant in constants
-        ))
 
     def test_supabase_setup_sql_is_safe_to_rerun(self):
         sql = app._ACCOUNT_SETUP_SQL
