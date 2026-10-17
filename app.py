@@ -1916,9 +1916,9 @@ body.aee-photo-editor-open{overflow:hidden!important;}
   box-shadow:0 10px 24px -16px rgba(248,113,113,.9);}
 .aee-settings-card-heading h2{margin:0;color:#edf2fa;font-size:.94rem;font-weight:700;letter-spacing:-.015em;}
 .aee-settings-card-heading p{margin:5px 0 0;color:#909db1;font-size:.76rem;line-height:1.55;}
-.aee-settings-fields{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px 14px!important;align-items:start!important;}
-.aee-settings-fields>.block{min-width:0!important;width:100%!important;}
+.aee-settings-fields{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));
+  width:100%!important;max-width:none!important;gap:14px!important;align-items:start!important;}
+.aee-settings-fields>.block{flex:none!important;min-width:0!important;width:100%!important;max-width:none!important;}
 .aee-settings-fields label span[data-testid="block-info"],
 .aee-settings-fields label span:first-child{color:#a2aabc!important;font-size:.75rem!important;font-weight:550!important;}
 .aee-settings-fields input,.aee-settings-fields select{
@@ -1929,6 +1929,7 @@ body.aee-photo-editor-open{overflow:hidden!important;}
   border-color:rgba(255,255,255,.17)!important;}
 .aee-settings-fields input:focus,.aee-settings-fields select:focus{
   border-color:rgba(255,93,85,.78)!important;box-shadow:0 0 0 3px rgba(255,93,85,.13)!important;}
+.aee-settings-fields input:focus-visible,.aee-settings-fields select:focus-visible{outline:0!important;}
 .aee-settings-fields input::placeholder{color:#7e899d!important;}
 .aee-settings-fields input[aria-invalid="true"]{
   border-color:#fb7185!important;}
@@ -1952,6 +1953,18 @@ body.aee-photo-editor-open{overflow:hidden!important;}
 .aee-settings-fields .aee-settings-dirty{grid-column:1/-1;}
 .aee-settings-card .aee-settings-option-list{max-width:none;margin:0;gap:8px!important;}
 .aee-settings-card .aee-settings-option-list button{min-height:44px;border-radius:11px!important;}
+.aee-settings-card .aee-account-signout{width:100%!important;}
+.aee-settings-card .aee-account-signout button{width:100%!important;min-height:46px!important;
+  border:1px solid rgba(255,105,105,.34)!important;border-radius:11px!important;
+  color:#fff!important;background:linear-gradient(115deg,#ef5350,#d9364f)!important;
+  box-shadow:0 12px 26px -18px rgba(239,68,68,.82)!important;
+  font-weight:700!important;transition:transform .18s,box-shadow .18s,filter .18s!important;}
+.aee-settings-card .aee-account-signout button:hover{transform:translateY(-1px);
+  filter:brightness(1.07);box-shadow:0 15px 30px -17px rgba(239,68,68,.72)!important;}
+.aee-settings-card .aee-account-signout button:focus-visible{
+  outline:2px solid #fca5a5!important;outline-offset:3px!important;}
+.aee-settings-card .aee-settings-option-list button{transition:transform .16s,border-color .16s,background .16s!important;}
+.aee-settings-card .aee-settings-option-list button:hover{transform:translateY(-1px);}
 .aee-settings-card .aee-account-profile-actions{max-width:none;margin:10px 0 0;}
 .aee-settings-card .aee-account-settings-copy{margin:0 0 14px;}
 .aee-settings-card .aee-account-settings-copy strong{color:#edf2fa;}
@@ -2090,6 +2103,7 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   transition:transform .18s,box-shadow .18s,filter .18s;}
 .aee-contact-link:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 18px 40px -18px rgba(59,130,246,.75);}
 @media(max-width:900px){
+  .aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
   .aee-project-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
   .aee-update-steps{grid-template-columns:1fr;}
   .aee-project-feature{min-height:118px;}
@@ -6868,7 +6882,8 @@ def build_ui():
                                 with gr.Column(elem_classes=["aee-settings-option-list"]):
                                     account_signout_btn = gr.Button(
                                         "Log out", variant="secondary",
-                                        visible=bool(account_session_initial))
+                                        visible=bool(account_session_initial),
+                                        elem_classes=["aee-account-signout"])
                                     account_settings_google_btn = gr.Button(
                                         "Sign in with Google", variant="primary",
                                         visible=(account_connection_ready

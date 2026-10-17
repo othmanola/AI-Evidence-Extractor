@@ -162,6 +162,28 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn(".aee-settings-card>.styler{border-radius:inherit!important;}", app.CSS)
         self.assertIn(".aee-utility-window-header{position:sticky;top:0;z-index:12;", app.CSS)
 
+    def test_profile_fields_are_ordered_and_logout_uses_destructive_gradient(self):
+        constants = app.build_ui.__code__.co_consts
+        field_positions = [
+            next(index for index, value in enumerate(constants)
+                 if value == label)
+            for label in ("Display name", "Username", "Email")
+        ]
+
+        self.assertEqual(field_positions, sorted(field_positions))
+        self.assertIn(
+            ".aee-settings-fields{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));",
+            app.CSS,
+        )
+        self.assertIn(
+            ".aee-settings-card .aee-account-signout button{width:100%!important;",
+            app.CSS,
+        )
+        self.assertIn("background:linear-gradient(115deg,#ef5350,#d9364f)!important;", app.CSS)
+        self.assertIn("aee-account-signout", constants)
+        self.assertIn(".aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}", app.CSS)
+        self.assertIn(".aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}", app.CSS)
+
     def test_update_shortcut_visibility_tracks_update_check(self):
         available = {
             "available": True,
