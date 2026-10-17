@@ -81,6 +81,25 @@ class AccountClientTests(unittest.TestCase):
         self.assertEqual(headers["Apikey"], "public-test-key")
         self.assertEqual(captured["timeout"], 25)
 
+    def test_connection_checks_unsaved_publishable_key(self):
+        with patch.object(account_client, "_api", return_value={}) as api:
+            account_client.test_connection(
+                "https://example.supabase.co", "sb_publishable_test-key"
+            )
+
+        api.assert_called_once_with(
+            {
+                "project_url": "https://example.supabase.co",
+                "anon_key": "sb_publishable_test-key",
+            },
+            "GET",
+            "/auth/v1/settings",
+        )
+
+    def test_connection_requires_both_candidate_values(self):
+        with self.assertRaises(account_client.AccountError):
+            account_client.test_connection("https://example.supabase.co", None)
+
     def test_config_change_clears_saved_session(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

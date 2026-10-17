@@ -1359,6 +1359,18 @@ html,body,.gradio-container{
     radial-gradient(1200px 800px at 50% 112%,rgba(34,211,238,.08),transparent 60%);
 }
 .gradio-container>*{position:relative;z-index:1;}
+.gradio-container button{font-family:inherit;transition:filter .16s ease,border-color .16s ease,
+  box-shadow .16s ease,transform .16s ease;}
+.gradio-container button:hover:not(:disabled){filter:brightness(1.06);}
+.gradio-container button:active:not(:disabled){transform:translateY(1px);}
+.gradio-container button:focus-visible,.gradio-container input:focus-visible,
+.gradio-container select:focus-visible,.gradio-container textarea:focus-visible{
+  outline:2px solid rgba(255,110,104,.88)!important;outline-offset:2px!important;}
+.aee-workflow{backdrop-filter:blur(14px);box-shadow:0 14px 42px -34px rgba(0,0,0,.9);}
+.aee-settings-card,.aee-upload-shell,.aee-config-shell .aee-card{
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;}
+.aee-settings-card:hover,.aee-upload-shell:hover,.aee-config-shell .aee-card:hover{
+  border-color:rgba(148,163,184,.22);}
 
 .aee-hero{position:relative;width:100%;max-width:1600px;margin:0 auto;text-align:left;
   padding:38px 8px 24px;display:flex;flex-direction:column;align-items:flex-start;}
@@ -1764,11 +1776,27 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-account-shell .aee-project-page-heading{gap:13px;}
 .aee-account-shell .aee-project-page-heading h1{font-size:1.55rem;letter-spacing:-.045em;}
 .aee-settings-profile-header{align-items:stretch!important;gap:14px!important;margin:0 0 16px!important;}
-.aee-settings-profile-header,.aee-settings-profile-photo{
+.aee-settings-profile-header{
   border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-settings-profile-header>#aee-account-profile-source{flex:1 1 auto!important;width:auto!important;min-width:0!important;}
-.aee-settings-profile-header .aee-settings-profile-photo{flex:0 0 174px!important;width:174px!important;
-  min-width:0!important;margin:0!important;}
+.aee-settings-photo-actions{flex:0 0 126px!important;width:126px!important;min-width:0!important;
+  align-items:flex-end!important;justify-content:center!important;gap:8px!important;margin:0!important;}
+.aee-settings-photo-button,.aee-settings-photo-button button{
+  width:100%!important;min-height:40px!important;padding:0 13px!important;
+  border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;
+  color:#f5f7fb!important;background:rgba(16,24,40,.72)!important;
+  box-shadow:0 10px 25px -20px rgba(0,0,0,.9)!important;font-size:.75rem!important;
+  font-weight:650!important;white-space:nowrap!important;}
+.aee-settings-photo-button button:hover{border-color:rgba(255,255,255,.24)!important;
+  background:rgba(31,41,59,.92)!important;}
+.aee-settings-photo-preview{width:70px!important;min-width:70px!important;max-width:70px!important;
+  margin:0!important;}
+.aee-settings-photo-preview .image-container{min-height:68px!important;max-height:68px!important;
+  border:1px solid rgba(255,255,255,.16)!important;border-radius:12px!important;
+  background:rgba(48,54,71,.56)!important;}
+.aee-settings-photo-preview .image-container img{object-fit:cover!important;}
+.aee-settings-photo-preview .wrap{padding:3px!important;}
+.aee-settings-photo-preview label{display:none!important;}
 .aee-settings-profile-header .aee-account-profile{height:auto;margin:0;}
 .aee-account-shell .aee-account-profile-form{
   border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
@@ -1821,12 +1849,6 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-fields input::placeholder{color:#7e899d!important;}
 .aee-settings-fields input[aria-invalid="true"]{
   border-color:#fb7185!important;}
-.aee-settings-profile-photo{width:100%;max-width:300px;}
-.aee-settings-profile-photo .image-container{min-height:86px!important;max-height:132px!important;
-  border:1px dashed rgba(255,255,255,.16)!important;border-radius:11px!important;
-  background:rgba(48,54,71,.56)!important;}
-.aee-settings-profile-photo .image-container img{object-fit:contain!important;}
-.aee-settings-profile-photo .wrap{padding:8px!important;}
 .aee-settings-dirty{display:flex;align-items:center;gap:8px;margin:0 0 12px;
   color:#fbbf9f;font-size:.76rem;line-height:1.4;}
 .aee-settings-dirty[hidden]{display:none!important;}
@@ -1914,6 +1936,10 @@ html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
 html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
 html[data-theme="light"] .aee-account-shell .aee-utility-window-header{
   background:rgba(255,255,255,.9);border-color:rgba(100,116,139,.18);}
+html[data-theme="light"] .aee-settings-photo-button button{
+  color:#172033!important;background:rgba(255,255,255,.82)!important;
+  border-color:rgba(100,116,139,.2)!important;}
+html[data-theme="light"] .aee-settings-photo-button button:hover{background:#fff!important;}
 html[data-theme="light"] .aee-settings-fields input,html[data-theme="light"] .aee-settings-fields select{
   color:#172033!important;background:#f1f4f9!important;border-color:rgba(15,23,42,.12)!important;}
 html[data-theme="light"] .aee-settings-fields input:focus,html[data-theme="light"] .aee-settings-fields select:focus{
@@ -2003,15 +2029,18 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-settings-nav-label{display:none;}
   .aee-settings-nav button{width:auto;min-width:max-content;padding:9px 11px;}
   .aee-settings-layout>.aee-settings-main{width:100%!important;flex:1 1 auto!important;}
-  .aee-account-shell .aee-account-profile{min-height:118px;padding:54px 14px 14px;gap:11px;}
-  .aee-account-shell .aee-account-avatar{width:54px;height:54px;}
+  .aee-account-shell .aee-account-profile{min-height:112px;padding:50px 10px 12px;gap:8px;}
+  .aee-account-shell .aee-account-avatar{width:48px;height:48px;}
+  .aee-account-shell .aee-account-identity strong{font-size:.9rem;}
+  .aee-account-shell .aee-account-identity span{font-size:.7rem;}
   .aee-settings-card{padding:15px;}
   .aee-settings-profile-header{gap:10px!important;}
   .aee-settings-profile-header>#aee-account-profile-source{
     flex:1 1 0!important;width:auto!important;min-width:0!important;}
-  .aee-settings-profile-header .aee-settings-profile-photo{
-    flex:0 0 120px!important;width:120px!important;height:94px!important;}
-  .aee-settings-profile-photo .image-container{min-height:68px!important;max-height:70px!important;}
+  .aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;gap:7px!important;}
+  .aee-settings-photo-button button{min-height:36px!important;padding:0 6px!important;font-size:.66rem!important;}
+  .aee-settings-photo-preview{width:58px!important;min-width:58px!important;max-width:58px!important;}
+  .aee-settings-photo-preview .image-container{min-height:56px!important;max-height:56px!important;}
   .aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}
   .aee-settings-profile-photo{max-width:none;}
   .aee-about-card,.aee-contact-card{min-height:0;padding:30px 23px;border-radius:20px;}
@@ -3879,8 +3908,9 @@ _JS_HEAD = r"""
   }
   function markAeeProfileFieldChanges(event){
     const field = event.target.closest(
-      '.aee-settings-fields input, .aee-settings-fields select, ' +
-      '.aee-settings-profile-photo input[type="file"]');
+      '.aee-settings-fields input, .aee-settings-fields select') ||
+      (event.target.matches('.aee-settings-photo-button input[type="file"]')
+        ? event.target : null);
     if (!field) return;
     const form = field.closest('#aee-settings-profile-section') ||
       document.querySelector('#aee-settings-profile-section');
@@ -5759,7 +5789,8 @@ def _account_save_profile_settings_ui(
             )
             message = "Profile details saved on this computer."
             return (_account_status_html(message, "success", profile_saved=True),
-                    _account_profile_html(profile=profile), None, gr.update(value=None))
+                    _account_profile_html(profile=profile), None,
+                    gr.update(value=None, visible=False), None)
 
         profile, session, email_pending = _account_client.save_profile_settings(
             session, display_name, username, email,
@@ -5782,14 +5813,22 @@ def _account_save_profile_settings_ui(
             message += f" The updated profile could not be refreshed: {refresh_error}"
         tone = "error" if photo_error or refresh_error else "success"
         return (_account_status_html(message, tone, profile_saved=not photo_error),
-                profile_html, session, gr.update(value=None) if not photo_error else gr.skip())
+                profile_html, session,
+                gr.update(value=None, visible=False) if not photo_error else gr.skip(),
+                None if not photo_error else gr.skip())
     except _account_client.AccountError as exc:
         return (_account_status_html(str(exc), "error"),
-                _account_profile_html(session), session, gr.skip())
+                _account_profile_html(session), session, gr.skip(), gr.skip())
     except Exception as exc:
         log.exception("Could not save profile settings")
         return (_account_status_html(f"Could not save profile settings: {exc}", "error"),
-                _account_profile_html(session), session, gr.skip())
+                _account_profile_html(session), session, gr.skip(), gr.skip())
+
+
+def _account_preview_photo_ui(image_path):
+    if not image_path:
+        return gr.update(value=None, visible=False), None
+    return gr.update(value=image_path, visible=True), image_path
 
 
 def _account_upload_photo_ui(image_path, session):
@@ -5832,21 +5871,19 @@ def _account_refresh_profile_ui(session):
 
 
 def _account_save_config_ui(project_url, anon_key, session, access_ready):
+    connection_verified = False
+    settings_saved = False
     try:
+        _account_client.test_connection(project_url, anon_key)
+        connection_verified = True
         changed = _account_client.save_config(project_url, anon_key)
-        try:
-            _account_client.test_connection()
-        except _account_client.AccountError as exc:
-            message = f"Settings saved, but Supabase could not be reached: {exc}"
-            if changed:
-                session = None
-        else:
-            message = (
-                "Supabase Auth connection verified. You can now sign in or create an "
-                "account. Run the setup SQL below to enable profile storage and photos."
-            )
-            if changed:
-                session = None
+        settings_saved = True
+        message = (
+            "Supabase Auth connection verified. You can now sign in or create an "
+            "account. Run the setup SQL below to enable profile storage and photos."
+        )
+        if changed:
+            session = None
         guest_mode = _account_client.guest_mode_selected()
         profile_visible = bool(session) or guest_mode
         guest_profile = (_account_client.load_guest_profile()
@@ -5863,7 +5900,17 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
                 gr.update(visible=guest_mode and not bool(session)))
     except _account_client.AccountError as exc:
         profile_visible = bool(session or access_ready)
-        return (_account_status_html(str(exc), "error"), gr.skip(),
+        if not connection_verified:
+            message = f"Supabase connection failed; settings were not saved: {exc}"
+        elif not settings_saved:
+            message = f"Supabase connection verified, but settings could not be saved: {exc}"
+        else:
+            message = (
+                f"Supabase connection verified and saved, but account status could "
+                f"not be refreshed: {exc}"
+            )
+        return (_account_status_html(
+                    message, "error"), gr.skip(),
                 session, gr.skip(), gr.update(visible=not profile_visible),
                 gr.update(visible=profile_visible), _account_access_html(access_ready),
                 access_ready, gr.update(visible=profile_visible),
@@ -5871,7 +5918,17 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
     except Exception as exc:
         log.exception("Could not configure account connection")
         profile_visible = bool(session or access_ready)
-        return (_account_status_html(f"Could not configure account connection: {exc}", "error"),
+        if not connection_verified:
+            message = f"Supabase connection failed; settings were not saved: {exc}"
+        elif not settings_saved:
+            message = f"Supabase connection verified, but settings could not be saved: {exc}"
+        else:
+            message = (
+                f"Supabase connection verified and saved, but account status could "
+                f"not be refreshed: {exc}"
+            )
+        return (_account_status_html(
+                    message, "error"),
                 gr.skip(), session, gr.skip(),
                 gr.update(visible=not profile_visible), gr.update(visible=profile_visible),
                 _account_access_html(access_ready), access_ready,
@@ -6265,13 +6322,24 @@ def build_ui():
                                     account_profile = gr.HTML(
                                         value=account_profile_initial,
                                         elem_id="aee-account-profile-source")
-                                    account_photo_input = gr.Image(
-                                        label="Change photo",
-                                        sources=["upload"],
-                                        type="filepath",
-                                        height=118,
-                                        image_mode="RGB",
-                                        elem_classes=["aee-settings-profile-photo"])
+                                    with gr.Column(
+                                        elem_classes=["aee-settings-photo-actions"]
+                                    ):
+                                        account_photo_picker = gr.UploadButton(
+                                            "Change photo",
+                                            file_types=[".jpg", ".jpeg", ".png", ".webp"],
+                                            file_count="single",
+                                            type="filepath",
+                                            elem_classes=["aee-settings-photo-button"])
+                                        account_photo_input = gr.Image(
+                                            label=None,
+                                            value=None,
+                                            interactive=False,
+                                            visible=False,
+                                            height=74,
+                                            image_mode="RGB",
+                                            elem_classes=["aee-settings-photo-preview"])
+                                        account_photo_state = gr.State(None)
                                 with gr.Group(elem_classes=["aee-settings-card"]):
                                     with gr.Row(elem_classes=["aee-settings-card-heading"]):
                                         gr.HTML('''<div><h2>Personal information</h2>
@@ -6328,9 +6396,10 @@ def build_ui():
                         ):
                             gr.HTML('''<div class="aee-account-settings-copy">
                               <strong>Connect your Supabase project</strong>
-                              <p>Enter the project URL and public publishable (anon) key. Never use a
-                              service-role or secret key. Run the setup SQL below in your Supabase SQL Editor;
-                              it is safe to run again if setup was interrupted.</p>
+                              <p>Copy the project URL and public publishable key (or legacy anon key)
+                              from your Supabase project API settings. Never use a service-role or secret key.
+                              Run the setup SQL below in the Supabase SQL Editor. The connection is tested
+                              before these settings are saved, and the SQL is safe to rerun.</p>
                               <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
                                  target="_blank" rel="noopener noreferrer">View setup instructions</a>
                             </div>''')
@@ -6339,9 +6408,9 @@ def build_ui():
                                 value=account_config_initial["project_url"],
                                 placeholder="https://your-project.supabase.co")
                             account_anon_key = gr.Textbox(
-                                label="Public publishable (anon) key",
+                                label="Supabase public API key",
                                 type="password", value=account_config_initial["anon_key"],
-                                placeholder="sb_publishable_… or your anon key")
+                                placeholder="sb_publishable_… or legacy anon key")
                             account_save_config_btn = gr.Button(
                                 "Save and test connection", variant="primary")
                             gr.Code(
@@ -6620,10 +6689,13 @@ def build_ui():
         account_save_name_btn.click(
             fn=_account_save_profile_settings_ui,
             inputs=[account_profile_name, account_profile_username,
-                    account_profile_email, account_photo_input, account_session],
+                    account_profile_email, account_photo_state, account_session],
             outputs=[account_status, account_profile, account_session,
-                     account_photo_input],
+                     account_photo_input, account_photo_state],
             queue=False)
+        account_photo_picker.upload(
+            fn=_account_preview_photo_ui, inputs=[account_photo_picker],
+            outputs=[account_photo_input, account_photo_state], queue=False)
         account_save_config_event = account_save_config_btn.click(
             fn=_account_save_config_ui,
             inputs=[account_project_url, account_anon_key, account_session,

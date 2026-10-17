@@ -16,6 +16,10 @@ Create a project at [supabase.com](https://supabase.com/). In **Project Settings
 API**, copy the project URL and the public **publishable** key (or legacy `anon`
 key). Enter them in **Account > Connection setup** in the app. Never enter or
 distribute a `service_role` key or any secret key in the desktop app.
+The app tests the supplied URL and key before saving them, so an unsuccessful
+connection check leaves the previous working settings unchanged. A successful
+check confirms the Supabase Auth endpoint is reachable; run the SQL below to
+enable profile storage and photo uploads.
 
 ## 2. Create the profile table and private photo bucket
 

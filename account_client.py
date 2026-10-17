@@ -321,8 +321,13 @@ def save_config(project_url: str, anon_key: str) -> bool:
     return changed
 
 
-def test_connection() -> None:
-    config = _require_config()
+def test_connection(project_url: str | None = None, anon_key: str | None = None) -> None:
+    if project_url is None and anon_key is None:
+        config = _require_config()
+    elif project_url is None or anon_key is None:
+        raise AccountError("Enter both the Supabase project URL and public API key.")
+    else:
+        config = _validate_config(project_url, anon_key)
     result = _api(config, "GET", "/auth/v1/settings")
     if not isinstance(result, dict):
         raise AccountError("Supabase returned an invalid connection response.")

@@ -51,6 +51,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertNotIn("Dial code", constants)
         self.assertNotIn("Phone number", constants)
         self.assertNotIn("Time zone", constants)
+        self.assertIn("Change photo", constants)
         self.assertTrue(any(
             isinstance(constant, str) and "Personal information" in constant
             for constant in constants
@@ -101,7 +102,11 @@ class AccountUiTests(unittest.TestCase):
 
     def test_profile_dashboard_uses_compact_responsive_photo_picker_and_cards(self):
         self.assertIn(".aee-account-shell .aee-account-profile-form{", app.CSS)
-        self.assertIn("flex:0 0 120px!important;width:120px!important;height:94px!important;", app.CSS)
+        self.assertIn(
+            ".aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;",
+            app.CSS,
+        )
+        self.assertIn("Change photo", app.build_ui.__code__.co_consts)
         self.assertIn(".aee-settings-card>.styler{border-radius:inherit!important;}", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-account-shell .aee-utility-window-header", app.CSS)
 
@@ -219,7 +224,19 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("saved on this computer", result[0])
         self.assertIn("Local Guest", result[1])
         self.assertIsNone(result[2])
-        self.assertEqual(result[3], {"value": None, "__type__": "update"})
+        self.assertEqual(
+            result[3], {"value": None, "visible": False, "__type__": "update"}
+        )
+        self.assertIsNone(result[4])
+
+    def test_profile_photo_picker_previews_selected_image(self):
+        preview, photo_path = app._account_preview_photo_ui("profile.png")
+        self.assertEqual(preview, {"value": "profile.png", "visible": True, "__type__": "update"})
+        self.assertEqual(photo_path, "profile.png")
+
+        preview, photo_path = app._account_preview_photo_ui(None)
+        self.assertEqual(preview, {"value": None, "visible": False, "__type__": "update"})
+        self.assertIsNone(photo_path)
 
     def test_signed_in_profile_email_change_is_reported_as_pending(self):
         session = {"user_id": "user-123", "email": "person@example.com"}
@@ -267,9 +284,22 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(result[3], {"__type__": "update"})
 
     def test_guest_connection_save_keeps_profile_and_settings_visible(self):
+        calls = []
+
+        def test_connection(project_url, api_key):
+            calls.append(("test", project_url, api_key))
+
+        def save_config(project_url, api_key):
+            calls.append(("save", project_url, api_key))
+            return False
+
         with (
-            patch.object(app._account_client, "save_config", return_value=False),
-            patch.object(app._account_client, "test_connection"),
+            patch.object(
+                app._account_client, "save_config", side_effect=save_config
+            ),
+            patch.object(
+                app._account_client, "test_connection", side_effect=test_connection
+            ),
             patch.object(app._account_client, "guest_mode_selected", return_value=True),
             patch.object(
                 app._account_client,
@@ -290,12 +320,19 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(result[3], "Local Guest")
         self.assertIn("Supabase Auth connection verified", result[0])
         self.assertIn("Run the setup SQL below", result[0])
+        self.assertEqual(calls, [
+            ("test", "https://example.supabase.co", "public-key"),
+            ("save", "https://example.supabase.co", "public-key"),
+        ])
 
     def test_guest_connection_error_keeps_profile_and_settings_visible(self):
-        with patch.object(
-            app._account_client,
-            "save_config",
-            side_effect=account_client.AccountError("Invalid settings."),
+        session = {"user_id": "existing-user"}
+        with (
+            patch.object(
+                app._account_client, "test_connection",
+                side_effect=account_client.AccountError("Invalid settings."),
+            ),
+            patch.object(app._account_client, "save_config") as save_config,
         ):
             result = app._account_save_config_ui("", "", None, True)
 
@@ -303,6 +340,24 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(result[5]["visible"])
         self.assertTrue(result[8]["visible"])
         self.assertFalse(result[4]["visible"])
+        self.assertIn("Invalid settings", result[0])
+        save_config.assert_not_called()
+
+    def test_failed_connection_check_does_not_clear_active_session(self):
+        session = {"user_id": "existing-user"}
+        with (
+            patch.object(
+                app._account_client, "test_connection",
+                side_effect=account_client.AccountError("Network unavailable."),
+            ),
+            patch.object(app._account_client, "save_config") as save_config,
+        ):
+            result = app._account_save_config_ui(
+                "https://example.supabase.co", "public-key", session, True
+            )
+
+        self.assertIs(result[2], session)
+        save_config.assert_not_called()
 
 
 if __name__ == "__main__":
