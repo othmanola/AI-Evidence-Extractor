@@ -1794,16 +1794,40 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   background:rgba(148,163,184,.08);transform:translateX(1px);}
 .aee-settings-nav button[aria-current="page"]{color:#f8fafc;border-color:rgba(248,113,113,.2);
   background:linear-gradient(90deg,rgba(248,113,113,.13),rgba(148,163,184,.045));}
-.aee-settings-language-control{display:grid;grid-template-columns:18px minmax(0,1fr);
-  align-items:center;gap:9px;padding:10px;border:1px solid rgba(148,163,184,.12);
-  border-radius:11px;color:#b8c3d5;background:rgba(148,163,184,.045);font-size:.78rem;font-weight:650;}
-.aee-settings-language-control svg{width:16px;height:16px;color:#a9b7cb;}
-.aee-settings-language-control select{grid-column:2;width:100%;min-width:0;min-height:36px;
-  box-sizing:border-box;padding:6px 26px 6px 9px;appearance:auto;
-  border:1px solid rgba(148,163,184,.18);border-radius:8px;color:#f5f7fb;
-  color-scheme:dark;background:#222b3c;font:600 .76rem Inter,system-ui,sans-serif;cursor:pointer;}
-.aee-settings-language-control select option{color:#f5f7fb;background:#222b3c;}
-.aee-settings-language-control select:focus-visible{outline:2px solid #ff7770;outline-offset:2px;}
+.aee-settings-language-control{position:relative;display:block;color:#b8c3d5;}
+.aee-settings-language-control>summary{min-height:42px;box-sizing:border-box;
+  display:flex;align-items:center;gap:10px;padding:10px 11px;list-style:none;
+  border:1px solid rgba(148,163,184,.12);border-radius:11px;
+  background:rgba(148,163,184,.045);font-size:.81rem;font-weight:650;
+  cursor:pointer;transition:border-color .16s,background .16s,color .16s;}
+.aee-settings-language-control>summary::-webkit-details-marker{display:none;}
+.aee-settings-language-control>summary:hover,
+.aee-settings-language-control[open]>summary{color:#f8fafc;
+  border-color:rgba(148,163,184,.24);background:rgba(148,163,184,.09);}
+.aee-settings-language-control>summary>svg:first-child{width:16px;height:16px;
+  flex:none;color:#a9b7cb;}
+.aee-settings-language-control>summary>span{flex:1;}
+.aee-settings-language-chevron{width:14px;height:14px;flex:none;
+  color:#8492a8;transition:transform .16s;}
+.aee-settings-language-control[open] .aee-settings-language-chevron{transform:rotate(180deg);}
+.aee-settings-language-menu{position:absolute;z-index:20;top:calc(100% + 6px);
+  right:0;left:0;display:grid;gap:4px;padding:6px;
+  border:1px solid rgba(148,163,184,.2);border-radius:12px;
+  background:#172033;box-shadow:0 18px 40px -20px rgba(0,0,0,.75);}
+.aee-settings-language-menu button{width:100%;min-height:38px!important;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:0 10px!important;border:1px solid transparent!important;
+  border-radius:8px!important;color:#cbd5e1!important;background:transparent!important;
+  text-align:left;font:600 .78rem Inter,system-ui,sans-serif!important;cursor:pointer;}
+.aee-settings-language-menu button:hover,
+.aee-settings-language-menu button[aria-pressed="true"]{
+  color:#fff!important;border-color:rgba(148,163,184,.14)!important;
+  background:rgba(148,163,184,.1)!important;}
+.aee-settings-language-menu button:focus-visible{outline:2px solid #ff7770!important;
+  outline-offset:1px!important;}
+.aee-settings-language-menu button[aria-pressed="true"]:after{
+  content:"✓";color:#fca5a5;font-weight:800;}
+.aee-settings-language-native{display:none!important;}
 .aee-settings-nav button:focus-visible,.aee-settings-theme-button:focus-visible,
 .aee-settings-layout button:focus-visible,.aee-settings-layout input:focus-visible,
 .aee-settings-layout select:focus-visible{outline:2px solid #ff7770!important;outline-offset:2px!important;}
@@ -1953,15 +1977,19 @@ body.aee-photo-editor-open{overflow:hidden!important;}
 .aee-settings-fields .aee-settings-dirty{grid-column:1/-1;}
 .aee-settings-card .aee-settings-option-list{max-width:none;margin:0;gap:8px!important;}
 .aee-settings-card .aee-settings-option-list button{min-height:44px;border-radius:11px!important;}
-.aee-settings-card .aee-account-signout{width:100%!important;}
-.aee-settings-card .aee-account-signout button{width:100%!important;min-height:46px!important;
-  border:1px solid rgba(255,105,105,.34)!important;border-radius:11px!important;
+#aee-account-signout,#aee-account-signout button,
+button#aee-account-signout,.aee-settings-card .aee-account-signout button,
+.aee-settings-card button.aee-account-signout{
+  width:100%!important;min-height:46px!important;box-sizing:border-box!important;
+  border:1px solid rgba(255,105,105,.42)!important;border-radius:11px!important;
   color:#fff!important;background:linear-gradient(115deg,#ef5350,#d9364f)!important;
+  background-color:#d9364f!important;
   box-shadow:0 12px 26px -18px rgba(239,68,68,.82)!important;
   font-weight:700!important;transition:transform .18s,box-shadow .18s,filter .18s!important;}
-.aee-settings-card .aee-account-signout button:hover{transform:translateY(-1px);
-  filter:brightness(1.07);box-shadow:0 15px 30px -17px rgba(239,68,68,.72)!important;}
-.aee-settings-card .aee-account-signout button:focus-visible{
+#aee-account-signout button:hover,button#aee-account-signout:hover{
+  transform:translateY(-1px);filter:brightness(1.07);
+  box-shadow:0 15px 30px -17px rgba(239,68,68,.72)!important;}
+#aee-account-signout button:focus-visible,button#aee-account-signout:focus-visible{
   outline:2px solid #fca5a5!important;outline-offset:3px!important;}
 .aee-settings-card .aee-settings-option-list button{transition:transform .16s,border-color .16s,background .16s!important;}
 .aee-settings-card .aee-settings-option-list button:hover{transform:translateY(-1px);}
@@ -2025,10 +2053,18 @@ html[data-theme="light"] .aee-settings-nav button{color:#475569;}
 html[data-theme="light"] .aee-settings-nav button:hover{color:#0f172a;background:rgba(100,116,139,.07);}
 html[data-theme="light"] .aee-settings-nav button[aria-current="page"]{color:#0f172a;background:rgba(248,113,113,.1);}
 html[data-theme="light"] .aee-settings-language-control{color:#334155;background:rgba(100,116,139,.055);}
-html[data-theme="light"] .aee-settings-language-control select{color:#172033;background:#f1f4f9;
-  border-color:rgba(15,23,42,.13);color-scheme:light;}
-html[data-theme="light"] .aee-settings-language-control select option{
-  color:#172033;background:#f1f4f9;}
+html[data-theme="light"] .aee-settings-language-control>summary{color:#334155;
+  border-color:rgba(100,116,139,.16);background:rgba(100,116,139,.045);}
+html[data-theme="light"] .aee-settings-language-control>summary:hover,
+html[data-theme="light"] .aee-settings-language-control[open]>summary{
+  color:#172033;border-color:rgba(100,116,139,.27);background:rgba(100,116,139,.09);}
+html[data-theme="light"] .aee-settings-language-menu{border-color:rgba(100,116,139,.2);
+  background:#fff;box-shadow:0 18px 38px -22px rgba(15,23,42,.32);}
+html[data-theme="light"] .aee-settings-language-menu button{color:#334155!important;}
+html[data-theme="light"] .aee-settings-language-menu button:hover,
+html[data-theme="light"] .aee-settings-language-menu button[aria-pressed="true"]{
+  color:#172033!important;border-color:rgba(100,116,139,.15)!important;
+  background:#f1f5f9!important;}
 html[data-theme="light"] .aee-account-shell .aee-account-profile{background:#f1f5f9;}
 html[data-theme="light"] .aee-account-shell .aee-account-mode[data-provider="google"]{
   color:#1e3a8a;border-color:rgba(66,133,244,.22);background:rgba(66,133,244,.08);}
@@ -2132,7 +2168,7 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-settings-layout{display:flex!important;flex-direction:column!important;gap:12px!important;}
   .aee-settings-layout>.aee-settings-sidebar{position:static;flex:0 0 auto!important;
     width:100%!important;max-width:none!important;}
-  .aee-settings-nav{display:flex;gap:4px;padding:8px;overflow-x:auto;}
+  .aee-settings-nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px;overflow:visible;}
   .aee-settings-nav-label{display:none;}
   .aee-settings-nav button{width:auto;min-width:max-content;padding:9px 11px;}
   .aee-settings-layout>.aee-settings-main{width:100%!important;flex:1 1 auto!important;}
@@ -4297,15 +4333,39 @@ _JS_HEAD = r"""
   function initializeAeeLanguageSelector(){
     const languageSelector = document.getElementById('aee-language-selector');
     if (!languageSelector) return;
+    const languageDropdown = languageSelector.closest('.aee-settings-language-control');
+    const languageOptions = languageDropdown
+      ? Array.from(languageDropdown.querySelectorAll('[data-aee-language-option]')) : [];
+    function syncLanguageOptions(){
+      languageOptions.forEach(option => {
+        option.setAttribute('aria-pressed',
+          option.dataset.aeeLanguageOption === languageSelector.value ? 'true' : 'false');
+      });
+    }
     let savedLanguage = 'English';
     try { savedLanguage = localStorage.getItem('aee-language') || 'English'; }
     catch (error) { console.warn('Could not read language preference.', error); }
     if (!languageSelector.dataset.aeeLanguageInitialized){
       languageSelector.value = savedLanguage === 'Arabic' ? 'Arabic' : 'English';
       languageSelector.dataset.aeeLanguageInitialized = 'true';
-      languageSelector.addEventListener('change', () =>
-        applyAeeLanguage(languageSelector.value, true));
+      languageSelector.addEventListener('change', () => {
+        syncLanguageOptions();
+        applyAeeLanguage(languageSelector.value, true);
+      });
+      languageOptions.forEach(option => option.addEventListener('click', () => {
+        if (!['English', 'Arabic'].includes(option.dataset.aeeLanguageOption)) return;
+        languageSelector.value = option.dataset.aeeLanguageOption;
+        languageSelector.dispatchEvent(new Event('change', {bubbles: true}));
+        if (languageDropdown) languageDropdown.open = false;
+      }));
+      if (languageDropdown) languageDropdown.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && languageDropdown.open){
+          languageDropdown.open = false;
+          languageDropdown.querySelector('summary').focus();
+        }
+      });
     }
+    syncLanguageOptions();
     applyAeeLanguage(languageSelector.value, false);
   }
   function initializeAeeProfileFieldValues(){
@@ -6573,14 +6633,22 @@ def _side_navigation_html():
 def _settings_navigation_html():
     return '''<nav class="aee-settings-nav" aria-label="Settings sections">
       <div class="aee-settings-nav-label">Settings</div>
-      <label class="aee-settings-language-control">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
-        <span>Language</span>
-        <select id="aee-language-selector" aria-label="Language">
+      <details class="aee-settings-language-control">
+        <summary>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+          <span>Language</span>
+          <svg class="aee-settings-language-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="aee-settings-language-menu" role="group" aria-label="Choose language">
+          <button type="button" aria-pressed="true" data-aee-language-option="English">English</button>
+          <button type="button" aria-pressed="false" data-aee-language-option="Arabic">Arabic</button>
+        </div>
+        <select id="aee-language-selector" class="aee-settings-language-native"
+                aria-label="Language" tabindex="-1" aria-hidden="true">
           <option value="English">English</option>
           <option value="Arabic">Arabic</option>
         </select>
-      </label>
+      </details>
       <button type="button" data-aee-settings-section="security">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         <span>Security</span>
@@ -6883,7 +6951,8 @@ def build_ui():
                                     account_signout_btn = gr.Button(
                                         "Log out", variant="secondary",
                                         visible=bool(account_session_initial),
-                                        elem_classes=["aee-account-signout"])
+                                        elem_classes=["aee-account-signout"],
+                                        elem_id="aee-account-signout")
                                     account_settings_google_btn = gr.Button(
                                         "Sign in with Google", variant="primary",
                                         visible=(account_connection_ready

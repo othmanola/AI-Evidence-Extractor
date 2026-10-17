@@ -2,7 +2,9 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
-Version 1.2.26 improves profile form field order and responsive spacing,
+Version 1.2.27 gives Log out explicit ID-based gradient styling and changes
+the language selector to a collapsed, accessible click-to-open menu. Version
+1.2.26 improves profile form field order and responsive spacing,
 modernizes account cards, and gives the Log out action a clear red gradient.
 Version 1.2.25 gives the account profile card a calm, solid background and
 identifies Google sign-ins with a Google icon and provider badge. Version

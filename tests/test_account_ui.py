@@ -89,13 +89,22 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("applyAeeLanguage", app._JS_HEAD)
         self.assertIn("aee-language", app._JS_HEAD)
         self.assertIn(
-            ".aee-settings-language-control{display:grid;grid-template-columns:18px minmax(0,1fr);",
+            '<details class="aee-settings-language-control">',
+            navigation,
+        )
+        self.assertIn(
+            ".aee-settings-language-control>summary{min-height:42px;",
             app.CSS,
         )
         self.assertIn(
-            ".aee-settings-language-control select{grid-column:2;width:100%;",
+            ".aee-settings-language-menu{position:absolute;z-index:20;",
             app.CSS,
         )
+        self.assertIn(".aee-settings-language-native{display:none!important;}", app.CSS)
+        self.assertIn(".aee-settings-nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px;overflow:visible;}", app.CSS)
+        self.assertIn("data-aee-language-option=\"English\"", navigation)
+        self.assertIn("data-aee-language-option=\"Arabic\"", navigation)
+        self.assertIn("languageDropdown.open = false", app._JS_HEAD)
         self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
         self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
         self.assertIn("Save changes", constants)
@@ -176,11 +185,12 @@ class AccountUiTests(unittest.TestCase):
             app.CSS,
         )
         self.assertIn(
-            ".aee-settings-card .aee-account-signout button{width:100%!important;",
+            "#aee-account-signout,#aee-account-signout button,",
             app.CSS,
         )
         self.assertIn("background:linear-gradient(115deg,#ef5350,#d9364f)!important;", app.CSS)
         self.assertIn("aee-account-signout", constants)
+        self.assertIn('elem_id="aee-account-signout"', constants)
         self.assertIn(".aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}", app.CSS)
         self.assertIn(".aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}", app.CSS)
 
