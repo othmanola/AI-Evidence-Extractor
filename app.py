@@ -4009,6 +4009,12 @@ _JS_HEAD = r"""
     let drag = null;
     const maximumPhotoBytes = 5 * 1024 * 1024;
 
+    function componentControl(id, selector){
+      const component = document.getElementById(id);
+      if (!component) return null;
+      return component.matches(selector) ? component : component.querySelector(selector);
+    }
+
     function geometry(){
       const bounds = canvas.getBoundingClientRect();
       const width = bounds.width;
@@ -4085,7 +4091,8 @@ _JS_HEAD = r"""
         const notice = section.querySelector('[data-aee-settings-dirty]');
         if (notice) notice.hidden = !changed;
       }
-      openButton.querySelector('button')?.focus({preventScroll:true});
+      componentControl('aee-photo-change-button', 'button')
+        ?.focus({preventScroll:true});
     }
     function openEditor(file){
       if (!file) return;
@@ -4144,11 +4151,10 @@ _JS_HEAD = r"""
         }
         const reader = new FileReader();
         reader.onload = () => {
-          const transfer = document.querySelector(
-            '#aee-photo-payload textarea, #aee-photo-payload input');
-          const submit = document.querySelector('#aee-photo-submit button');
+          const transfer = componentControl('aee-photo-payload', 'textarea, input');
+          const submit = componentControl('aee-photo-submit', 'button');
           if (!transfer || !submit){
-            showError('The photo editor could not connect to the app. Please try again.');
+            showError('The photo editor controls are unavailable. Close the editor and reopen Settings.');
             return;
           }
           const valuePrototype = transfer instanceof HTMLTextAreaElement
@@ -5904,6 +5910,22 @@ def _account_profile_email_visibility_ui(session):
     return gr.update(visible=bool(session))
 
 
+def _account_connection_setup_visibility_ui():
+    try:
+        return gr.update(visible=not _account_client.config_is_ready())
+    except _account_client.AccountError as exc:
+        log.warning("Could not verify the saved account connection: %s", exc)
+        return gr.update(visible=True)
+
+
+def _account_google_sign_in_visibility_ui():
+    try:
+        return gr.update(visible=_account_client.config_is_ready())
+    except _account_client.AccountError as exc:
+        log.warning("Google sign-in is unavailable without a valid connection: %s", exc)
+        return gr.update(visible=False)
+
+
 def _account_profile_settings_refresh_ui(session):
     if not session:
         return tuple(gr.skip() for _ in range(3))
@@ -6046,11 +6068,12 @@ def _account_guest_ui(session, access_ready=True):
     try:
         message = _account_client.sign_out(session)
         profile = _account_client.load_guest_profile()
+        google_available = _account_google_sign_in_visibility_ui()["visible"]
         return (_account_status_html(message, "neutral"),
                 _account_profile_html(profile=profile), None,
                 profile.get("display_name", ""), gr.update(visible=False), gr.update(visible=True),
                 _account_access_html(True), True, gr.update(visible=True),
-                gr.update(visible=False), gr.update(visible=True))
+                gr.update(visible=False), gr.update(visible=google_available))
     except _account_client.AccountError as exc:
         return (_account_status_html(str(exc), "error"), _account_profile_html(session),
                 session, _account_profile_name_value(session), gr.update(visible=not session),
@@ -6294,7 +6317,7 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
         settings_saved = True
         message = (
             "Supabase Auth connection verified. You can now sign in or create an "
-            "account. Run the setup SQL below to enable profile storage and photos."
+            "account. Profile and photo features require the project setup SQL."
         )
         if changed:
             session = None
@@ -6311,7 +6334,8 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
                 _account_access_html(access_ready), access_ready,
                 gr.update(visible=profile_visible),
                 gr.update(visible=bool(session)),
-                gr.update(visible=guest_mode and not bool(session)))
+                gr.update(visible=guest_mode and not bool(session)),
+                gr.update(visible=True))
     except _account_client.AccountError as exc:
         profile_visible = bool(session or access_ready)
         if not connection_verified:
@@ -6328,7 +6352,8 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
                 session, gr.skip(), gr.update(visible=not profile_visible),
                 gr.update(visible=profile_visible), _account_access_html(access_ready),
                 access_ready, gr.update(visible=profile_visible),
-                gr.update(visible=bool(session)), gr.skip())
+                gr.update(visible=bool(session)), gr.skip(),
+                _account_google_sign_in_visibility_ui())
     except Exception as exc:
         log.exception("Could not configure account connection")
         profile_visible = bool(session or access_ready)
@@ -6347,7 +6372,7 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
                 gr.update(visible=not profile_visible), gr.update(visible=profile_visible),
                 _account_access_html(access_ready), access_ready,
                 gr.update(visible=profile_visible), gr.update(visible=bool(session)),
-                gr.skip())
+                gr.skip(), _account_google_sign_in_visibility_ui())
 
 
 def _check_updates_ui():
@@ -6528,6 +6553,9 @@ def build_ui():
         log.warning("Could not load account connection settings: %s", exc)
         account_config_initial = {"project_url": "", "anon_key": ""}
         account_status_initial = _account_status_html(str(exc), "error")
+    account_connection_ready = bool(
+        account_config_initial["project_url"] and account_config_initial["anon_key"]
+    )
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
         gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
         gr.HTML(_hero_html(info))
@@ -6710,6 +6738,7 @@ def build_ui():
                     gr.HTML('<div class="aee-account-divider"><span>or continue with</span></div>')
                     account_google_btn = gr.Button(
                         "Continue with Google", variant="secondary",
+                        visible=account_connection_ready,
                         elem_classes=["aee-account-google"])
                     gr.HTML('<div class="aee-account-divider"><span>or</span></div>')
                     account_guest_btn = gr.Button(
@@ -6718,10 +6747,10 @@ def build_ui():
                     gr.HTML('''<div class="aee-account-auth-privacy">
                       <strong>Your work stays private.</strong> Videos, analysis history, and reports
                       remain on this device, whether you create an account or continue as a guest.</div>''')
-                    if not account_config_initial["project_url"]:
+                    if not account_connection_ready:
                         gr.HTML('''<div class="aee-account-setup-hint">
-                          Online accounts need a Supabase connection. Expand
-                          <strong>Connection setup</strong> below, or continue as a guest.</div>''')
+                          Online sign-in is not configured on this device yet. Continue as a guest,
+                          or ask your administrator to configure online accounts.</div>''')
                 with gr.Row(elem_classes=["aee-settings-layout"]):
                     with gr.Column(scale=1, min_width=180,
                                    elem_classes=["aee-settings-sidebar"]):
@@ -6807,15 +6836,17 @@ def build_ui():
                                         visible=bool(account_session_initial))
                                     account_settings_google_btn = gr.Button(
                                         "Sign in with Google", variant="primary",
-                                        visible=account_guest_mode_initial)
+                                        visible=(account_connection_ready
+                                                 and account_guest_mode_initial))
                                     account_change_account_btn = gr.Button(
                                         "Change account", variant="secondary")
                         with gr.Accordion(
                             "Connection setup",
                             open=False,
+                            visible=not account_connection_ready,
                             elem_classes=["aee-settings-panel", "aee-settings-card",
                                           "aee-account-settings", "aee-account-connection-settings"],
-                        ):
+                        ) as account_connection_setup:
                             gr.HTML('''<div class="aee-account-settings-copy">
                               <strong>Connect your Supabase project</strong>
                               <p>Copy the project URL and public publishable key (or legacy anon key)
@@ -7131,13 +7162,17 @@ def build_ui():
                      account_auth_group, account_profile_group,
                      account_access_marker, account_access_state,
                      account_profile_settings, account_signout_btn,
-                     account_settings_google_btn],
+                     account_settings_google_btn, account_google_btn],
             queue=False)
         account_save_config_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
             outputs=account_profile_settings_fields, queue=False).then(
             fn=_account_profile_email_visibility_ui, inputs=[account_session],
-            outputs=[account_profile_email], queue=False)
+            outputs=[account_profile_email], queue=False).then(
+            fn=_account_connection_setup_visibility_ui, inputs=[],
+            outputs=[account_connection_setup], queue=False).then(
+            fn=_account_google_sign_in_visibility_ui, inputs=[],
+            outputs=[account_google_btn], queue=False)
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
                      update_apply_btn], queue=False)

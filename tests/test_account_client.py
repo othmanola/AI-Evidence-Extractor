@@ -113,6 +113,19 @@ class AccountClientTests(unittest.TestCase):
         with self.assertRaises(account_client.AccountError):
             account_client.test_connection("https://example.supabase.co", None)
 
+    def test_missing_project_config_has_user_safe_guidance(self):
+        with (
+            patch.object(
+                account_client,
+                "load_config",
+                return_value={"project_url": "", "anon_key": ""},
+            ),
+            self.assertRaisesRegex(
+                account_client.AccountError, "Contact the app administrator"
+            ),
+        ):
+            account_client._require_config()
+
     def test_config_change_clears_saved_session(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

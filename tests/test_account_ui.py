@@ -148,6 +148,27 @@ class AccountUiTests(unittest.TestCase):
         self.assertFalse(result[3]["interactive"])
         self.assertTrue(result[4]["active"])
 
+    def test_google_sign_in_and_connection_setup_follow_saved_config(self):
+        with patch.object(app._account_client, "config_is_ready", return_value=True):
+            self.assertEqual(
+                app._account_connection_setup_visibility_ui(),
+                {"visible": False, "__type__": "update"},
+            )
+            self.assertEqual(
+                app._account_google_sign_in_visibility_ui(),
+                {"visible": True, "__type__": "update"},
+            )
+
+        with patch.object(app._account_client, "config_is_ready", return_value=False):
+            self.assertEqual(
+                app._account_connection_setup_visibility_ui(),
+                {"visible": True, "__type__": "update"},
+            )
+            self.assertEqual(
+                app._account_google_sign_in_visibility_ui(),
+                {"visible": False, "__type__": "update"},
+            )
+
     def test_google_sign_in_updates_guest_settings_actions(self):
         signed_in = {
             "user_id": "user-123",
@@ -182,6 +203,9 @@ class AccountUiTests(unittest.TestCase):
                 app._account_client, "load_guest_profile",
                 return_value=profile,
             ),
+            patch.object(
+                app._account_client, "config_is_ready", return_value=True,
+            ),
         ):
             result = app._account_guest_ui({"user_id": "user-123"})
 
@@ -191,6 +215,23 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(result[8]["visible"])
         self.assertFalse(result[9]["visible"])
         self.assertTrue(result[10]["visible"])
+
+    def test_guest_settings_hide_google_sign_in_without_project_connection(self):
+        profile = {"display_name": "Local Guest", "avatar_url": ""}
+        with (
+            patch.object(
+                app._account_client, "sign_out",
+                return_value="You are using guest mode.",
+            ),
+            patch.object(
+                app._account_client, "load_guest_profile",
+                return_value=profile,
+            ),
+            patch.object(app._account_client, "config_is_ready", return_value=False),
+        ):
+            result = app._account_guest_ui({"user_id": "user-123"})
+
+        self.assertFalse(result[10]["visible"])
 
     def test_guest_settings_save_name_updates_local_profile_view(self):
         profile = {"display_name": "Local Guest", "avatar_url": ""}
@@ -238,6 +279,9 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('data-aee-photo-apply', editor)
         self.assertIn('data-aee-photo-cancel', editor)
         self.assertIn("function initializeAeePhotoEditor()", app._JS_HEAD)
+        self.assertIn("function componentControl(id, selector)", app._JS_HEAD)
+        self.assertIn("component.matches(selector)", app._JS_HEAD)
+        self.assertIn("component.querySelector(selector)", app._JS_HEAD)
         self.assertIn("drawImage(image, sourceX, sourceY, sourceSize", app._JS_HEAD)
         self.assertIn("data-aee-photo-zoom", app._JS_HEAD)
 
@@ -338,7 +382,7 @@ class AccountUiTests(unittest.TestCase):
                 "https://example.supabase.co", "public-key", None, True
             )
 
-        self.assertEqual(len(result), 11)
+        self.assertEqual(len(result), 12)
         self.assertTrue(result[5]["visible"])
         self.assertTrue(result[8]["visible"])
         self.assertFalse(result[9]["visible"])
@@ -346,7 +390,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Local Guest", result[1])
         self.assertEqual(result[3], "Local Guest")
         self.assertIn("Supabase Auth connection verified", result[0])
-        self.assertIn("Run the setup SQL below", result[0])
+        self.assertIn("Profile and photo features require", result[0])
+        self.assertTrue(result[11]["visible"])
         self.assertEqual(calls, [
             ("test", "https://example.supabase.co", "public-key"),
             ("save", "https://example.supabase.co", "public-key"),
@@ -363,7 +408,7 @@ class AccountUiTests(unittest.TestCase):
         ):
             result = app._account_save_config_ui("", "", None, True)
 
-        self.assertEqual(len(result), 11)
+        self.assertEqual(len(result), 12)
         self.assertTrue(result[5]["visible"])
         self.assertTrue(result[8]["visible"])
         self.assertFalse(result[4]["visible"])

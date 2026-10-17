@@ -23,7 +23,8 @@ The app converts the dashboard URL to its API host and upgrades an HTTP
 The app tests the supplied URL and key before saving them, so an unsuccessful
 connection check leaves the previous working settings unchanged. A successful
 check confirms the Supabase Auth endpoint is reachable; run the SQL below to
-enable profile storage and photo uploads.
+enable profile storage and photo uploads. The verified connection is saved on
+this computer, and the connection setup panel is hidden afterward.
 
 ## 2. Create the profile table and private photo bucket
 
