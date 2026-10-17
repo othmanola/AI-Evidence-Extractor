@@ -21,6 +21,70 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(result[5], "Local Guest")
         self.assertIn("Local Guest", result[2])
 
+    def test_project_navigation_exposes_settings_instead_of_account(self):
+        navigation = app._side_navigation_html()
+        self.assertIn('data-aee-nav-tab="Settings"', navigation)
+        self.assertNotIn('data-aee-nav-tab="Account"', navigation)
+        self.assertIn('<span>Updates</span>', navigation)
+        self.assertIn('<span>About Us</span>', navigation)
+        self.assertIn('<span>Contact Us</span>', navigation)
+
+    def test_google_sign_in_can_start_from_settings(self):
+        with patch.object(
+            app._account_client, "start_google_sign_in", return_value="oauth-123"
+        ):
+            result = app._account_google_start_ui()
+
+        self.assertEqual(len(result), 5)
+        self.assertEqual(result[0], "oauth-123")
+        self.assertFalse(result[2]["interactive"])
+        self.assertFalse(result[3]["interactive"])
+        self.assertTrue(result[4]["active"])
+
+    def test_google_sign_in_updates_guest_settings_actions(self):
+        signed_in = {
+            "user_id": "user-123",
+            "email": "person@example.com",
+            "display_name": "Person",
+        }
+        with (
+            patch.object(
+                app._account_client, "finish_google_sign_in",
+                return_value=signed_in,
+            ),
+            patch.object(
+                app, "_account_render_signed_in",
+                return_value=("<section>Person</section>", signed_in, None),
+            ),
+        ):
+            result = app._account_google_poll_ui("oauth-123", None, True)
+
+        self.assertEqual(len(result), 14)
+        self.assertTrue(result[6]["visible"])
+        self.assertTrue(result[12]["visible"])
+        self.assertFalse(result[13]["visible"])
+
+    def test_guest_settings_show_google_sign_in_and_hide_log_out(self):
+        profile = {"display_name": "Local Guest", "avatar_url": ""}
+        with (
+            patch.object(
+                app._account_client, "sign_out",
+                return_value="You are using guest mode.",
+            ),
+            patch.object(
+                app._account_client, "load_guest_profile",
+                return_value=profile,
+            ),
+        ):
+            result = app._account_guest_ui({"user_id": "user-123"})
+
+        self.assertEqual(len(result), 11)
+        self.assertFalse(result[4]["visible"])
+        self.assertTrue(result[5]["visible"])
+        self.assertTrue(result[8]["visible"])
+        self.assertFalse(result[9]["visible"])
+        self.assertTrue(result[10]["visible"])
+
     def test_guest_settings_save_name_updates_local_profile_view(self):
         profile = {"display_name": "Local Guest", "avatar_url": ""}
         with patch.object(
@@ -49,10 +113,11 @@ class AccountUiTests(unittest.TestCase):
                 "https://example.supabase.co", "public-key", None, True
             )
 
-        self.assertEqual(len(result), 10)
+        self.assertEqual(len(result), 11)
         self.assertTrue(result[5]["visible"])
         self.assertTrue(result[8]["visible"])
         self.assertFalse(result[9]["visible"])
+        self.assertTrue(result[10]["visible"])
         self.assertIn("Local Guest", result[1])
         self.assertEqual(result[3], "Local Guest")
 
@@ -64,7 +129,7 @@ class AccountUiTests(unittest.TestCase):
         ):
             result = app._account_save_config_ui("", "", None, True)
 
-        self.assertEqual(len(result), 10)
+        self.assertEqual(len(result), 11)
         self.assertTrue(result[5]["visible"])
         self.assertTrue(result[8]["visible"])
         self.assertFalse(result[4]["visible"])

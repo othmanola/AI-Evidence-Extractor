@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.8",
+    "version":  "1.2.9",
     "published_at":  "2026-10-17",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.8/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "14993faed96ace386fab2b370ffaeeccd47e37686ec6704ec51d3409e96cc61d",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.8/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "6c55fcad60308667f871a0059aa1955d699cce20722aa74de6dd88abc79acdb6",
-    "release_notes":  "Adds local guest profile settings and photo support, and fixes the Account connection settings save flow."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.9/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "05de15a35da4dcbfe3589aab38fb70670db37cee23eb859ccea439a83b89d087",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.9/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "7020678a108c9df6ebae9b3db064766e6eb3feb7c45d3bd7328668bcc93844ec",
+    "release_notes":  "Adds Settings navigation with guest Google sign-in, account logout, and profile editing."
 }

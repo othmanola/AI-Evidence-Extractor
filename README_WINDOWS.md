@@ -14,9 +14,9 @@ For challenging footage, select **Enhanced accuracy (slower)** before analysis t
 
 FFmpeg is installed as a Python package dependency and added to the process path at startup. User files and generated app data are stored under `%LOCALAPPDATA%\AI Evidence Extractor` and the operating system temporary folder.
 
-The left-side menu contains **Account**, **Updates**, **About Us**, and **Contact Us**. Updates checks the HTTPS release feed, verifies an update package, stages it inside app data, and applies it after the app closes. The app then restarts; no setup wizard is used for subsequent updates. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
+The left-side menu contains **Settings**, **Updates**, **About Us**, and **Contact Us**. Settings lists account actions, including Google sign-in for guests, log out for signed-in accounts, and **Edit profile** for a display name and optional photo. Updates checks the HTTPS release feed, verifies an update package, stages it inside app data, and applies it after the app closes. The app then restarts; no setup wizard is used for subsequent updates. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
 
-The app requires an email/password account, Google sign-in, or an explicit guest-mode choice before opening the workspace. That choice is remembered between launches. The **Account** panel supports email/password and Google accounts, profile settings, and an optional profile photo. Guest profile names and photos are stored only on this computer; signed-in profile data is stored in a connected Supabase project. Source videos, analysis history, reports, and results remain local. Configure accounts using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
+The app requires an email/password account, Google sign-in, or an explicit guest-mode choice before opening the workspace. That choice is remembered between launches. Guest profile names and photos are stored only on this computer; signed-in profile data is stored in a connected Supabase project. Source videos, analysis history, reports, and results remain local. Configure accounts using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 
 ## Build the installer
 
