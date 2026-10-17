@@ -855,8 +855,29 @@ _OAUTH_LOCK = threading.Lock()
 _OAUTH_TRANSACTIONS: dict[str, _OAuthTransaction] = {}
 
 
+def _google_provider_error_message(error: str) -> str:
+    normalized = error.casefold()
+    if "unsupported provider" in normalized and "not enabled" in normalized:
+        return (
+            "Google sign-in is not enabled in the connected Supabase project. "
+            "Enable Google in Authentication > Sign In / Providers, then add "
+            "your Google OAuth client ID and secret."
+        )
+    return error
+
+
+def _require_google_provider(config: dict[str, str]) -> None:
+    settings = _api(config, "GET", "/auth/v1/settings")
+    external = settings.get("external") if isinstance(settings, dict) else None
+    if isinstance(external, dict) and external.get("google") is False:
+        raise AccountError(_google_provider_error_message(
+            "Unsupported provider: provider is not enabled"
+        ))
+
+
 def start_google_sign_in() -> str:
     config = _require_config()
+    _require_google_provider(config)
     transaction_id = uuid.uuid4().hex
     verifier = base64.urlsafe_b64encode(secrets.token_bytes(48)).rstrip(b"=").decode("ascii")
     challenge = base64.urlsafe_b64encode(
@@ -896,7 +917,9 @@ def start_google_sign_in() -> str:
             error = query.get("error_description", query.get("error", [""]))[0]
             code = query.get("code", [""])[0]
             if error or not code:
-                message = error or "Google sign-in did not return an authorization code."
+                message = _google_provider_error_message(error) if error else (
+                    "Google sign-in did not return an authorization code."
+                )
                 _complete_oauth_transaction(
                     transaction_id, error=f"Google sign-in could not be completed: {message}"
                 )

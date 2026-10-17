@@ -1765,13 +1765,15 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   background:rgba(148,163,184,.08);transform:translateX(1px);}
 .aee-settings-nav button[aria-current="page"]{color:#f8fafc;border-color:rgba(248,113,113,.2);
   background:linear-gradient(90deg,rgba(248,113,113,.13),rgba(148,163,184,.045));}
-.aee-settings-language-control{display:grid;grid-template-columns:18px auto minmax(0,1fr);
-  align-items:center;gap:9px;padding:9px 10px;border:1px solid rgba(148,163,184,.12);
+.aee-settings-language-control{display:grid;grid-template-columns:18px minmax(0,1fr);
+  align-items:center;gap:9px;padding:10px;border:1px solid rgba(148,163,184,.12);
   border-radius:11px;color:#b8c3d5;background:rgba(148,163,184,.045);font-size:.78rem;font-weight:650;}
 .aee-settings-language-control svg{width:16px;height:16px;color:#a9b7cb;}
-.aee-settings-language-control select{width:100%;min-width:0;padding:6px 22px 6px 8px;
+.aee-settings-language-control select{grid-column:2;width:100%;min-width:0;min-height:36px;
+  box-sizing:border-box;padding:6px 26px 6px 9px;appearance:auto;
   border:1px solid rgba(148,163,184,.18);border-radius:8px;color:#f5f7fb;
-  background:#222b3c;font:600 .72rem Inter,system-ui,sans-serif;}
+  color-scheme:dark;background:#222b3c;font:600 .76rem Inter,system-ui,sans-serif;cursor:pointer;}
+.aee-settings-language-control select option{color:#f5f7fb;background:#222b3c;}
 .aee-settings-language-control select:focus-visible{outline:2px solid #ff7770;outline-offset:2px;}
 .aee-settings-nav button:focus-visible,.aee-settings-theme-button:focus-visible,
 .aee-settings-layout button:focus-visible,.aee-settings-layout input:focus-visible,
@@ -1808,10 +1810,18 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-photo-preview .wrap{padding:3px!important;}
 .aee-settings-photo-preview label{display:none!important;}
 .aee-photo-editor-modal{position:fixed;inset:0;z-index:10000;display:grid;
-  grid-template-rows:58px minmax(0,1fr) 64px;color:#f4f6f8;background:#090b0e;
+  place-items:center;box-sizing:border-box;overflow:auto;padding:18px;
+  color:#f4f6f8;background:rgba(5,8,15,.74);backdrop-filter:blur(8px);
   font-family:Inter,system-ui,sans-serif;}
 body.aee-photo-editor-open{overflow:hidden!important;}
 .aee-photo-editor-modal[hidden]{display:none!important;}
+.aee-photo-editor-window{width:min(760px,calc(100vw - 36px));
+  height:min(720px,calc(100vh - 36px));height:min(720px,calc(100dvh - 36px));
+  min-height:min(420px,calc(100dvh - 36px));display:grid;
+  grid-template-rows:58px minmax(0,1fr) 64px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);border-radius:18px;
+  color:#f4f6f8;background:#090b0e;
+  box-shadow:0 28px 90px rgba(0,0,0,.58);}
 .aee-photo-editor-header{display:flex;align-items:center;justify-content:space-between;
   gap:14px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.08);
   background:#121417;}
@@ -1822,9 +1832,10 @@ body.aee-photo-editor-open{overflow:hidden!important;}
   background:transparent;font-size:23px;line-height:1;}
 .aee-photo-editor-back:hover{background:rgba(255,255,255,.1);}
 .aee-photo-editor-title{font-size:17px;font-weight:700;letter-spacing:-.015em;}
-.aee-photo-editor-apply{min-width:72px;height:36px;padding:0 17px;border-radius:999px;
-  color:#101316;background:#eff3f4;font-size:13px;font-weight:750;}
-.aee-photo-editor-apply:hover{background:#dce3e6;}
+.aee-photo-editor-apply{min-width:82px;height:38px;padding:0 17px;border:1px solid rgba(255,93,85,.32);
+  border-radius:10px;color:#fff;background:linear-gradient(120deg,#ef665f,#dc4c59);
+  box-shadow:0 10px 24px -16px rgba(248,113,113,.9);font-size:13px;font-weight:750;}
+.aee-photo-editor-apply:hover{background:linear-gradient(120deg,#f34d49,#d94150);}
 .aee-photo-editor-stage{position:relative;display:grid;place-items:center;min-height:0;
   padding:14px 18px;background:#090b0e;}
 .aee-photo-crop-canvas{display:block;width:min(100%,680px);height:min(100%,68vh);
@@ -1839,7 +1850,7 @@ body.aee-photo-editor-open{overflow:hidden!important;}
 .aee-photo-zoom-button{width:30px;height:30px;border:1px solid #394149;border-radius:50%;
   color:#aab3bb;background:transparent;font-size:20px;line-height:1;}
 .aee-photo-zoom-button:hover{border-color:#6b7781;color:#fff;}
-.aee-photo-zoom-range{width:min(54vw,300px);height:4px;accent-color:#1d9bf0;
+.aee-photo-zoom-range{width:min(54vw,300px);height:4px;accent-color:#ff5d55;
   cursor:pointer;touch-action:pan-y;}
 .aee-photo-transfer{display:none!important;}
 .aee-photo-editor-result{display:none!important;}
@@ -1977,7 +1988,9 @@ html[data-theme="light"] .aee-settings-nav button:hover{color:#0f172a;background
 html[data-theme="light"] .aee-settings-nav button[aria-current="page"]{color:#0f172a;background:rgba(248,113,113,.1);}
 html[data-theme="light"] .aee-settings-language-control{color:#334155;background:rgba(100,116,139,.055);}
 html[data-theme="light"] .aee-settings-language-control select{color:#172033;background:#f1f4f9;
-  border-color:rgba(15,23,42,.13);}
+  border-color:rgba(15,23,42,.13);color-scheme:light;}
+html[data-theme="light"] .aee-settings-language-control select option{
+  color:#172033;background:#f1f4f9;}
 html[data-theme="light"] .aee-account-shell .aee-account-profile{background:linear-gradient(180deg,#f5f6fb,#fff);}
 html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
   background:linear-gradient(110deg,rgba(225,75,91,.21),rgba(126,75,126,.18) 55%,rgba(74,81,152,.15));}
@@ -4064,7 +4077,7 @@ _JS_HEAD = r"""
       context.fillRect(0, layout.y, layout.x, layout.side);
       context.fillRect(layout.x + layout.side, layout.y,
         layout.width - layout.x - layout.side, layout.side);
-      context.strokeStyle = '#1d9bf0';
+      context.strokeStyle = '#ff5d55';
       context.lineWidth = 3;
       context.strokeRect(layout.x + 1.5, layout.y + 1.5,
         layout.side - 3, layout.side - 3);
@@ -4082,7 +4095,6 @@ _JS_HEAD = r"""
       objectUrl = '';
       picker.value = '';
       showError('');
-      window.__aeePhotoApplyInProgress = false;
       const section = document.getElementById('aee-settings-profile-section');
       if (section){
         section.dataset.aeePhotoDirty = 'false';
@@ -4163,9 +4175,9 @@ _JS_HEAD = r"""
           setter.call(transfer, reader.result);
           transfer.dispatchEvent(new Event('input', {bubbles:true}));
           transfer.dispatchEvent(new Event('change', {bubbles:true}));
-          window.__aeePhotoApplyInProgress = true;
           showError('');
           submit.click();
+          closeEditor();
         };
         reader.onerror = () => showError('The edited photo could not be read. Please try again.');
         reader.readAsDataURL(blob);
@@ -4220,28 +4232,6 @@ _JS_HEAD = r"""
       draw();
     });
     new ResizeObserver(draw).observe(canvas);
-    const status = document.getElementById('aee-account-status');
-    const resultHost = document.getElementById('aee-photo-apply-result');
-    if (status && resultHost && !status.dataset.aeePhotoObserver){
-      status.dataset.aeePhotoObserver = 'true';
-      const updateApplyState = () => {
-        if (!window.__aeePhotoApplyInProgress) return;
-        const result = resultHost.querySelector('[data-photo-applied]');
-        if (result?.dataset.photoApplied === 'true'){
-          closeEditor();
-        } else {
-          const message = status.querySelector('[data-kind="error"]');
-          if (message){
-            showError(message.textContent.trim());
-            window.__aeePhotoApplyInProgress = false;
-          }
-        }
-      };
-      new MutationObserver(updateApplyState).observe(status,
-        {childList:true,subtree:true,attributes:true});
-      new MutationObserver(updateApplyState).observe(resultHost,
-        {childList:true,subtree:true});
-    }
   }
   function refreshAeeProfileFieldBaseline(event){
     const field = event.target.closest(
@@ -6174,7 +6164,8 @@ def _account_save_profile_settings_ui(display_name, username, email, session):
 def _account_photo_editor_html():
     return '''<section id="aee-photo-editor-modal" class="aee-photo-editor-modal"
         aria-label="Edit profile photo" aria-modal="true" role="dialog" hidden>
-      <header class="aee-photo-editor-header">
+      <div class="aee-photo-editor-window">
+        <header class="aee-photo-editor-header">
         <div class="aee-photo-editor-heading">
           <button class="aee-photo-editor-back" type="button"
             data-aee-photo-cancel aria-label="Cancel photo edit">‹</button>
@@ -6199,6 +6190,7 @@ def _account_photo_editor_html():
         <button class="aee-photo-zoom-button" type="button"
           data-aee-photo-zoom="0.1" aria-label="Zoom in">+</button>
       </footer>
+      </div>
     </section>
     <input id="aee-photo-file-input" class="aee-photo-hidden-file" type="file"
       accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"

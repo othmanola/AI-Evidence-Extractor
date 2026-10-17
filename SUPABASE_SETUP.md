@@ -104,6 +104,10 @@ add your Supabase project's callback URL
 (`https://<project-ref>.supabase.co/auth/v1/callback`) as an authorized
 redirect URI for the OAuth web client.
 
+If the app reports that the provider is not enabled, Google is still disabled
+for the connected Supabase project. Enable it here and save the Google OAuth
+client credentials before retrying sign-in.
+
 In the Supabase project's **Authentication > URL Configuration**, add
 `http://127.0.0.1:*/oauth/callback` to the redirect URL allow list. The app
 uses a temporary local callback port for each sign-in and the Google button

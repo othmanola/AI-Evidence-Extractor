@@ -11,6 +11,22 @@ import account_client
 
 
 class AccountClientTests(unittest.TestCase):
+    def test_google_provider_disabled_error_explains_supabase_configuration(self):
+        message = account_client._google_provider_error_message(
+            "Unsupported provider: provider is not enabled"
+        )
+
+        self.assertIn("not enabled in the connected Supabase project", message)
+        self.assertIn("Authentication > Sign In / Providers", message)
+        self.assertIn("Google OAuth client ID and secret", message)
+
+    def test_google_provider_error_message_preserves_other_errors(self):
+        message = account_client._google_provider_error_message(
+            "OAuth request was cancelled"
+        )
+
+        self.assertEqual(message, "OAuth request was cancelled")
+
     def setUp(self):
         self.config = {
             "project_url": "https://example.supabase.co",
@@ -421,6 +437,8 @@ class AccountClientTests(unittest.TestCase):
         threading.excepthook = lambda args: thread_errors.append(args.exc_value)
 
         def fake_api(_config, _method, path, body=None, **_kwargs):
+            if path == "/auth/v1/settings":
+                return {"external": {"google": True}}
             if path == "/auth/v1/token?grant_type=pkce":
                 self.assertEqual(body["auth_code"], "one-time-code")
                 self.assertEqual(len(body["code_verifier"]), 64)
@@ -458,6 +476,23 @@ class AccountClientTests(unittest.TestCase):
                 self.assertEqual(thread_errors, [])
         finally:
             threading.excepthook = old_thread_hook
+
+    def test_google_sign_in_reports_when_provider_is_disabled(self):
+        with (
+            patch.object(account_client, "_require_config", return_value=self.config),
+            patch.object(
+                account_client, "_api",
+                return_value={"external": {"google": False}},
+            ),
+            patch.object(account_client.webbrowser, "open") as open_browser,
+        ):
+            with self.assertRaisesRegex(
+                account_client.AccountError,
+                "Enable Google in Authentication > Sign In / Providers",
+            ):
+                account_client.start_google_sign_in()
+
+        open_browser.assert_not_called()
 
     @unittest.skipUnless(__import__("os").name == "nt", "Windows DPAPI is required")
     def test_windows_session_encryption_round_trip(self):

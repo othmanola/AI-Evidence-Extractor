@@ -49,6 +49,14 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
         self.assertIn("applyAeeLanguage", app._JS_HEAD)
         self.assertIn("aee-language", app._JS_HEAD)
+        self.assertIn(
+            ".aee-settings-language-control{display:grid;grid-template-columns:18px minmax(0,1fr);",
+            app.CSS,
+        )
+        self.assertIn(
+            ".aee-settings-language-control select{grid-column:2;width:100%;",
+            app.CSS,
+        )
         self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
         self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
         self.assertIn("Save changes", constants)
@@ -274,6 +282,7 @@ class AccountUiTests(unittest.TestCase):
     def test_profile_photo_editor_has_square_crop_and_zoom_controls(self):
         editor = app._account_photo_editor_html()
         self.assertIn('aria-modal="true"', editor)
+        self.assertIn('class="aee-photo-editor-window"', editor)
         self.assertIn('id="aee-photo-crop-canvas"', editor)
         self.assertIn('type="range" min="1" max="3"', editor)
         self.assertIn('data-aee-photo-apply', editor)
@@ -284,6 +293,15 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("component.querySelector(selector)", app._JS_HEAD)
         self.assertIn("drawImage(image, sourceX, sourceY, sourceSize", app._JS_HEAD)
         self.assertIn("data-aee-photo-zoom", app._JS_HEAD)
+        self.assertIn(
+            ".aee-photo-editor-modal{position:fixed;inset:0;z-index:10000;display:grid;",
+            app.CSS,
+        )
+        self.assertIn(
+            ".aee-photo-editor-apply{min-width:82px;height:38px;",
+            app.CSS,
+        )
+        self.assertIn("submit.click();\n          closeEditor();", app._JS_HEAD)
 
     def test_profile_photo_apply_uploads_validated_cropped_jpeg(self):
         image_bytes = b"\xff\xd8\xffcropped photo bytes"
