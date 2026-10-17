@@ -1472,13 +1472,14 @@ html[data-theme="light"] .aee-tool{
   font-size:.76rem;font-weight:800;letter-spacing:.02em;}
 .aee-profile-tool img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;}
 .aee-profile-tool svg{width:19px;height:19px;color:#cbd5e1;}
-.aee-update-app{position:fixed;z-index:10002;top:20px;left:76px;min-height:42px;
+.aee-update-app{width:auto;min-height:42px;
   display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;
   border:1px solid rgba(96,165,250,.28);border-radius:13px;color:#dbeafe;
   background:linear-gradient(145deg,rgba(30,64,120,.92),rgba(17,32,62,.94));
   box-shadow:0 10px 28px -18px rgba(37,99,235,.8);backdrop-filter:blur(14px);
   cursor:pointer;font:650 .76rem Inter,system-ui,sans-serif;
   transition:transform .18s,border-color .18s,box-shadow .18s,background .18s;}
+.aee-update-app[hidden]{display:none!important;}
 .aee-update-app:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.62);
   box-shadow:0 14px 30px -16px rgba(59,130,246,.62);
   background:linear-gradient(145deg,rgba(37,99,235,.82),rgba(30,64,120,.96));}
@@ -1496,6 +1497,7 @@ html[data-theme="light"] .aee-update-app:hover{background:#eff6ff;border-color:r
   .aee-workflow-line{display:none;}
   .aee-toolbar{position:fixed;top:12px;right:12px;gap:6px;}
   .aee-toolbar .aee-tool{width:36px;height:36px;border-radius:11px;}
+  .aee-toolbar .aee-update-app{width:auto!important;min-height:36px;padding:0 8px;gap:6px;font-size:.69rem;}
   .aee-toolbar .aee-profile-tool{border-radius:50%!important;}
 }
 
@@ -2827,6 +2829,9 @@ html[data-theme="light"] .aee-upload-shell{
 @media(max-width:380px){
   .aee-toolbar{gap:4px!important;}
   .aee-toolbar .aee-tool{width:32px!important;height:32px!important;border-radius:10px!important;}
+  .aee-toolbar .aee-update-app{width:auto!important;min-height:32px!important;padding:0 6px!important;gap:4px!important;
+    font-size:.64rem!important;}
+  .aee-toolbar .aee-update-app svg{width:14px!important;height:14px!important;}
 }
 """
 
@@ -2839,6 +2844,14 @@ def _hero_html(info):
     return f"""
     <div class="aee-hero">
       <div class="aee-toolbar">
+        <button class="aee-tool aee-update-app" type="button" data-aee-nav-update
+          aria-label="Update the app" title="Open app updates" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/>
+          </svg>
+          <span>Update the app</span>
+        </button>
         <a class="aee-tool" id="theme-toggle" title="Toggle theme (T)">&#9681;</a>
         <a class="aee-tool" id="cmd-open" title="Command palette (Ctrl+K)">&#8981;</a>
         <button class="aee-tool aee-profile-tool" type="button"
@@ -3554,9 +3567,7 @@ _JS_HEAD = r"""
   }
   function syncAeeTopbarLayout(){
     const mobile = window.innerWidth <= 640;
-    const compact = window.innerWidth <= 380;
     const toggle = document.querySelector('[data-aee-nav-toggle]');
-    const update = document.querySelector('[data-aee-nav-update]');
     if (toggle){
       toggle.style.left = mobile ? '12px' : '';
       toggle.style.top = mobile ? '12px' : '';
@@ -3564,20 +3575,11 @@ _JS_HEAD = r"""
       toggle.style.height = mobile ? '40px' : '';
       toggle.style.borderRadius = mobile ? '12px' : '';
     }
-    if (update){
-      update.style.left = mobile ? '60px' : '';
-      update.style.top = mobile ? '12px' : '';
-      update.style.minHeight = mobile ? '38px' : '';
-      update.style.padding = mobile ? (compact ? '0 6px' : '0 8px') : '';
-      update.style.gap = mobile ? (compact ? '4px' : '6px') : '';
-      update.style.borderRadius = mobile ? '11px' : '';
-      update.style.fontSize = mobile ? (compact ? '.64rem' : '.69rem') : '';
-      const icon = update.querySelector('svg');
-      if (icon) {
-        icon.style.width = compact ? '14px' : '';
-        icon.style.height = compact ? '14px' : '';
-      }
-    }
+  }
+  function syncAeeUpdateShortcut(){
+    const button = document.querySelector('[data-aee-nav-update]');
+    const status = document.querySelector('#aee-update-status [data-update-available]');
+    if (button) button.hidden = !status || status.dataset.updateAvailable !== 'true';
   }
   window.addEventListener('resize', syncAeeTopbarLayout, {passive:true});
   function aeeAccessRequired(){
@@ -3708,6 +3710,7 @@ _JS_HEAD = r"""
     applyAeeAccessGate();
     syncAeeProfileTool();
     syncAeeTopbarLayout();
+    syncAeeUpdateShortcut();
     const host = document.getElementById('aee-nav-host');
     const navigation = host && host.querySelector('.aee-navigation');
     if (navigation && navigation.parentElement !== document.body){
@@ -5091,10 +5094,14 @@ def cancel_active_analysis():
     return "Analysis stopped."
 
 
-def _update_status_html(message, tone="neutral", update=None):
+def _update_status_html(message, tone="neutral", update=None, update_available=None):
     safe_message = _html.escape(str(message))
+    available = (bool(update and update.get("available"))
+                 if update_available is None else bool(update_available))
+    availability = "true" if available else "false"
     if not update or not update.get("available"):
         return (f'<div class="aee-update-status" data-tone="{_html.escape(tone)}">'
+                f'<span data-update-available="{availability}" hidden></span>'
                 f'{safe_message}</div>')
     version = _html.escape(str(update.get("version", "")))
     published = _html.escape(str(update.get("published_at", "")))
@@ -5102,6 +5109,7 @@ def _update_status_html(message, tone="neutral", update=None):
     details = f'<div class="aee-update-notes">{notes}</div>' if notes else ""
     date = f'<span>Published {published}</span>' if published else ""
     return (f'<div class="aee-update-status" data-tone="available">'
+            '<span data-update-available="true" hidden></span>'
             f'<strong>Version {version} is ready.</strong> {date}'
             f'{details}</div>')
 
@@ -5563,10 +5571,13 @@ def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
         staged = _update_client.download_and_stage_update(update, progress)
         return (_update_status_html(
             "The update package was downloaded, checksum-verified, and prepared. "
-              "Your installed app has not changed yet. Select Install Update when ready.", "success"),
+              "Your installed app has not changed yet. Select Install Update when ready.",
+            "success", update_available=True),
             gr.update(visible=True), staged)
     except _update_client.UpdateError as exc:
-        return _update_status_html(str(exc), "error"), gr.update(visible=False), update
+        return (_update_status_html(str(exc), "error",
+                                   update_available=bool(update and update.get("available"))),
+                gr.update(visible=False), update)
     except Exception as exc:
         log.exception("Could not download and prepare the update")
         return (_update_status_html(f"Could not prepare the update: {exc}", "error"),
@@ -5631,14 +5642,6 @@ def _side_navigation_html():
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
-      </button>
-      <button class="aee-update-app" type="button" data-aee-nav-update
-        aria-label="Update the app" title="Open app updates">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/>
-        </svg>
-        <span>Update the app</span>
       </button>
       <div class="aee-nav-backdrop" data-aee-nav-backdrop></div>
       <aside class="aee-nav-drawer" aria-label="App navigation">
@@ -5972,7 +5975,8 @@ def build_ui():
                         elem_classes=["aee-utility-window-close"], elem_id="aee-updates-close")
                 gr.HTML(_updates_intro_html())
                 update_status = gr.HTML(
-                    value=_update_status_html("Select Check for Updates to check for a new release."))
+                    value=_update_status_html("Select Check for Updates to check for a new release."),
+                    elem_id="aee-update-status")
                 update_state = gr.State(None)
                 with gr.Row(elem_classes=["aee-update-actions"]):
                     update_check_btn = gr.Button(
@@ -6221,6 +6225,9 @@ def build_ui():
             outputs=[update_status, update_apply_btn, update_restart_btn], show_progress="full")
         update_restart_btn.click(fn=_restart_app_ui, inputs=[],
             outputs=[update_status, update_restart_btn], queue=False)
+        app.load(fn=_check_updates_ui, inputs=[],
+            outputs=[update_status, update_download_btn, update_state,
+                     update_apply_btn], queue=False)
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
         cap_filter.change(fn=filter_gallery,

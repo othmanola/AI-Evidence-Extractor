@@ -33,8 +33,12 @@ class AccountUiTests(unittest.TestCase):
         navigation = app._side_navigation_html()
         hero = app._hero_html({"n_models": 0})
 
-        self.assertIn('data-aee-nav-update', navigation)
-        self.assertIn('<span>Update the app</span>', navigation)
+        self.assertNotIn('data-aee-nav-update', navigation)
+        self.assertIn('data-aee-nav-update', hero)
+        self.assertIn('<span>Update the app</span>', hero)
+        self.assertLess(hero.index('data-aee-nav-update'), hero.index('id="theme-toggle"'))
+        self.assertIn('data-aee-nav-update', hero.split('id="theme-toggle"')[0])
+        self.assertIn('hidden>', hero)
         self.assertIn('data-aee-nav-update', app._JS_HEAD)
         self.assertIn("activateAeeUtilityWindow('updates')", app._JS_HEAD)
         self.assertIn('data-aee-open-settings', hero)
@@ -46,9 +50,31 @@ class AccountUiTests(unittest.TestCase):
     def test_topbar_layout_adapts_to_mobile_viewports(self):
         self.assertIn("function syncAeeTopbarLayout()", app._JS_HEAD)
         self.assertIn("window.innerWidth <= 640", app._JS_HEAD)
-        self.assertIn("window.innerWidth <= 380", app._JS_HEAD)
-        self.assertIn("update.style.left = mobile ? '60px' : ''", app._JS_HEAD)
+        self.assertIn("function syncAeeUpdateShortcut()", app._JS_HEAD)
+        self.assertIn("status.dataset.updateAvailable !== 'true'", app._JS_HEAD)
         self.assertIn(".aee-toolbar{position:fixed;top:12px;right:12px;gap:6px;}", app.CSS)
+        self.assertIn(".aee-toolbar .aee-update-app{width:auto!important;min-height:32px!important;", app.CSS)
+
+    def test_update_shortcut_visibility_tracks_update_check(self):
+        available = {
+            "available": True,
+            "version": "1.2.13",
+            "published_at": "2026-10-18",
+            "release_notes": "A fix",
+            "package_url": "https://example.com/update.zip",
+        }
+        with patch.object(app._update_client, "check_for_updates", return_value=available):
+            result = app._check_updates_ui()
+
+        self.assertIn('data-update-available="true"', result[0])
+        self.assertTrue(result[1]["visible"])
+
+        current = {"available": False, "installed_version": "1.2.12"}
+        with patch.object(app._update_client, "check_for_updates", return_value=current):
+            result = app._check_updates_ui()
+
+        self.assertIn('data-update-available="false"', result[0])
+        self.assertFalse(result[1]["visible"])
 
     def test_google_sign_in_can_start_from_settings(self):
         with patch.object(
