@@ -47,7 +47,7 @@ Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "run_app.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "assets\aee.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "assets\setup_wizard.png"; DestDir: "{app}\assets"; Flags: ignoreversion
-Source: "dist\AI Evidence Extractor.lnk"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "dist\AI Evidence Extractor.lnk"; DestDir: "{app}"; DestName: "AI Evidence Extractor.lnk"; Flags: ignoreversion
 Source: "assets\python-3.13.16-amd64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "assets\MicrosoftEdgeWebView2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "README_WINDOWS.md"; DestDir: "{app}"; Flags: ignoreversion
