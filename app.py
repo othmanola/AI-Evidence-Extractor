@@ -7,7 +7,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import available_timezones
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
@@ -22,22 +21,6 @@ OUTPUT_DIR = APP_DATA / "outputs"
 HISTORY_FILE = APP_DATA / "analysis_history.json"
 HISTORY_LIMIT = 100
 HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
-PROFILE_COUNTRIES = (
-    "Argentina", "Australia", "Austria", "Bangladesh", "Belgium", "Brazil",
-    "Canada", "Chile", "China", "Colombia", "Denmark", "Egypt", "Finland",
-    "France", "Germany", "Ghana", "Greece", "Hong Kong", "India", "Indonesia",
-    "Ireland", "Israel", "Italy", "Japan", "Kenya", "Malaysia", "Mexico",
-    "Netherlands", "New Zealand", "Nigeria", "Norway", "Pakistan", "Philippines",
-    "Poland", "Portugal", "Saudi Arabia", "Singapore", "South Africa", "South Korea",
-    "Spain", "Sweden", "Switzerland", "Taiwan", "Thailand", "Turkey",
-    "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Vietnam",
-)
-PROFILE_PHONE_CODES = (
-    "+1", "+7", "+20", "+27", "+30", "+31", "+32", "+33", "+34", "+36",
-    "+39", "+44", "+46", "+47", "+48", "+49", "+52", "+55", "+60", "+61",
-    "+62", "+63", "+64", "+65", "+66", "+81", "+82", "+84", "+86", "+90",
-    "+91", "+92", "+234", "+254", "+971",
-)
 _HISTORY_LOCK = threading.Lock()
 MANIFEST = MODEL_DIR / "ensemble_manifest.json"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1827,24 +1810,17 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-fields>.block{min-width:0!important;width:100%!important;}
 .aee-settings-fields label span[data-testid="block-info"],
 .aee-settings-fields label span:first-child{color:#a2aabc!important;font-size:.75rem!important;font-weight:550!important;}
-.aee-settings-fields input,.aee-settings-fields select,
-.aee-settings-field-row input,.aee-settings-field-row select{
+.aee-settings-fields input,.aee-settings-fields select{
   min-height:40px!important;box-sizing:border-box!important;border:1px solid rgba(255,255,255,.08)!important;
   border-radius:9px!important;color:#f5f7fb!important;background:#303647!important;
   box-shadow:none!important;transition:border-color .16s,box-shadow .16s,background .16s!important;}
-.aee-settings-fields input:hover,.aee-settings-fields select:hover,
-.aee-settings-field-row input:hover,.aee-settings-field-row select:hover{
+.aee-settings-fields input:hover,.aee-settings-fields select:hover{
   border-color:rgba(255,255,255,.17)!important;}
-.aee-settings-fields input:focus,.aee-settings-fields select:focus,
-.aee-settings-field-row input:focus,.aee-settings-field-row select:focus{
+.aee-settings-fields input:focus,.aee-settings-fields select:focus{
   border-color:rgba(255,93,85,.78)!important;box-shadow:0 0 0 3px rgba(255,93,85,.13)!important;}
-.aee-settings-fields input::placeholder,.aee-settings-field-row input::placeholder{color:#7e899d!important;}
-.aee-settings-fields input[aria-invalid="true"],.aee-settings-field-row input[aria-invalid="true"]{
+.aee-settings-fields input::placeholder{color:#7e899d!important;}
+.aee-settings-fields input[aria-invalid="true"]{
   border-color:#fb7185!important;}
-.aee-settings-field-row{display:grid!important;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);
-  gap:12px!important;align-items:start!important;}
-.aee-settings-field-row>.block{min-width:0!important;width:100%!important;}
-.aee-settings-timezone-row>.block{grid-column:1/-1;width:100%!important;}
 .aee-settings-profile-photo{width:100%;max-width:300px;}
 .aee-settings-profile-photo .image-container{min-height:86px!important;max-height:132px!important;
   border:1px dashed rgba(255,255,255,.16)!important;border-radius:11px!important;
@@ -1938,13 +1914,10 @@ html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
 html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
 html[data-theme="light"] .aee-account-shell .aee-utility-window-header{
   background:rgba(255,255,255,.9);border-color:rgba(100,116,139,.18);}
-html[data-theme="light"] .aee-settings-fields input,html[data-theme="light"] .aee-settings-fields select,
-html[data-theme="light"] .aee-settings-field-row input,html[data-theme="light"] .aee-settings-field-row select{
+html[data-theme="light"] .aee-settings-fields input,html[data-theme="light"] .aee-settings-fields select{
   color:#172033!important;background:#f1f4f9!important;border-color:rgba(15,23,42,.12)!important;}
 html[data-theme="light"] .aee-settings-fields input:focus,html[data-theme="light"] .aee-settings-fields select:focus{
   border-color:rgba(255,93,85,.78)!important;}
-html[data-theme="light"] .aee-settings-field-row input:focus,
-html[data-theme="light"] .aee-settings-field-row select:focus{border-color:rgba(255,93,85,.78)!important;}
 html[data-theme="light"] .aee-settings-theme-button{color:#172033;background:rgba(100,116,139,.07);}
 html[data-theme="light"] .aee-settings-card .aee-account-settings-copy strong{color:#172033;}
 html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#475569;}
@@ -2040,7 +2013,6 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
     flex:0 0 120px!important;width:120px!important;height:94px!important;}
   .aee-settings-profile-photo .image-container{min-height:68px!important;max-height:70px!important;}
   .aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}
-  .aee-settings-field-row{grid-template-columns:minmax(94px,.7fr) minmax(0,1.3fr);gap:8px!important;}
   .aee-settings-profile-photo{max-width:none;}
   .aee-about-card,.aee-contact-card{min-height:0;padding:30px 23px;border-radius:20px;}
   .aee-project-feature-grid{grid-template-columns:1fr;}
@@ -3907,8 +3879,8 @@ _JS_HEAD = r"""
   }
   function markAeeProfileFieldChanges(event){
     const field = event.target.closest(
-      '.aee-settings-fields input, .aee-settings-fields select, .aee-settings-field-row input, ' +
-      '.aee-settings-field-row select, .aee-settings-profile-photo input[type="file"]');
+      '.aee-settings-fields input, .aee-settings-fields select, ' +
+      '.aee-settings-profile-photo input[type="file"]');
     if (!field) return;
     const form = field.closest('#aee-settings-profile-section') ||
       document.querySelector('#aee-settings-profile-section');
@@ -3930,8 +3902,7 @@ _JS_HEAD = r"""
   }
   function refreshAeeProfileFieldBaseline(event){
     const field = event.target.closest(
-      '.aee-settings-fields input, .aee-settings-fields select, ' +
-      '.aee-settings-field-row input, .aee-settings-field-row select');
+      '.aee-settings-fields input, .aee-settings-fields select');
     const form = field && field.closest('#aee-settings-profile-section');
     if (!field || !form || form.dataset.aeeDirty === 'true') return;
     field.dataset.aeeInitialValue = field.value;
@@ -3939,8 +3910,7 @@ _JS_HEAD = r"""
   }
   function initializeAeeProfileFieldValues(){
       document.querySelectorAll(
-        '.aee-settings-fields input, .aee-settings-fields select, ' +
-        '.aee-settings-field-row input, .aee-settings-field-row select')
+        '.aee-settings-fields input, .aee-settings-fields select')
         .forEach(field => {
           if (!Object.prototype.hasOwnProperty.call(field.dataset, 'aeeInitialValue'))
             field.dataset.aeeInitialValue = field.value;
@@ -5397,12 +5367,15 @@ _ACCOUNT_SETUP_SQL = """create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 grant select, insert, update on public.profiles to authenticated;
 
+drop policy if exists "Users can read their own profile" on public.profiles;
 create policy "Users can read their own profile"
   on public.profiles for select to authenticated
   using ((select auth.uid()) = id);
+drop policy if exists "Users can create their own profile" on public.profiles;
 create policy "Users can create their own profile"
   on public.profiles for insert to authenticated
   with check ((select auth.uid()) = id);
+drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
   on public.profiles for update to authenticated
   using ((select auth.uid()) = id)
@@ -5414,12 +5387,15 @@ values ('profile-photos', 'profile-photos', false, 5242880,
 on conflict (id) do update set public = false, file_size_limit = 5242880,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "Users can read their own profile photos" on storage.objects;
 create policy "Users can read their own profile photos"
   on storage.objects for select to authenticated
   using (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+drop policy if exists "Users can upload their own profile photos" on storage.objects;
 create policy "Users can upload their own profile photos"
   on storage.objects for insert to authenticated
   with check (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+drop policy if exists "Users can update their own profile photos" on storage.objects;
 create policy "Users can update their own profile photos"
   on storage.objects for update to authenticated
   using (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text)
@@ -5550,10 +5526,6 @@ def _account_profile_settings_values(profile, session=None):
         "display_name": str(profile.get("display_name") or ""),
         "username": str(profile.get("username") or ""),
         "email": email,
-        "country": str(profile.get("country") or ""),
-        "phone_country_code": str(profile.get("phone_country_code") or "+1"),
-        "phone_number": str(profile.get("phone_number") or ""),
-        "time_zone": str(profile.get("time_zone") or "UTC"),
     }
 
 
@@ -5569,7 +5541,7 @@ def _account_profile_settings_values_ui(session):
 
 def _account_profile_settings_refresh_ui(session):
     if not session:
-        return tuple(gr.skip() for _ in range(7))
+        return tuple(gr.skip() for _ in range(3))
     return _account_profile_settings_values_ui(session)
 
 
@@ -5778,22 +5750,19 @@ def _account_save_name_ui(display_name, session):
 
 
 def _account_save_profile_settings_ui(
-    display_name, username, email, country, phone_country_code, phone_number,
-    time_zone, image_path, session,
+    display_name, username, email, image_path, session,
 ):
     try:
         if not session:
             profile = _account_client.save_guest_profile_settings(
-                display_name, username, email, country, phone_country_code,
-                phone_number, time_zone, image_path,
+                display_name, username, email, image_path,
             )
             message = "Profile details saved on this computer."
             return (_account_status_html(message, "success", profile_saved=True),
                     _account_profile_html(profile=profile), None, gr.update(value=None))
 
         profile, session, email_pending = _account_client.save_profile_settings(
-            session, display_name, username, email, country, phone_country_code,
-            phone_number, time_zone,
+            session, display_name, username, email,
         )
         photo_error = None
         if image_path:
@@ -5872,7 +5841,10 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
             if changed:
                 session = None
         else:
-            message = "Supabase connection verified. You can now sign in or create an account."
+            message = (
+                "Supabase Auth connection verified. You can now sign in or create an "
+                "account. Run the setup SQL below to enable profile storage and photos."
+            )
             if changed:
                 session = None
         guest_mode = _account_client.guest_mode_selected()
@@ -6324,35 +6296,6 @@ def build_ui():
                                             value=account_profile_settings_initial.get("email", ""),
                                             placeholder="you@example.com",
                                             type="email", max_lines=1)
-                                        account_profile_country = gr.Dropdown(
-                                            label="Country",
-                                            choices=list(PROFILE_COUNTRIES),
-                                            value=account_profile_settings_initial.get("country") or None,
-                                            allow_custom_value=True,
-                                            filterable=True)
-                                    with gr.Row(elem_classes=["aee-settings-field-row"]):
-                                        account_phone_country_code = gr.Dropdown(
-                                            label="Dial code",
-                                            choices=list(PROFILE_PHONE_CODES),
-                                            value=account_profile_settings_initial.get(
-                                                "phone_country_code", "+1"),
-                                            allow_custom_value=True,
-                                            filterable=True,
-                                            scale=1)
-                                        account_phone_number = gr.Textbox(
-                                            label="Phone number",
-                                            value=account_profile_settings_initial.get("phone_number", ""),
-                                            placeholder="(123) 456-7890",
-                                            max_lines=1, scale=2)
-                                    with gr.Row(elem_classes=["aee-settings-fields",
-                                                              "aee-settings-timezone-row"]):
-                                        account_time_zone = gr.Dropdown(
-                                            label="Time zone",
-                                            choices=sorted(available_timezones()),
-                                            value=account_profile_settings_initial.get(
-                                                "time_zone", "UTC"),
-                                            filterable=True,
-                                            allow_custom_value=False)
                                     gr.HTML('''<div class="aee-account-settings-copy">
                                       Guest profile details and contact email stay on this computer.
                                       Signed-in profile details are saved to your Supabase account.
@@ -6386,7 +6329,8 @@ def build_ui():
                             gr.HTML('''<div class="aee-account-settings-copy">
                               <strong>Connect your Supabase project</strong>
                               <p>Enter the project URL and public publishable (anon) key. Never use a
-                              service-role or secret key. Run the SQL below once in your Supabase SQL Editor.</p>
+                              service-role or secret key. Run the setup SQL below in your Supabase SQL Editor;
+                              it is safe to run again if setup was interrupted.</p>
                               <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
                                  target="_blank" rel="noopener noreferrer">View setup instructions</a>
                             </div>''')
@@ -6402,7 +6346,7 @@ def build_ui():
                                 "Save and test connection", variant="primary")
                             gr.Code(
                                 value=_ACCOUNT_SETUP_SQL, language="sql",
-                                label="Run once in Supabase SQL Editor",
+                                label="Run in Supabase SQL Editor",
                                 interactive=False, lines=25)
                         with gr.Group(
                             elem_id="aee-settings-language-section",
@@ -6597,8 +6541,6 @@ def build_ui():
             queue=False)
         account_profile_settings_fields = [
             account_profile_name, account_profile_username, account_profile_email,
-            account_profile_country, account_phone_country_code, account_phone_number,
-            account_time_zone,
         ]
         account_oauth_poll_event = account_oauth_timer.tick(
             fn=_account_google_poll_ui,
@@ -6678,9 +6620,7 @@ def build_ui():
         account_save_name_btn.click(
             fn=_account_save_profile_settings_ui,
             inputs=[account_profile_name, account_profile_username,
-                    account_profile_email, account_profile_country,
-                    account_phone_country_code, account_phone_number,
-                    account_time_zone, account_photo_input, account_session],
+                    account_profile_email, account_photo_input, account_session],
             outputs=[account_status, account_profile, account_session,
                      account_photo_input],
             queue=False)

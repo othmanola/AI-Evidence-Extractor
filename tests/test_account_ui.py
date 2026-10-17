@@ -21,7 +21,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(result[5], "Local Guest")
         self.assertIn("Local Guest", result[2])
         self.assertEqual(result[6]["display_name"], "Local Guest")
-        self.assertEqual(result[6]["time_zone"], "UTC")
+        self.assertEqual(set(result[6]), {"display_name", "username", "email"})
 
     def test_project_navigation_exposes_settings_instead_of_account(self):
         navigation = app._side_navigation_html()
@@ -45,13 +45,33 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("window.aeeToggleTheme = toggleTheme", app._JS_HEAD)
         self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
         self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
-        self.assertIn(".aee-settings-field-row input", app._JS_HEAD)
         self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
         self.assertIn("Save changes", constants)
+        self.assertNotIn("Country", constants)
+        self.assertNotIn("Dial code", constants)
+        self.assertNotIn("Phone number", constants)
+        self.assertNotIn("Time zone", constants)
         self.assertTrue(any(
             isinstance(constant, str) and "Personal information" in constant
             for constant in constants
         ))
+
+    def test_supabase_setup_sql_is_safe_to_rerun(self):
+        sql = app._ACCOUNT_SETUP_SQL
+        policies = (
+            "Users can read their own profile",
+            "Users can create their own profile",
+            "Users can update their own profile",
+            "Users can read their own profile photos",
+            "Users can upload their own profile photos",
+            "Users can update their own profile photos",
+        )
+        for policy in policies:
+            with self.subTest(policy=policy):
+                self.assertLess(
+                    sql.index(f'drop policy if exists "{policy}"'),
+                    sql.index(f'create policy "{policy}"'),
+                )
 
     def test_update_app_shortcut_opens_updates_and_profile_toolbar_opens_settings(self):
         navigation = app._side_navigation_html()
@@ -190,13 +210,11 @@ class AccountUiTests(unittest.TestCase):
             app._account_client, "save_guest_profile_settings", return_value=profile
         ) as save_settings:
             result = app._account_save_profile_settings_ui(
-                "Local Guest", "@local_guest", "guest@example.com", "Canada",
-                "+1", "4165551234", "America/Toronto", None, None,
+                "Local Guest", "@local_guest", "guest@example.com", None, None,
             )
 
         save_settings.assert_called_once_with(
-            "Local Guest", "@local_guest", "guest@example.com", "Canada",
-            "+1", "4165551234", "America/Toronto", None,
+            "Local Guest", "@local_guest", "guest@example.com", None,
         )
         self.assertIn("saved on this computer", result[0])
         self.assertIn("Local Guest", result[1])
@@ -216,8 +234,7 @@ class AccountUiTests(unittest.TestCase):
             ),
         ):
             result = app._account_save_profile_settings_ui(
-                "Person", "person_123", "new@example.com", "Canada",
-                "+1", "4165551234", "America/Toronto", None, session,
+                "Person", "person_123", "new@example.com", None, session,
             )
 
         self.assertIn("Confirm the email change", result[0])
@@ -241,8 +258,7 @@ class AccountUiTests(unittest.TestCase):
             ),
         ):
             result = app._account_save_profile_settings_ui(
-                "Person", "person_123", "person@example.com", "Canada",
-                "+1", "4165551234", "America/Toronto", "new-photo.png", session,
+                "Person", "person_123", "person@example.com", "new-photo.png", session,
             )
 
         self.assertIn("Other details were saved, but the photo was not", result[0])
@@ -272,6 +288,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(result[10]["visible"])
         self.assertIn("Local Guest", result[1])
         self.assertEqual(result[3], "Local Guest")
+        self.assertIn("Supabase Auth connection verified", result[0])
+        self.assertIn("Run the setup SQL below", result[0])
 
     def test_guest_connection_error_keeps_profile_and_settings_visible(self):
         with patch.object(

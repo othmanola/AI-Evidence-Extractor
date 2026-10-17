@@ -21,7 +21,6 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 APP_DATA = Path(os.environ.get(
@@ -35,9 +34,7 @@ GUEST_PROFILE_FILE = APP_DATA / "guest_profile.json"
 GUEST_AVATAR_DIR = APP_DATA / "guest_profile_photos"
 AVATAR_BUCKET = "profile-photos"
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
-PROFILE_SETTINGS_KEYS = (
-    "username", "country", "phone_country_code", "phone_number", "time_zone",
-)
+PROFILE_SETTINGS_KEYS = ("username",)
 GOOGLE_SIGN_IN_TIMEOUT = 180
 log = logging.getLogger("aee.account")
 
@@ -68,10 +65,6 @@ def _validate_profile_settings(
     display_name: str,
     username: str,
     email: str,
-    country: str,
-    phone_country_code: str,
-    phone_number: str,
-    time_zone: str,
     *,
     require_email: bool,
 ) -> dict[str, str]:
@@ -82,36 +75,10 @@ def _validate_profile_settings(
             "Username must be 3 to 24 letters, numbers, or underscores."
         )
     email = _validate_email(email, required=require_email)
-    country = country.strip() if isinstance(country, str) else ""
-    if len(country) > 80:
-        raise AccountError("Country must be 80 characters or fewer.")
-    if not isinstance(phone_country_code, str):
-        raise AccountError("Choose a valid international dialing code.")
-    phone_country_code = phone_country_code.strip()
-    if not re.fullmatch(r"\+\d{1,4}", phone_country_code):
-        raise AccountError("Choose a valid international dialing code.")
-    phone_number = phone_number.strip()
-    if phone_number and (
-        len(phone_number) > 30
-        or not re.fullmatch(r"[0-9+().\-\s]{3,30}", phone_number)
-        or sum(character.isdigit() for character in phone_number) < 3
-    ):
-        raise AccountError("Enter a valid phone number.")
-    time_zone = time_zone.strip()
-    if len(time_zone) > 80:
-        raise AccountError("Choose a valid time zone.")
-    try:
-        ZoneInfo(time_zone)
-    except (ZoneInfoNotFoundError, ValueError) as exc:
-        raise AccountError("Choose a valid time zone.") from exc
     return {
         "display_name": display_name,
         "username": username,
         "email": email,
-        "country": country,
-        "phone_country_code": phone_country_code,
-        "phone_number": phone_number,
-        "time_zone": time_zone,
     }
 
 
@@ -176,8 +143,7 @@ def _guest_profile_data() -> dict[str, str]:
             or avatar_extension not in ("", ".jpg", ".jpeg", ".png", ".webp")):
         raise AccountError("The saved guest profile is invalid.")
     _validate_profile_settings(
-        display_name or "Guest", data["username"], data["contact_email"], data["country"],
-        data["phone_country_code"], data["phone_number"], data["time_zone"],
+        display_name or "Guest", data["username"], data["contact_email"],
         require_email=False,
     )
     return data
@@ -224,15 +190,10 @@ def save_guest_profile_settings(
     display_name: str,
     username: str,
     email: str,
-    country: str,
-    phone_country_code: str,
-    phone_number: str,
-    time_zone: str,
     image_path: str | None = None,
 ) -> dict[str, str]:
     settings = _validate_profile_settings(
-        display_name, username, email, country, phone_country_code,
-        phone_number, time_zone, require_email=False,
+        display_name, username, email, require_email=False,
     )
     data = _guest_profile_data()
     photo = _read_profile_photo(image_path) if image_path else None
@@ -240,10 +201,6 @@ def save_guest_profile_settings(
         "display_name": settings["display_name"],
         "username": settings["username"],
         "contact_email": settings["email"],
-        "country": settings["country"],
-        "phone_country_code": settings["phone_country_code"],
-        "phone_number": settings["phone_number"],
-        "time_zone": settings["time_zone"],
     })
     if photo:
         extension, content, _content_type = photo
@@ -730,15 +687,10 @@ def save_profile_settings(
     display_name: str,
     username: str,
     email: str,
-    country: str,
-    phone_country_code: str,
-    phone_number: str,
-    time_zone: str,
 ) -> tuple[dict[str, Any], dict[str, Any], bool]:
     session = _require_session(session)
     settings = _validate_profile_settings(
-        display_name, username, email, country, phone_country_code,
-        phone_number, time_zone, require_email=True,
+        display_name, username, email, require_email=True,
     )
     metadata = {key: settings[key] for key in PROFILE_SETTINGS_KEYS}
     metadata["display_name"] = settings["display_name"]

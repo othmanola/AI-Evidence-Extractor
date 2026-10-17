@@ -3,12 +3,12 @@
 The app supports email/password sign-in, Google sign-in, or an explicit guest-mode
 choice. The Account page includes profile settings and optional profile photos.
 Signed-in accounts store the display name and optional profile photo in Supabase.
-Username, country, phone details, and time zone are stored in the user's Supabase
-Auth metadata; no additional database columns are required. Email identity is
-managed by Supabase Auth, and email changes may remain pending until confirmed
-through the link Supabase sends. Guest profile details and photos stay on the
-local computer. Source videos, analysis history, generated reports, and results
-remain local and are not uploaded or synchronized.
+The username is stored in the user's Supabase Auth metadata; no additional
+database columns are required. Email identity is managed by Supabase Auth, and
+email changes may remain pending until confirmed through the link Supabase
+sends. Guest profile details and photos stay on the local computer. Source
+videos, analysis history, generated reports, and results remain local and are
+not uploaded or synchronized.
 
 ## 1. Create the Supabase project
 
@@ -38,12 +38,15 @@ create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 grant select, insert, update on public.profiles to authenticated;
 
+drop policy if exists "Users can read their own profile" on public.profiles;
 create policy "Users can read their own profile"
   on public.profiles for select to authenticated
   using ((select auth.uid()) = id);
+drop policy if exists "Users can create their own profile" on public.profiles;
 create policy "Users can create their own profile"
   on public.profiles for insert to authenticated
   with check ((select auth.uid()) = id);
+drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
   on public.profiles for update to authenticated
   using ((select auth.uid()) = id)
@@ -55,22 +58,25 @@ values ('profile-photos', 'profile-photos', false, 5242880,
 on conflict (id) do update set public = false, file_size_limit = 5242880,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "Users can read their own profile photos" on storage.objects;
 create policy "Users can read their own profile photos"
   on storage.objects for select to authenticated
   using (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+drop policy if exists "Users can upload their own profile photos" on storage.objects;
 create policy "Users can upload their own profile photos"
   on storage.objects for insert to authenticated
   with check (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+drop policy if exists "Users can update their own profile photos" on storage.objects;
 create policy "Users can update their own profile photos"
   on storage.objects for update to authenticated
   using (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text)
   with check (bucket_id = 'profile-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
 ```
 
-Run this SQL once per project. If you already have policies with the same names,
-review them instead of creating duplicates. The settings screen uploads only
-validated PNG, JPEG, or WebP photos up to 5 MB. Other signed-in profile fields
-are written to Supabase Auth metadata using the user's own session.
+The SQL safely recreates its named policies, so it can be rerun after an
+interrupted setup. The settings screen uploads only validated PNG, JPEG, or
+WebP photos up to 5 MB. Usernames are written to Supabase Auth metadata using
+the user's own session.
 
 ## 3. Enable email/password accounts
 
@@ -97,10 +103,11 @@ opens the system browser. Return to the app after Google confirms the sign-in.
 
 Guest mode requires no Supabase project and keeps app usage local. The guest
 choice is saved on the computer so the app does not ask again at every launch.
-Guest profile settings can set a display name, username, contact email, country,
-dialing code, phone number, time zone, and optional photo, all stored only on
-that computer. When signed in, the same profile details are saved to Supabase
-Auth metadata and the existing profile/photo storage. A requested email change
+Guest profile settings can set a display name, username, contact email, and
+optional photo, all stored only on that computer. When signed in, the same
+profile details are saved to Supabase Auth metadata and the existing
+profile/photo storage. Existing saved country, phone, and time-zone values are
+left intact but are no longer shown or edited. A requested email change
 is reported as pending unless Supabase returns the new address immediately;
 the user must confirm it when confirmation is required by the project. Analysis
 history, source footage, reports, and analysis output are never synced by this

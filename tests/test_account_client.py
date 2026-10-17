@@ -167,7 +167,7 @@ class AccountClientTests(unittest.TestCase):
                 self.assertEqual(account_client.load_guest_profile(), profile)
                 self.assertTrue((root / "guest_profile.json").is_file())
 
-    def test_guest_profile_settings_persist_contact_and_location_details(self):
+    def test_guest_profile_settings_persist_identity_without_location_fields(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             with (
@@ -177,9 +177,13 @@ class AccountClientTests(unittest.TestCase):
                 patch.object(account_client, "GUEST_AVATAR_DIR",
                              root / "guest_profile_photos"),
             ):
+                (root / "guest_profile.json").write_text(
+                    '{"country":"Canada","phone_country_code":"+1",'
+                    '"phone_number":"4165551234","time_zone":"America/Toronto"}',
+                    encoding="utf-8",
+                )
                 profile = account_client.save_guest_profile_settings(
-                    "Local Guest", "@local_guest", "guest@example.com", "Canada",
-                    "+1", "4165551234", "America/Toronto",
+                    "Local Guest", "@local_guest", "guest@example.com",
                 )
                 loaded = account_client.load_guest_profile()
 
@@ -209,22 +213,15 @@ class AccountClientTests(unittest.TestCase):
         self.assertEqual(profile["username"], "")
         self.assertEqual(profile["time_zone"], "UTC")
 
-    def test_profile_settings_validation_rejects_invalid_username_email_phone_and_zone(self):
-        valid = (
-            "Person", "person_123", "person@example.com", "Canada",
-            "+1", "4165551234", "America/Toronto",
-        )
+    def test_profile_settings_validation_rejects_invalid_username_and_email(self):
+        valid = ("Person", "person_123", "person@example.com")
         invalid_values = (
             {"username": "x"},
             {"email": "not-an-email"},
-            {"phone_number": "12"},
-            {"time_zone": "Not/A_Time_Zone"},
         )
         for override in invalid_values:
             values = dict(zip(
-                ("display_name", "username", "email", "country",
-                 "phone_country_code", "phone_number", "time_zone"),
-                valid,
+                ("display_name", "username", "email"), valid,
             ))
             values.update(override)
             with self.subTest(override=override), self.assertRaises(
@@ -234,14 +231,10 @@ class AccountClientTests(unittest.TestCase):
 
         self.assertEqual(
             account_client._validate_profile_settings(
-                "Person", "", "", None, "+1", "", "UTC", require_email=False
-            )["country"],
+                "Person", "", "", require_email=False
+            )["username"],
             "",
         )
-        with self.assertRaises(account_client.AccountError):
-            account_client._validate_profile_settings(
-                "Person", "", "", None, None, "", "UTC", require_email=False
-            )
 
     def test_guest_profile_photo_is_saved_and_loaded_locally(self):
         with TemporaryDirectory() as temp_dir:
@@ -335,16 +328,13 @@ class AccountClientTests(unittest.TestCase):
             patch.object(account_client, "_save_session", side_effect=lambda value: value),
         ):
             profile, saved_session, email_pending = account_client.save_profile_settings(
-                session, "Person", "person_123", "new@example.com", "Canada",
-                "+1", "4165551234", "America/Toronto",
+                session, "Person", "person_123", "new@example.com",
             )
 
         self.assertEqual(profile["display_name"], "Person")
         self.assertTrue(email_pending)
         self.assertEqual(saved_session["email"], "person@example.com")
         self.assertEqual(saved_session["username"], "person_123")
-        self.assertEqual(saved_session["country"], "Canada")
-        self.assertEqual(saved_session["time_zone"], "America/Toronto")
         request_body = api.call_args.args[4]
         self.assertEqual(request_body["email"], "new@example.com")
         self.assertEqual(request_body["data"]["username"], "person_123")
