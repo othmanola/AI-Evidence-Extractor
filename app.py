@@ -7,6 +7,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import available_timezones
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
@@ -21,6 +22,22 @@ OUTPUT_DIR = APP_DATA / "outputs"
 HISTORY_FILE = APP_DATA / "analysis_history.json"
 HISTORY_LIMIT = 100
 HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
+PROFILE_COUNTRIES = (
+    "Argentina", "Australia", "Austria", "Bangladesh", "Belgium", "Brazil",
+    "Canada", "Chile", "China", "Colombia", "Denmark", "Egypt", "Finland",
+    "France", "Germany", "Ghana", "Greece", "Hong Kong", "India", "Indonesia",
+    "Ireland", "Israel", "Italy", "Japan", "Kenya", "Malaysia", "Mexico",
+    "Netherlands", "New Zealand", "Nigeria", "Norway", "Pakistan", "Philippines",
+    "Poland", "Portugal", "Saudi Arabia", "Singapore", "South Africa", "South Korea",
+    "Spain", "Sweden", "Switzerland", "Taiwan", "Thailand", "Turkey",
+    "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Vietnam",
+)
+PROFILE_PHONE_CODES = (
+    "+1", "+7", "+20", "+27", "+30", "+31", "+32", "+33", "+34", "+36",
+    "+39", "+44", "+46", "+47", "+48", "+49", "+52", "+55", "+60", "+61",
+    "+62", "+63", "+64", "+65", "+66", "+81", "+82", "+84", "+86", "+90",
+    "+91", "+92", "+234", "+254", "+971",
+)
 _HISTORY_LOCK = threading.Lock()
 MANIFEST = MODEL_DIR / "ensemble_manifest.json"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1753,8 +1770,16 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   background:rgba(148,163,184,.08);transform:translateX(1px);}
 .aee-settings-nav button[aria-current="page"]{color:#f8fafc;border-color:rgba(248,113,113,.2);
   background:linear-gradient(90deg,rgba(248,113,113,.13),rgba(148,163,184,.045));}
+.aee-settings-nav button:focus-visible,.aee-settings-theme-button:focus-visible,
+.aee-settings-layout button:focus-visible,.aee-settings-layout input:focus-visible,
+.aee-settings-layout select:focus-visible{outline:2px solid #ff7770!important;outline-offset:2px!important;}
 .aee-settings-nav svg{width:16px;height:16px;flex:none;color:#a9b7cb;}
 .aee-settings-panel{min-width:0;scroll-margin-top:90px;}
+.aee-settings-profile-header{align-items:stretch!important;gap:14px!important;margin:0 0 16px!important;}
+.aee-settings-profile-header>#aee-account-profile-source{flex:1 1 auto!important;width:auto!important;min-width:0!important;}
+.aee-settings-profile-header .aee-settings-profile-photo{flex:0 0 174px!important;width:174px!important;
+  min-width:0!important;margin:0!important;}
+.aee-settings-profile-header .aee-account-profile{height:100%;margin:0;}
 .aee-account-profile-form{max-width:none;margin:0;}
 .aee-account-shell .aee-account-profile{position:relative;min-height:132px;box-sizing:border-box;
   align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 20px 17px;
@@ -1780,6 +1805,52 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   box-shadow:0 10px 24px -16px rgba(248,113,113,.9);}
 .aee-settings-card-heading h2{margin:0;color:#edf2fa;font-size:.94rem;font-weight:700;letter-spacing:-.015em;}
 .aee-settings-card-heading p{margin:5px 0 0;color:#909db1;font-size:.76rem;line-height:1.55;}
+.aee-settings-fields{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 14px!important;align-items:start!important;}
+.aee-settings-fields>.block{min-width:0!important;width:100%!important;}
+.aee-settings-fields label span[data-testid="block-info"],
+.aee-settings-fields label span:first-child{color:#a2aabc!important;font-size:.75rem!important;font-weight:550!important;}
+.aee-settings-fields input,.aee-settings-fields select,
+.aee-settings-field-row input,.aee-settings-field-row select{
+  min-height:40px!important;box-sizing:border-box!important;border:1px solid rgba(255,255,255,.08)!important;
+  border-radius:9px!important;color:#f5f7fb!important;background:#303647!important;
+  box-shadow:none!important;transition:border-color .16s,box-shadow .16s,background .16s!important;}
+.aee-settings-fields input:hover,.aee-settings-fields select:hover,
+.aee-settings-field-row input:hover,.aee-settings-field-row select:hover{
+  border-color:rgba(255,255,255,.17)!important;}
+.aee-settings-fields input:focus,.aee-settings-fields select:focus,
+.aee-settings-field-row input:focus,.aee-settings-field-row select:focus{
+  border-color:rgba(255,93,85,.78)!important;box-shadow:0 0 0 3px rgba(255,93,85,.13)!important;}
+.aee-settings-fields input::placeholder,.aee-settings-field-row input::placeholder{color:#7e899d!important;}
+.aee-settings-fields input[aria-invalid="true"],.aee-settings-field-row input[aria-invalid="true"]{
+  border-color:#fb7185!important;}
+.aee-settings-field-row{display:grid!important;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);
+  gap:12px!important;align-items:start!important;}
+.aee-settings-field-row>.block{min-width:0!important;width:100%!important;}
+.aee-settings-timezone-row>.block{grid-column:1/-1;width:100%!important;}
+.aee-settings-profile-photo{width:100%;max-width:300px;}
+.aee-settings-profile-photo .image-container{min-height:86px!important;max-height:132px!important;
+  border:1px dashed rgba(255,255,255,.16)!important;border-radius:11px!important;
+  background:rgba(48,54,71,.56)!important;}
+.aee-settings-profile-photo .image-container img{object-fit:contain!important;}
+.aee-settings-profile-photo .wrap{padding:8px!important;}
+.aee-settings-dirty{display:flex;align-items:center;gap:8px;margin:0 0 12px;
+  color:#fbbf9f;font-size:.76rem;line-height:1.4;}
+.aee-settings-dirty[hidden]{display:none!important;}
+.aee-settings-dirty:before{width:7px;height:7px;border-radius:50%;content:"";
+  background:#ff8b65;box-shadow:0 0 9px rgba(255,139,101,.45);}
+.aee-settings-save-button{flex:0 0 auto!important;width:auto!important;min-width:112px!important;
+  min-height:38px!important;padding:0 14px!important;border:1px solid rgba(255,93,85,.32)!important;
+  border-radius:9px!important;color:#fff!important;background:#ff5d55!important;
+  box-shadow:0 10px 24px -16px rgba(255,93,85,.86);transition:background .16s,transform .16s!important;}
+.aee-settings-save-button:hover{background:#f34d49!important;transform:translateY(-1px);}
+.aee-settings-save-button:active{transform:translateY(0);}
+.aee-settings-language-card{display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.aee-settings-language-card strong{display:block;color:#edf2fa;font-size:.84rem;}
+.aee-settings-language-card span{display:block;margin-top:5px;color:#909db1;font-size:.75rem;}
+.aee-settings-language-badge{padding:7px 11px;border:1px solid rgba(255,255,255,.08);
+  border-radius:9px;color:#e2e8f0;background:rgba(255,255,255,.04);font-size:.77rem;}
+.aee-settings-fields .aee-settings-dirty{grid-column:1/-1;}
 .aee-settings-card .aee-settings-option-list{max-width:none;margin:0;gap:8px!important;}
 .aee-settings-card .aee-settings-option-list button{min-height:44px;border-radius:11px!important;}
 .aee-settings-card .aee-account-profile-actions{max-width:none;margin:10px 0 0;}
@@ -1847,6 +1918,13 @@ html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
 html[data-theme="light"] .aee-settings-card{background:rgba(255,255,255,.84);border-color:rgba(100,116,139,.17);}
 html[data-theme="light"] .aee-settings-card-heading h2{color:#172033;}
 html[data-theme="light"] .aee-settings-card-heading p{color:#64748b;}
+html[data-theme="light"] .aee-settings-fields input,html[data-theme="light"] .aee-settings-fields select,
+html[data-theme="light"] .aee-settings-field-row input,html[data-theme="light"] .aee-settings-field-row select{
+  color:#172033!important;background:#f1f4f9!important;border-color:rgba(15,23,42,.12)!important;}
+html[data-theme="light"] .aee-settings-fields input:focus,html[data-theme="light"] .aee-settings-fields select:focus{
+  border-color:rgba(255,93,85,.78)!important;}
+html[data-theme="light"] .aee-settings-field-row input:focus,
+html[data-theme="light"] .aee-settings-field-row select:focus{border-color:rgba(255,93,85,.78)!important;}
 html[data-theme="light"] .aee-settings-theme-button{color:#172033;background:rgba(100,116,139,.07);}
 html[data-theme="light"] .aee-settings-card .aee-account-settings-copy strong{color:#172033;}
 html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#475569;}
@@ -1935,6 +2013,11 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-account-shell .aee-account-profile{min-height:118px;padding:54px 14px 14px;gap:11px;}
   .aee-account-shell .aee-account-avatar{width:54px;height:54px;}
   .aee-settings-card{padding:15px;}
+  .aee-settings-profile-header{gap:10px!important;}
+  .aee-settings-profile-header .aee-settings-profile-photo{flex:1 1 100%!important;width:100%!important;}
+  .aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}
+  .aee-settings-field-row{grid-template-columns:minmax(94px,.7fr) minmax(0,1.3fr);gap:8px!important;}
+  .aee-settings-profile-photo{max-width:none;}
   .aee-about-card,.aee-contact-card{min-height:0;padding:30px 23px;border-radius:20px;}
   .aee-project-feature-grid{grid-template-columns:1fr;}
   .aee-project-feature{min-height:0;}
@@ -3773,6 +3856,12 @@ _JS_HEAD = r"""
   function closeAeeUtilityWindow(shell){
     shell = shell || document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
     if (!shell) return;
+    const settingsForm = shell.querySelector(
+      '#aee-settings-profile-section[data-aee-dirty="true"]');
+    if (settingsForm && settingsForm.dataset.aeeDirty === 'true' &&
+        !window.confirm('Discard your unsaved profile changes?')){
+      return;
+    }
     const shellId = shell.id;
     document.querySelectorAll('[id="' + shellId + '"]').forEach(panel => {
       panel.classList.remove('aee-utility-window-open');
@@ -3792,11 +3881,76 @@ _JS_HEAD = r"""
     }, 350);
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:false}}));
   }
+  function markAeeProfileFieldChanges(event){
+    const field = event.target.closest(
+      '.aee-settings-fields input, .aee-settings-fields select, .aee-settings-field-row input, ' +
+      '.aee-settings-field-row select, .aee-settings-profile-photo input[type="file"]');
+    if (!field) return;
+    const form = field.closest('#aee-settings-profile-section') ||
+      document.querySelector('#aee-settings-profile-section');
+    if (!form) return;
+    if (field.type !== 'file'){
+      if (!Object.prototype.hasOwnProperty.call(field.dataset, 'aeeInitialValue')){
+        field.dataset.aeeInitialValue = field.value;
+      }
+      field.dataset.aeeModified = field.value !== field.dataset.aeeInitialValue
+        ? 'true' : 'false';
+    } else {
+      form.dataset.aeePhotoDirty = field.files && field.files.length ? 'true' : 'false';
+    }
+    const changed = form.querySelector('[data-aee-modified="true"]') ||
+      form.dataset.aeePhotoDirty === 'true';
+    form.dataset.aeeDirty = changed ? 'true' : 'false';
+    const notice = form.querySelector('[data-aee-settings-dirty]');
+    if (notice) notice.hidden = !changed;
+  }
+  function refreshAeeProfileFieldBaseline(event){
+    const field = event.target.closest(
+      '.aee-settings-fields input, .aee-settings-fields select, ' +
+      '.aee-settings-field-row input, .aee-settings-field-row select');
+    const form = field && field.closest('#aee-settings-profile-section');
+    if (!field || !form || form.dataset.aeeDirty === 'true') return;
+    field.dataset.aeeInitialValue = field.value;
+    delete field.dataset.aeeModified;
+  }
+  function initializeAeeProfileFieldValues(){
+      document.querySelectorAll(
+        '.aee-settings-fields input, .aee-settings-fields select, ' +
+        '.aee-settings-field-row input, .aee-settings-field-row select')
+        .forEach(field => {
+          if (!Object.prototype.hasOwnProperty.call(field.dataset, 'aeeInitialValue'))
+            field.dataset.aeeInitialValue = field.value;
+        });
+  }
+  initializeAeeProfileFieldValues();
+  document.addEventListener('focusin', refreshAeeProfileFieldBaseline, true);
+  document.addEventListener('input', markAeeProfileFieldChanges, true);
+  document.addEventListener('change', markAeeProfileFieldChanges, true);
+  function clearAeeProfileFieldChanges(){
+    const statuses = document.querySelectorAll(
+      '[id="aee-account-status"] [data-profile-saved="true"]');
+    if (!statuses.length) return;
+    document.querySelectorAll('[id="aee-settings-profile-section"]').forEach(form => {
+      delete form.dataset.aeeDirty;
+      delete form.dataset.aeePhotoDirty;
+    });
+    document.querySelectorAll('#aee-settings-profile-section [data-aee-modified]').forEach(field => {
+      delete field.dataset.aeeModified;
+      delete field.dataset.aeeInitialValue;
+    });
+    document.querySelectorAll('[data-aee-settings-dirty]').forEach(notice => {
+      notice.hidden = true;
+    });
+    statuses.forEach(status => status.removeAttribute('data-profile-saved'));
+  }
+  new MutationObserver(clearAeeProfileFieldChanges).observe(document.documentElement,
+    {childList:true,subtree:true});
   function liftAeeNavigation(){
     applyAeeAccessGate();
     syncAeeProfileTool();
     syncAeeTopbarLayout();
     syncAeeUpdateShortcut();
+    initializeAeeProfileFieldValues();
     const host = document.getElementById('aee-nav-host');
     const navigation = host && host.querySelector('.aee-navigation');
     if (navigation && navigation.parentElement !== document.body){
@@ -3847,13 +4001,6 @@ _JS_HEAD = r"""
     const settingsItem = event.target.closest('[data-aee-settings-section]');
     if (settingsItem){
       const destination = settingsItem.dataset.aeeSettingsSection;
-      if (destination === 'updates'){
-        activateAeeUtilityWindow('updates'); return;
-      }
-      if (destination === 'theme'){
-        if (window.aeeToggleTheme) window.aeeToggleTheme();
-        return;
-      }
       const section = document.getElementById('aee-settings-' + destination + '-section');
       if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
       document.querySelectorAll('.aee-settings-nav [data-aee-settings-section]')
@@ -5256,11 +5403,12 @@ create policy "Users can update their own profile photos"
 """
 
 
-def _account_status_html(message, tone="neutral"):
+def _account_status_html(message, tone="neutral", profile_saved=False):
     safe_message = _html.escape(str(message))
     hidden = " hidden" if not safe_message else ""
+    saved = ' data-profile-saved="true"' if profile_saved else ""
     return (f'<div class="aee-account-status" data-kind="{_html.escape(tone)}" '
-            f'role="status"{hidden}>{safe_message}</div>')
+            f'role="status"{saved}{hidden}>{safe_message}</div>')
 
 
 def _account_profile_html(session=None, profile=None, avatar_url=""):
@@ -5274,11 +5422,17 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
             'referrerpolicy="no-referrer">'
             if avatar_url else _html.escape(initials[:2].upper())
         )
+        contact_email = str(profile.get("contact_email") or "")
+        details = (
+            f'<span>{_html.escape(contact_email)} · Local profile</span>'
+            if contact_email else
+            '<span>Local profile · This device only</span>'
+        )
         return ('''<section class="aee-account-profile" aria-label="Guest account">
           <div class="aee-account-avatar">''' + avatar + '''</div>
           <div class="aee-account-identity"><strong>''' +
                 _html.escape(name or "Guest mode") + '''</strong>
-            <span>No sign-in required. Continue using the app on this computer.</span>
+            ''' + details + '''
             <span class="aee-account-mode">LOCAL ONLY</span></div>
         </section>''')
     profile = profile if isinstance(profile, dict) else {}
@@ -5287,10 +5441,19 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
     initials = "".join(part[0] for part in name.split()[:2] if part) or "A"
     avatar = (f'<img src="{_html.escape(avatar_url, quote=True)}" alt="" '
               'referrerpolicy="no-referrer">') if avatar_url else _html.escape(initials[:2].upper())
+    created_at = str(session.get("created_at") or "")
+    joined = ""
+    if created_at:
+        try:
+            joined_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            joined = f' · Joined {joined_date.strftime("%b %Y")}'
+        except ValueError:
+            log.warning("The saved account creation date is invalid.")
     return (f'<section class="aee-account-profile" aria-label="Signed-in account">'
             f'<div class="aee-account-avatar">{avatar}</div>'
             f'<div class="aee-account-identity"><strong>{_html.escape(name)}</strong>'
-            f'<span>{_html.escape(email)}</span><span class="aee-account-mode">SIGNED IN</span></div>'
+            f'<span>{_html.escape(email)}{_html.escape(joined)}</span>'
+            f'<span class="aee-account-mode">SIGNED IN</span></div>'
             f'</section>')
 
 
@@ -5344,13 +5507,46 @@ def _account_initial_session():
                 log.warning("Could not restore guest profile: %s", exc)
                 status = str(exc)
                 tone = "error"
+        settings_initial = session if session else guest_profile
         return (session, _account_status_html(status, tone),
                 _account_profile_html(session, guest_profile), bool(session or guest_mode),
-                guest_mode, guest_profile.get("display_name", ""))
+                guest_mode, guest_profile.get("display_name", ""),
+                _account_profile_settings_values(settings_initial, session))
     except _account_client.AccountError as exc:
         log.warning("Could not restore account session: %s", exc)
         return (None, _account_status_html(str(exc), "error"),
-                _account_profile_html(), False, False, "")
+                _account_profile_html(), False, False, "",
+                _account_profile_settings_values({}, None))
+
+
+def _account_profile_settings_values(profile, session=None):
+    profile = profile if isinstance(profile, dict) else {}
+    email = str((session or {}).get("email") or profile.get("contact_email") or "")
+    return {
+        "display_name": str(profile.get("display_name") or ""),
+        "username": str(profile.get("username") or ""),
+        "email": email,
+        "country": str(profile.get("country") or ""),
+        "phone_country_code": str(profile.get("phone_country_code") or "+1"),
+        "phone_number": str(profile.get("phone_number") or ""),
+        "time_zone": str(profile.get("time_zone") or "UTC"),
+    }
+
+
+def _account_profile_settings_values_ui(session):
+    if session:
+        profile = session
+    elif _account_client.guest_mode_selected():
+        profile = _account_client.load_guest_profile()
+    else:
+        profile = {}
+    return tuple(_account_profile_settings_values(profile, session).values())
+
+
+def _account_profile_settings_refresh_ui(session):
+    if not session:
+        return tuple(gr.skip() for _ in range(7))
+    return _account_profile_settings_values_ui(session)
 
 
 def _account_render_signed_in(session):
@@ -5555,6 +5751,52 @@ def _account_save_name_ui(display_name, session):
         log.exception("Could not save the account profile")
         return (_account_status_html(f"Could not save profile: {exc}", "error"),
                 _account_profile_html(session), session, str(display_name or ""))
+
+
+def _account_save_profile_settings_ui(
+    display_name, username, email, country, phone_country_code, phone_number,
+    time_zone, image_path, session,
+):
+    try:
+        if not session:
+            profile = _account_client.save_guest_profile_settings(
+                display_name, username, email, country, phone_country_code,
+                phone_number, time_zone, image_path,
+            )
+            message = "Profile details saved on this computer."
+            return (_account_status_html(message, "success", profile_saved=True),
+                    _account_profile_html(profile=profile), None, gr.update(value=None))
+
+        profile, session, email_pending = _account_client.save_profile_settings(
+            session, display_name, username, email, country, phone_country_code,
+            phone_number, time_zone,
+        )
+        photo_error = None
+        if image_path:
+            try:
+                profile, session = _account_client.upload_profile_photo(session, image_path)
+            except _account_client.AccountError as exc:
+                photo_error = str(exc)
+        profile_html, session, refresh_error = _account_render_signed_in(session)
+        message = "Profile details saved to your account."
+        if email_pending:
+            message += (
+                f" Confirm the email change using the link sent to {email.strip()}."
+            )
+        if photo_error:
+            message += f" Other details were saved, but the photo was not: {photo_error}"
+        if refresh_error:
+            message += f" The updated profile could not be refreshed: {refresh_error}"
+        tone = "error" if photo_error or refresh_error else "success"
+        return (_account_status_html(message, tone, profile_saved=not photo_error),
+                profile_html, session, gr.update(value=None) if not photo_error else gr.skip())
+    except _account_client.AccountError as exc:
+        return (_account_status_html(str(exc), "error"),
+                _account_profile_html(session), session, gr.skip())
+    except Exception as exc:
+        log.exception("Could not save profile settings")
+        return (_account_status_html(f"Could not save profile settings: {exc}", "error"),
+                _account_profile_html(session), session, gr.skip())
 
 
 def _account_upload_photo_ui(image_path, session):
@@ -5791,21 +6033,13 @@ def _side_navigation_html():
 def _settings_navigation_html():
     return '''<nav class="aee-settings-nav" aria-label="Settings sections">
       <div class="aee-settings-nav-label">Settings</div>
-      <button type="button" data-aee-settings-section="profile" aria-current="page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.6-3.4 2.8-5.1 6.5-5.1s5.9 1.7 6.5 5.1"/></svg>
-        <span>Profile</span>
+      <button type="button" data-aee-settings-section="language" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+        <span>Language</span>
       </button>
       <button type="button" data-aee-settings-section="security">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <span>Security &amp; account</span>
-      </button>
-      <button type="button" data-aee-settings-section="updates">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 11.9-3"/></svg>
-        <span>App updates</span>
-      </button>
-      <button type="button" data-aee-settings-section="preferences">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.8 1.8 0 0 0-1.9.1 1.8 1.8 0 0 0-.9 1.6v.2h-3.4v-.2a1.8 1.8 0 0 0-1.1-1.6 1.8 1.8 0 0 0-1.9.1l-.2.1-1.7-2.9.1-.1a1.8 1.8 0 0 0 .3-1.9 1.8 1.8 0 0 0-1.6-1H5v-3.4h.2a1.8 1.8 0 0 0 1.6-1.1 1.8 1.8 0 0 0-.1-1.9l-.1-.2 2.9-1.7.1.1a1.8 1.8 0 0 0 1.9.3 1.8 1.8 0 0 0 1-1.6V4h3.4v.2a1.8 1.8 0 0 0 1.1 1.6 1.8 1.8 0 0 0 1.9-.1l.2-.1 1.7 2.9-.1.1a1.8 1.8 0 0 0-.3 1.9 1.8 1.8 0 0 0 1.6 1h.2v3.4H21a1.8 1.8 0 0 0-1.6.1Z"/></svg>
-        <span>Preferences</span>
+        <span>Security</span>
       </button>
     </nav>'''
 
@@ -5814,7 +6048,7 @@ def build_ui():
     info = Ensemble.get().info
     (account_session_initial, account_status_initial, account_profile_initial,
      account_access_ready_initial, account_guest_mode_initial,
-     account_profile_name_initial) = (
+     account_profile_name_initial, account_profile_settings_initial) = (
         _account_initial_session()
     )
     try:
@@ -5975,7 +6209,8 @@ def build_ui():
                 account_session = gr.State(account_session_initial)
                 account_access_state = gr.State(account_access_ready_initial)
                 account_auth_mode = gr.State("signup")
-                account_status = gr.HTML(value=account_status_initial)
+                account_status = gr.HTML(
+                    value=account_status_initial, elem_id="aee-account-status")
                 with gr.Group(
                     visible=not (bool(account_session_initial) or account_guest_mode_initial),
                     elem_classes=["aee-account-auth-form"],
@@ -6030,32 +6265,80 @@ def build_ui():
                                 elem_id="aee-settings-profile-section",
                                 elem_classes=["aee-settings-panel"],
                             ) as account_profile_settings:
-                                account_profile = gr.HTML(
-                                    value=account_profile_initial,
-                                    elem_id="aee-account-profile-source")
+                                with gr.Row(elem_classes=["aee-settings-profile-header"]):
+                                    account_profile = gr.HTML(
+                                        value=account_profile_initial,
+                                        elem_id="aee-account-profile-source")
+                                    account_photo_input = gr.Image(
+                                        label="Change photo",
+                                        sources=["upload"],
+                                        type="filepath",
+                                        height=118,
+                                        image_mode="RGB",
+                                        elem_classes=["aee-settings-profile-photo"])
                                 with gr.Group(elem_classes=["aee-settings-card"]):
                                     with gr.Row(elem_classes=["aee-settings-card-heading"]):
                                         gr.HTML('''<div><h2>Personal information</h2>
-                                          <p>Manage the name and profile photo shown in your workspace.</p></div>''')
+                                          <p>Update the profile details associated with your account.</p></div>''')
                                         account_save_name_btn = gr.Button(
-                                            "Save changes", variant="primary")
-                                    account_profile_name = gr.Textbox(
-                                        label="Display name",
-                                        value=account_profile_name_initial or str(
-                                            (account_session_initial or {}).get("display_name", "")
-                                        ), max_lines=1)
+                                            "Save changes", variant="primary",
+                                            elem_classes=["aee-settings-save-button"])
+                                    gr.HTML('''<div class="aee-settings-dirty"
+                                      data-aee-settings-dirty hidden>Unsaved changes · Save to keep your updates.</div>''')
+                                    with gr.Row(elem_classes=["aee-settings-fields"]):
+                                        account_profile_name = gr.Textbox(
+                                            label="Display name",
+                                            value=account_profile_settings_initial.get("display_name", ""),
+                                            placeholder="Your name", max_lines=1)
+                                        account_profile_username = gr.Textbox(
+                                            label="Username",
+                                            value=("@" + account_profile_settings_initial["username"]
+                                                   if account_profile_settings_initial.get("username") else ""),
+                                            placeholder="@username", max_lines=1)
+                                        account_profile_email = gr.Textbox(
+                                            label="Email",
+                                            value=account_profile_settings_initial.get("email", ""),
+                                            placeholder="you@example.com",
+                                            type="email", max_lines=1)
+                                        account_profile_country = gr.Dropdown(
+                                            label="Country",
+                                            choices=list(PROFILE_COUNTRIES),
+                                            value=account_profile_settings_initial.get("country") or None,
+                                            allow_custom_value=True,
+                                            filterable=True)
+                                    with gr.Row(elem_classes=["aee-settings-field-row"]):
+                                        account_phone_country_code = gr.Dropdown(
+                                            label="Dial code",
+                                            choices=list(PROFILE_PHONE_CODES),
+                                            value=account_profile_settings_initial.get(
+                                                "phone_country_code", "+1"),
+                                            allow_custom_value=True,
+                                            filterable=True,
+                                            scale=1)
+                                        account_phone_number = gr.Textbox(
+                                            label="Phone number",
+                                            value=account_profile_settings_initial.get("phone_number", ""),
+                                            placeholder="(123) 456-7890",
+                                            max_lines=1, scale=2)
+                                    with gr.Row(elem_classes=["aee-settings-fields",
+                                                              "aee-settings-timezone-row"]):
+                                        account_time_zone = gr.Dropdown(
+                                            label="Time zone",
+                                            choices=sorted(available_timezones()),
+                                            value=account_profile_settings_initial.get(
+                                                "time_zone", "UTC"),
+                                            filterable=True,
+                                            allow_custom_value=False)
                                     gr.HTML('''<div class="aee-account-settings-copy">
-                                      Guest profile details stay on this computer. Signed-in profile
-                                      details are saved to your account.</div>''')
-                                    account_photo_input = gr.File(
-                                        label="Profile photo", file_count="single",
-                                        file_types=[".png", ".jpg", ".jpeg", ".webp"], type="filepath")
+                                      Guest profile details and contact email stay on this computer.
+                                      Signed-in profile details are saved to your Supabase account.
+                                      Email changes require confirmation from your inbox.</div>''')
                                     with gr.Row(elem_classes=["aee-account-profile-actions"]):
                                         account_refresh_profile_btn = gr.Button(
-                                            "Refresh profile", variant="secondary")
-                                        account_photo_btn = gr.Button(
-                                            "Save profile photo", variant="secondary")
+                                            "Refresh profile", variant="secondary",
+                                            visible=False)
                             with gr.Group(
+                                elem_id="aee-settings-security-section",
                                 elem_classes=["aee-settings-panel", "aee-settings-card"],
                             ):
                                 with gr.Row(elem_classes=["aee-settings-card-heading"]):
@@ -6073,7 +6356,6 @@ def build_ui():
                         with gr.Accordion(
                             "Connection setup",
                             open=False,
-                            elem_id="aee-settings-security-section",
                             elem_classes=["aee-settings-panel", "aee-settings-card",
                                           "aee-account-settings", "aee-account-connection-settings"],
                         ):
@@ -6099,14 +6381,14 @@ def build_ui():
                                 label="Run once in Supabase SQL Editor",
                                 interactive=False, lines=25)
                         with gr.Group(
-                            elem_id="aee-settings-preferences-section",
-                            elem_classes=["aee-settings-panel", "aee-settings-card"],
+                            elem_id="aee-settings-language-section",
+                            elem_classes=["aee-settings-panel", "aee-settings-card",
+                                          "aee-settings-language-card"],
                         ):
-                            with gr.Row(elem_classes=["aee-settings-card-heading"]):
-                                gr.HTML('''<div><h2>Preferences</h2>
-                                  <p>Adjust the app appearance for this device.</p></div>''')
-                            gr.HTML('''<button type="button" class="aee-settings-theme-button"
-                              data-aee-settings-section="theme">Toggle light / dark theme</button>''')
+                            gr.HTML('''<div><strong>Interface language</strong>
+                              <span>The app interface is currently available in English.</span></div>
+                              <span class="aee-settings-language-badge"
+                                aria-label="Current language: English">English</span>''')
                 account_oauth_transaction = gr.State(None)
                 account_oauth_timer = gr.Timer(value=1, active=False)
 
@@ -6289,7 +6571,12 @@ def build_ui():
                      account_google_btn, account_settings_google_btn,
                      account_oauth_timer],
             queue=False)
-        account_oauth_timer.tick(
+        account_profile_settings_fields = [
+            account_profile_name, account_profile_username, account_profile_email,
+            account_profile_country, account_phone_country_code, account_phone_number,
+            account_time_zone,
+        ]
+        account_oauth_poll_event = account_oauth_timer.tick(
             fn=_account_google_poll_ui,
             inputs=[account_oauth_transaction, account_session, account_access_state],
             outputs=[account_oauth_transaction, account_status, account_profile,
@@ -6298,7 +6585,10 @@ def build_ui():
                      account_oauth_timer, account_google_btn, account_profile_settings,
                      account_signout_btn, account_settings_google_btn],
             queue=False)
-        account_signin_btn.click(
+        account_oauth_poll_event.then(
+            fn=_account_profile_settings_refresh_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
+        account_signin_event = account_signin_btn.click(
             fn=_account_sign_in_ui,
             inputs=[account_email_input, account_password_input, account_session,
                     account_access_state],
@@ -6308,7 +6598,10 @@ def build_ui():
                      account_profile_settings, account_signout_btn,
                      account_settings_google_btn],
             queue=False)
-        account_signup_btn.click(
+        account_signin_event.then(
+            fn=_account_profile_settings_values_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
+        account_signup_event = account_signup_btn.click(
             fn=_account_sign_up_ui,
             inputs=[account_display_name_input, account_email_input,
                     account_password_input, account_session, account_access_state],
@@ -6318,7 +6611,10 @@ def build_ui():
                      account_profile_settings, account_signout_btn,
                      account_settings_google_btn],
             queue=False)
-        account_guest_btn.click(
+        account_signup_event.then(
+            fn=_account_profile_settings_values_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
+        account_guest_event = account_guest_btn.click(
             fn=_account_guest_ui, inputs=[account_session, account_access_state],
             outputs=[account_status, account_profile, account_session, account_profile_name,
                      account_auth_group, account_profile_group,
@@ -6326,7 +6622,10 @@ def build_ui():
                      account_profile_settings, account_signout_btn,
                      account_settings_google_btn],
             queue=False)
-        account_signout_btn.click(
+        account_guest_event.then(
+            fn=_account_profile_settings_values_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
+        account_signout_event = account_signout_btn.click(
             fn=_account_guest_ui, inputs=[account_session, account_access_state],
             outputs=[account_status, account_profile, account_session, account_profile_name,
                      account_auth_group, account_profile_group,
@@ -6334,7 +6633,10 @@ def build_ui():
                      account_profile_settings, account_signout_btn,
                      account_settings_google_btn],
             queue=False)
-        account_change_account_btn.click(
+        account_signout_event.then(
+            fn=_account_profile_settings_values_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
+        account_change_account_event = account_change_account_btn.click(
             fn=_account_change_account_ui, inputs=[account_session],
             outputs=[account_status, account_profile, account_session, account_profile_name,
                      account_auth_group, account_profile_group,
@@ -6342,19 +6644,23 @@ def build_ui():
                      account_profile_settings, account_signout_btn,
                      account_settings_google_btn],
             queue=False)
+        account_change_account_event.then(
+            fn=_account_profile_settings_values_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
         account_refresh_profile_btn.click(
             fn=_account_refresh_profile_ui, inputs=[account_session],
             outputs=[account_status, account_profile, account_session, account_profile_name],
             queue=False)
         account_save_name_btn.click(
-            fn=_account_save_name_ui, inputs=[account_profile_name, account_session],
-            outputs=[account_status, account_profile, account_session, account_profile_name],
+            fn=_account_save_profile_settings_ui,
+            inputs=[account_profile_name, account_profile_username,
+                    account_profile_email, account_profile_country,
+                    account_phone_country_code, account_phone_number,
+                    account_time_zone, account_photo_input, account_session],
+            outputs=[account_status, account_profile, account_session,
+                     account_photo_input],
             queue=False)
-        account_photo_btn.click(
-            fn=_account_upload_photo_ui, inputs=[account_photo_input, account_session],
-            outputs=[account_status, account_profile, account_session],
-            queue=False)
-        account_save_config_btn.click(
+        account_save_config_event = account_save_config_btn.click(
             fn=_account_save_config_ui,
             inputs=[account_project_url, account_anon_key, account_session,
                     account_access_state],
@@ -6364,6 +6670,9 @@ def build_ui():
                      account_profile_settings, account_signout_btn,
                      account_settings_google_btn],
             queue=False)
+        account_save_config_event.then(
+            fn=_account_profile_settings_values_ui, inputs=[account_session],
+            outputs=account_profile_settings_fields, queue=False)
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
                      update_apply_btn], queue=False)

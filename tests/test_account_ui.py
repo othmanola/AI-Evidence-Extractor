@@ -15,11 +15,13 @@ class AccountUiTests(unittest.TestCase):
         ):
             result = app._account_initial_session()
 
-        self.assertEqual(len(result), 6)
+        self.assertEqual(len(result), 7)
         self.assertTrue(result[3])
         self.assertTrue(result[4])
         self.assertEqual(result[5], "Local Guest")
         self.assertIn("Local Guest", result[2])
+        self.assertEqual(result[6]["display_name"], "Local Guest")
+        self.assertEqual(result[6]["time_zone"], "UTC")
 
     def test_project_navigation_exposes_settings_instead_of_account(self):
         navigation = app._side_navigation_html()
@@ -29,18 +31,27 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
 
-    def test_settings_page_has_navigable_profile_security_updates_and_preferences(self):
+    def test_settings_page_has_navigable_language_and_security_sections(self):
         navigation = app._settings_navigation_html()
-        for section in ("profile", "security", "updates", "preferences"):
+        for section in ("language", "security"):
             self.assertIn(f'data-aee-settings-section="{section}"', navigation)
 
         constants = app.build_ui.__code__.co_consts
         self.assertIn("aee-settings-profile-section", constants)
         self.assertIn("aee-settings-security-section", constants)
-        self.assertIn("aee-settings-preferences-section", constants)
+        self.assertIn("aee-settings-language-section", constants)
         self.assertIn('data-aee-settings-section', app._JS_HEAD)
         self.assertIn("section.scrollIntoView", app._JS_HEAD)
-        self.assertIn("window.aeeToggleTheme()", app._JS_HEAD)
+        self.assertIn("window.aeeToggleTheme = toggleTheme", app._JS_HEAD)
+        self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
+        self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
+        self.assertIn(".aee-settings-field-row input", app._JS_HEAD)
+        self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
+        self.assertIn("Save changes", constants)
+        self.assertTrue(any(
+            isinstance(constant, str) and "Personal information" in constant
+            for constant in constants
+        ))
 
     def test_update_app_shortcut_opens_updates_and_profile_toolbar_opens_settings(self):
         navigation = app._side_navigation_html()
@@ -157,6 +168,81 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Local Guest", result[1])
         self.assertIsNone(result[2])
         self.assertEqual(result[3], "Local Guest")
+
+    def test_guest_profile_settings_save_updates_profile_and_clears_photo_preview(self):
+        profile = {
+            "display_name": "Local Guest",
+            "username": "local_guest",
+            "contact_email": "guest@example.com",
+            "country": "Canada",
+            "phone_country_code": "+1",
+            "phone_number": "4165551234",
+            "time_zone": "America/Toronto",
+            "avatar_url": "",
+        }
+        with patch.object(
+            app._account_client, "save_guest_profile_settings", return_value=profile
+        ) as save_settings:
+            result = app._account_save_profile_settings_ui(
+                "Local Guest", "@local_guest", "guest@example.com", "Canada",
+                "+1", "4165551234", "America/Toronto", None, None,
+            )
+
+        save_settings.assert_called_once_with(
+            "Local Guest", "@local_guest", "guest@example.com", "Canada",
+            "+1", "4165551234", "America/Toronto", None,
+        )
+        self.assertIn("saved on this computer", result[0])
+        self.assertIn("Local Guest", result[1])
+        self.assertIsNone(result[2])
+        self.assertEqual(result[3], {"value": None, "__type__": "update"})
+
+    def test_signed_in_profile_email_change_is_reported_as_pending(self):
+        session = {"user_id": "user-123", "email": "person@example.com"}
+        with (
+            patch.object(
+                app._account_client, "save_profile_settings",
+                return_value=({"display_name": "Person"}, session, True),
+            ),
+            patch.object(
+                app, "_account_render_signed_in",
+                return_value=("<section>Person</section>", session, None),
+            ),
+        ):
+            result = app._account_save_profile_settings_ui(
+                "Person", "person_123", "new@example.com", "Canada",
+                "+1", "4165551234", "America/Toronto", None, session,
+            )
+
+        self.assertIn("Confirm the email change", result[0])
+        self.assertIn("new@example.com", result[0])
+        self.assertIn("data-profile-saved=\"true\"", result[0])
+
+    def test_signed_in_profile_photo_failure_is_not_reported_as_full_success(self):
+        session = {"user_id": "user-123", "email": "person@example.com"}
+        with (
+            patch.object(
+                app._account_client, "save_profile_settings",
+                return_value=({"display_name": "Person"}, session, False),
+            ),
+            patch.object(
+                app._account_client, "upload_profile_photo",
+                side_effect=account_client.AccountError("Photo upload failed."),
+            ),
+            patch.object(
+                app, "_account_render_signed_in",
+                return_value=("<section>Person</section>", session, None),
+            ),
+        ):
+            result = app._account_save_profile_settings_ui(
+                "Person", "person_123", "person@example.com", "Canada",
+                "+1", "4165551234", "America/Toronto", "new-photo.png", session,
+            )
+
+        self.assertIn("Other details were saved, but the photo was not", result[0])
+        self.assertIn("Photo upload failed.", result[0])
+        self.assertNotIn("data-profile-saved=\"true\"", result[0])
+        self.assertEqual(result[3], {"__type__": "update"})
 
     def test_guest_connection_save_keeps_profile_and_settings_visible(self):
         with (

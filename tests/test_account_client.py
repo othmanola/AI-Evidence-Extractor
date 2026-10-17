@@ -167,6 +167,82 @@ class AccountClientTests(unittest.TestCase):
                 self.assertEqual(account_client.load_guest_profile(), profile)
                 self.assertTrue((root / "guest_profile.json").is_file())
 
+    def test_guest_profile_settings_persist_contact_and_location_details(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            with (
+                patch.object(account_client, "APP_DATA", root),
+                patch.object(account_client, "GUEST_PROFILE_FILE",
+                             root / "guest_profile.json"),
+                patch.object(account_client, "GUEST_AVATAR_DIR",
+                             root / "guest_profile_photos"),
+            ):
+                profile = account_client.save_guest_profile_settings(
+                    "Local Guest", "@local_guest", "guest@example.com", "Canada",
+                    "+1", "4165551234", "America/Toronto",
+                )
+                loaded = account_client.load_guest_profile()
+
+        self.assertEqual(profile["username"], "local_guest")
+        self.assertEqual(profile["contact_email"], "guest@example.com")
+        self.assertEqual(profile["country"], "Canada")
+        self.assertEqual(profile["phone_country_code"], "+1")
+        self.assertEqual(profile["phone_number"], "4165551234")
+        self.assertEqual(profile["time_zone"], "America/Toronto")
+        self.assertEqual(loaded, profile)
+
+    def test_old_guest_profile_files_receive_defaults(self):
+        with TemporaryDirectory() as temp_dir:
+            profile_file = Path(temp_dir) / "guest_profile.json"
+            profile_file.write_text(
+                '{"display_name":"Older guest","avatar_extension":""}',
+                encoding="utf-8",
+            )
+            with (
+                patch.object(account_client, "GUEST_PROFILE_FILE", profile_file),
+                patch.object(account_client, "GUEST_AVATAR_DIR",
+                             Path(temp_dir) / "guest_profile_photos"),
+            ):
+                profile = account_client.load_guest_profile()
+
+        self.assertEqual(profile["display_name"], "Older guest")
+        self.assertEqual(profile["username"], "")
+        self.assertEqual(profile["time_zone"], "UTC")
+
+    def test_profile_settings_validation_rejects_invalid_username_email_phone_and_zone(self):
+        valid = (
+            "Person", "person_123", "person@example.com", "Canada",
+            "+1", "4165551234", "America/Toronto",
+        )
+        invalid_values = (
+            {"username": "x"},
+            {"email": "not-an-email"},
+            {"phone_number": "12"},
+            {"time_zone": "Not/A_Time_Zone"},
+        )
+        for override in invalid_values:
+            values = dict(zip(
+                ("display_name", "username", "email", "country",
+                 "phone_country_code", "phone_number", "time_zone"),
+                valid,
+            ))
+            values.update(override)
+            with self.subTest(override=override), self.assertRaises(
+                account_client.AccountError
+            ):
+                account_client._validate_profile_settings(**values, require_email=True)
+
+        self.assertEqual(
+            account_client._validate_profile_settings(
+                "Person", "", "", None, "+1", "", "UTC", require_email=False
+            )["country"],
+            "",
+        )
+        with self.assertRaises(account_client.AccountError):
+            account_client._validate_profile_settings(
+                "Person", "", "", None, None, "", "UTC", require_email=False
+            )
+
     def test_guest_profile_photo_is_saved_and_loaded_locally(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -234,6 +310,44 @@ class AccountClientTests(unittest.TestCase):
         self.assertEqual(profile["id"], "user-123")
         self.assertEqual(avatar_url, "")
         self.assertEqual(saved_session["user_id"], "user-123")
+
+    def test_signed_in_profile_settings_store_metadata_and_detect_pending_email(self):
+        session = {
+            "user_id": "user-123",
+            "email": "person@example.com",
+            "display_name": "Person",
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+            "expires_at": int(time.time()) + 3600,
+        }
+        auth_response = {"email": "person@example.com"}
+        with (
+            patch.object(account_client, "_require_config", return_value=self.config),
+            patch.object(
+                account_client, "_authenticated_api",
+                return_value=(auth_response, session),
+            ) as api,
+            patch.object(
+                account_client, "_profile_upsert",
+                side_effect=lambda _config, saved_session, name:
+                    ({"display_name": name}, saved_session),
+            ),
+            patch.object(account_client, "_save_session", side_effect=lambda value: value),
+        ):
+            profile, saved_session, email_pending = account_client.save_profile_settings(
+                session, "Person", "person_123", "new@example.com", "Canada",
+                "+1", "4165551234", "America/Toronto",
+            )
+
+        self.assertEqual(profile["display_name"], "Person")
+        self.assertTrue(email_pending)
+        self.assertEqual(saved_session["email"], "person@example.com")
+        self.assertEqual(saved_session["username"], "person_123")
+        self.assertEqual(saved_session["country"], "Canada")
+        self.assertEqual(saved_session["time_zone"], "America/Toronto")
+        request_body = api.call_args.args[4]
+        self.assertEqual(request_body["email"], "new@example.com")
+        self.assertEqual(request_body["data"]["username"], "person_123")
 
     def test_avatar_rejects_invalid_image_before_network_access(self):
         with TemporaryDirectory() as temp_dir:

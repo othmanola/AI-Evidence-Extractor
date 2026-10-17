@@ -9,6 +9,7 @@ import html
 import json
 import logging
 import os
+import re
 import secrets
 import threading
 import time
@@ -20,6 +21,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 APP_DATA = Path(os.environ.get(
@@ -33,6 +35,9 @@ GUEST_PROFILE_FILE = APP_DATA / "guest_profile.json"
 GUEST_AVATAR_DIR = APP_DATA / "guest_profile_photos"
 AVATAR_BUCKET = "profile-photos"
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
+PROFILE_SETTINGS_KEYS = (
+    "username", "country", "phone_country_code", "phone_number", "time_zone",
+)
 GOOGLE_SIGN_IN_TIMEOUT = 180
 log = logging.getLogger("aee.account")
 
@@ -57,6 +62,57 @@ def _validate_display_name(display_name: str) -> str:
     if not display_name or len(display_name) > 80:
         raise AccountError("Your display name must contain 1 to 80 characters.")
     return display_name
+
+
+def _validate_profile_settings(
+    display_name: str,
+    username: str,
+    email: str,
+    country: str,
+    phone_country_code: str,
+    phone_number: str,
+    time_zone: str,
+    *,
+    require_email: bool,
+) -> dict[str, str]:
+    display_name = _validate_display_name(display_name)
+    username = username.strip().removeprefix("@")
+    if username and not re.fullmatch(r"[A-Za-z0-9_]{3,24}", username):
+        raise AccountError(
+            "Username must be 3 to 24 letters, numbers, or underscores."
+        )
+    email = _validate_email(email, required=require_email)
+    country = country.strip() if isinstance(country, str) else ""
+    if len(country) > 80:
+        raise AccountError("Country must be 80 characters or fewer.")
+    if not isinstance(phone_country_code, str):
+        raise AccountError("Choose a valid international dialing code.")
+    phone_country_code = phone_country_code.strip()
+    if not re.fullmatch(r"\+\d{1,4}", phone_country_code):
+        raise AccountError("Choose a valid international dialing code.")
+    phone_number = phone_number.strip()
+    if phone_number and (
+        len(phone_number) > 30
+        or not re.fullmatch(r"[0-9+().\-\s]{3,30}", phone_number)
+        or sum(character.isdigit() for character in phone_number) < 3
+    ):
+        raise AccountError("Enter a valid phone number.")
+    time_zone = time_zone.strip()
+    if len(time_zone) > 80:
+        raise AccountError("Choose a valid time zone.")
+    try:
+        ZoneInfo(time_zone)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise AccountError("Choose a valid time zone.") from exc
+    return {
+        "display_name": display_name,
+        "username": username,
+        "email": email,
+        "country": country,
+        "phone_country_code": phone_country_code,
+        "phone_number": phone_number,
+        "time_zone": time_zone,
+    }
 
 
 def _validate_profile_photo(extension: str, content: bytes) -> str:
@@ -96,19 +152,35 @@ def _guest_profile_data() -> dict[str, str]:
     try:
         data = json.loads(GUEST_PROFILE_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {"display_name": "", "avatar_extension": ""}
+        return {
+            "display_name": "", "avatar_extension": "", "contact_email": "",
+            "username": "", "country": "", "phone_country_code": "+1",
+            "phone_number": "", "time_zone": "UTC",
+        }
     except (OSError, json.JSONDecodeError) as exc:
         raise AccountError("The saved guest profile could not be read.") from exc
-    if (not isinstance(data, dict)
-            or not isinstance(data.get("display_name", ""), str)
-            or not isinstance(data.get("avatar_extension", ""), str)):
+    if not isinstance(data, dict):
         raise AccountError("The saved guest profile is invalid.")
-    display_name = data.get("display_name", "")
-    avatar_extension = data.get("avatar_extension", "")
+    defaults = {
+        "display_name": "", "avatar_extension": "", "contact_email": "",
+        "username": "", "country": "", "phone_country_code": "+1",
+        "phone_number": "", "time_zone": "UTC",
+    }
+    if any(not isinstance(data.get(key, default), str)
+           for key, default in defaults.items()):
+        raise AccountError("The saved guest profile is invalid.")
+    data = {key: data.get(key, default) for key, default in defaults.items()}
+    display_name = data["display_name"]
+    avatar_extension = data["avatar_extension"]
     if (len(display_name) > 80
             or avatar_extension not in ("", ".jpg", ".jpeg", ".png", ".webp")):
         raise AccountError("The saved guest profile is invalid.")
-    return {"display_name": display_name, "avatar_extension": avatar_extension}
+    _validate_profile_settings(
+        display_name or "Guest", data["username"], data["contact_email"], data["country"],
+        data["phone_country_code"], data["phone_number"], data["time_zone"],
+        require_email=False,
+    )
+    return data
 
 
 def _save_guest_profile_data(data: dict[str, str]) -> None:
@@ -137,7 +209,7 @@ def load_guest_profile() -> dict[str, str]:
             raise AccountError("The saved guest profile photo could not be read.") from exc
         content_type = _validate_profile_photo(extension, content)
         avatar_url = f"data:{content_type};base64,{base64.b64encode(content).decode('ascii')}"
-    return {"display_name": data["display_name"], "avatar_url": avatar_url}
+    return {**data, "avatar_url": avatar_url}
 
 
 def save_guest_display_name(display_name: str) -> dict[str, str]:
@@ -145,6 +217,57 @@ def save_guest_display_name(display_name: str) -> dict[str, str]:
     data = _guest_profile_data()
     data["display_name"] = display_name
     _save_guest_profile_data(data)
+    return load_guest_profile()
+
+
+def save_guest_profile_settings(
+    display_name: str,
+    username: str,
+    email: str,
+    country: str,
+    phone_country_code: str,
+    phone_number: str,
+    time_zone: str,
+    image_path: str | None = None,
+) -> dict[str, str]:
+    settings = _validate_profile_settings(
+        display_name, username, email, country, phone_country_code,
+        phone_number, time_zone, require_email=False,
+    )
+    data = _guest_profile_data()
+    photo = _read_profile_photo(image_path) if image_path else None
+    data.update({
+        "display_name": settings["display_name"],
+        "username": settings["username"],
+        "contact_email": settings["email"],
+        "country": settings["country"],
+        "phone_country_code": settings["phone_country_code"],
+        "phone_number": settings["phone_number"],
+        "time_zone": settings["time_zone"],
+    })
+    if photo:
+        extension, content, _content_type = photo
+        GUEST_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+        destination = GUEST_AVATAR_DIR / f"avatar{extension}"
+        temporary = destination.with_suffix(destination.suffix + ".tmp")
+        try:
+            temporary.write_bytes(content)
+            os.replace(temporary, destination)
+        except OSError as exc:
+            temporary.unlink(missing_ok=True)
+            raise AccountError("The guest profile photo could not be saved.") from exc
+        data["avatar_extension"] = extension
+    _save_guest_profile_data(data)
+    if photo:
+        for old_extension in (".jpg", ".jpeg", ".png", ".webp"):
+            old_photo = GUEST_AVATAR_DIR / f"avatar{old_extension}"
+            if old_photo != destination:
+                try:
+                    old_photo.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise AccountError(
+                        "The profile was saved, but an old photo could not be removed."
+                    ) from exc
     return load_guest_profile()
 
 
@@ -474,6 +597,12 @@ def _session_from_auth(data: dict[str, Any]) -> dict[str, Any]:
             metadata.get("display_name") or metadata.get("full_name")
             or metadata.get("name") or ""
         ),
+        "username": str(metadata.get("username") or ""),
+        "country": str(metadata.get("country") or ""),
+        "phone_country_code": str(metadata.get("phone_country_code") or "+1"),
+        "phone_number": str(metadata.get("phone_number") or ""),
+        "time_zone": str(metadata.get("time_zone") or "UTC"),
+        "created_at": str(user.get("created_at") or ""),
         "access_token": str(data["access_token"]),
         "refresh_token": str(data["refresh_token"]),
         "expires_at": expires_at,
@@ -596,6 +725,45 @@ def save_display_name(session: dict[str, Any], display_name: str) -> tuple[dict[
     return profile, _save_session(session)
 
 
+def save_profile_settings(
+    session: dict[str, Any],
+    display_name: str,
+    username: str,
+    email: str,
+    country: str,
+    phone_country_code: str,
+    phone_number: str,
+    time_zone: str,
+) -> tuple[dict[str, Any], dict[str, Any], bool]:
+    session = _require_session(session)
+    settings = _validate_profile_settings(
+        display_name, username, email, country, phone_country_code,
+        phone_number, time_zone, require_email=True,
+    )
+    metadata = {key: settings[key] for key in PROFILE_SETTINGS_KEYS}
+    metadata["display_name"] = settings["display_name"]
+    email_changed = settings["email"].casefold() != str(session.get("email", "")).casefold()
+    config = _require_config()
+    result, session = _authenticated_api(
+        config, session, "PUT", "/auth/v1/user",
+        {
+            "data": metadata,
+            **({"email": settings["email"]} if email_changed else {}),
+        },
+    )
+    if not isinstance(result, dict):
+        raise AccountError("Supabase did not confirm the profile update.")
+    returned_email = str(result.get("email") or session.get("email", ""))
+    email_pending = email_changed and returned_email.casefold() != settings["email"].casefold()
+    if not email_pending:
+        session["email"] = returned_email
+    session.update(metadata)
+    profile, session = _profile_upsert(
+        config, session, settings["display_name"]
+    )
+    return profile, _save_session(session), email_pending
+
+
 def upload_profile_photo(session: dict[str, Any], image_path: str) -> tuple[dict[str, Any], dict[str, Any]]:
     extension, content, content_type = _read_profile_photo(image_path)
     config = _require_config()
@@ -616,9 +784,12 @@ def upload_profile_photo(session: dict[str, Any], image_path: str) -> tuple[dict
     return profile, _save_session(session)
 
 
-def _validate_email(email: str) -> str:
+def _validate_email(email: str, *, required: bool = True) -> str:
     email = email.strip()
-    if len(email) > 254 or "@" not in email or email.startswith("@") or email.endswith("@"):
+    if not email and not required:
+        return ""
+    if (len(email) > 254
+            or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email)):
         raise AccountError("Enter a valid email address.")
     return email
 
