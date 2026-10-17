@@ -33,17 +33,20 @@ class AccountUiTests(unittest.TestCase):
 
     def test_settings_page_has_navigable_language_and_security_sections(self):
         navigation = app._settings_navigation_html()
-        for section in ("language", "security"):
-            self.assertIn(f'data-aee-settings-section="{section}"', navigation)
+        self.assertIn('<span>Language</span>', navigation)
+        self.assertIn('<option value="English">English</option>', navigation)
+        self.assertIn('<option value="Arabic">Arabic</option>', navigation)
+        self.assertIn('data-aee-settings-section="security"', navigation)
 
         constants = app.build_ui.__code__.co_consts
         self.assertIn("aee-settings-profile-section", constants)
         self.assertIn("aee-settings-security-section", constants)
-        self.assertIn("aee-settings-language-section", constants)
         self.assertIn('data-aee-settings-section', app._JS_HEAD)
         self.assertIn("section.scrollIntoView", app._JS_HEAD)
         self.assertIn("window.aeeToggleTheme = toggleTheme", app._JS_HEAD)
         self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
+        self.assertIn("applyAeeLanguage", app._JS_HEAD)
+        self.assertIn("aee-language", app._JS_HEAD)
         self.assertIn('#aee-settings-profile-section[data-aee-dirty="true"]', app._JS_HEAD)
         self.assertIn("data-aee-modified=\"true\"", app._JS_HEAD)
         self.assertIn("Save changes", constants)
@@ -200,7 +203,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertIsNone(result[2])
         self.assertEqual(result[3], "Local Guest")
 
-    def test_guest_profile_settings_save_updates_profile_and_clears_photo_preview(self):
+    def test_guest_profile_settings_save_does_not_require_email(self):
         profile = {
             "display_name": "Local Guest",
             "username": "local_guest",
@@ -215,28 +218,57 @@ class AccountUiTests(unittest.TestCase):
             app._account_client, "save_guest_profile_settings", return_value=profile
         ) as save_settings:
             result = app._account_save_profile_settings_ui(
-                "Local Guest", "@local_guest", "guest@example.com", None, None,
+                "Local Guest", "@local_guest", "", None,
             )
 
         save_settings.assert_called_once_with(
-            "Local Guest", "@local_guest", "guest@example.com", None,
+            "Local Guest", "@local_guest", "",
         )
         self.assertIn("saved on this computer", result[0])
         self.assertIn("Local Guest", result[1])
         self.assertIsNone(result[2])
-        self.assertEqual(
-            result[3], {"value": None, "visible": False, "__type__": "update"}
-        )
-        self.assertIsNone(result[4])
 
     def test_profile_photo_picker_previews_selected_image(self):
-        preview, photo_path = app._account_preview_photo_ui("profile.png")
-        self.assertEqual(preview, {"value": "profile.png", "visible": True, "__type__": "update"})
-        self.assertEqual(photo_path, "profile.png")
+        editor, panel = app._account_preview_photo_ui("profile.png")
+        self.assertEqual(editor, {"value": "profile.png", "__type__": "update"})
+        self.assertEqual(panel, {"visible": True, "__type__": "update"})
 
-        preview, photo_path = app._account_preview_photo_ui(None)
-        self.assertEqual(preview, {"value": None, "visible": False, "__type__": "update"})
-        self.assertIsNone(photo_path)
+        editor, panel = app._account_preview_photo_ui(None)
+        self.assertEqual(editor, {"value": None, "__type__": "update"})
+        self.assertEqual(panel, {"visible": False, "__type__": "update"})
+
+    def test_profile_photo_apply_uploads_edited_composite_and_closes_editor(self):
+        with patch.object(
+            app, "_account_upload_photo_ui",
+            return_value=(
+                app._account_status_html("Profile photo updated.", "success"),
+                "<section>Updated profile</section>",
+                None,
+            ),
+        ) as apply_photo:
+            result = app._account_apply_photo_ui(
+                {"composite": "cropped-profile.webp"}, None
+            )
+
+        apply_photo.assert_called_once_with("cropped-profile.webp", None)
+        self.assertIn("Profile photo updated", result[0])
+        self.assertEqual(result[1], "<section>Updated profile</section>")
+        self.assertEqual(result[3], {"value": None, "__type__": "update"})
+        self.assertEqual(result[4], {"visible": False, "__type__": "update"})
+
+    def test_profile_photo_apply_keeps_editor_open_when_upload_fails(self):
+        status = app._account_status_html("Photo upload failed.", "error")
+        with patch.object(
+            app, "_account_upload_photo_ui",
+            return_value=(status, "<section>Profile</section>", None),
+        ):
+            result = app._account_apply_photo_ui(
+                {"composite": "cropped-profile.webp"}, None
+            )
+
+        self.assertIn("Photo upload failed", result[0])
+        self.assertEqual(result[3], {"__type__": "update", "skip": True})
+        self.assertEqual(result[4], {"visible": True, "__type__": "update"})
 
     def test_signed_in_profile_email_change_is_reported_as_pending(self):
         session = {"user_id": "user-123", "email": "person@example.com"}
@@ -251,37 +283,20 @@ class AccountUiTests(unittest.TestCase):
             ),
         ):
             result = app._account_save_profile_settings_ui(
-                "Person", "person_123", "new@example.com", None, session,
+                "Person", "person_123", "new@example.com", session,
             )
 
         self.assertIn("Confirm the email change", result[0])
         self.assertIn("new@example.com", result[0])
         self.assertIn("data-profile-saved=\"true\"", result[0])
 
-    def test_signed_in_profile_photo_failure_is_not_reported_as_full_success(self):
-        session = {"user_id": "user-123", "email": "person@example.com"}
-        with (
-            patch.object(
-                app._account_client, "save_profile_settings",
-                return_value=({"display_name": "Person"}, session, False),
-            ),
-            patch.object(
-                app._account_client, "upload_profile_photo",
-                side_effect=account_client.AccountError("Photo upload failed."),
-            ),
-            patch.object(
-                app, "_account_render_signed_in",
-                return_value=("<section>Person</section>", session, None),
-            ),
-        ):
-            result = app._account_save_profile_settings_ui(
-                "Person", "person_123", "person@example.com", "new-photo.png", session,
-            )
-
-        self.assertIn("Other details were saved, but the photo was not", result[0])
-        self.assertIn("Photo upload failed.", result[0])
-        self.assertNotIn("data-profile-saved=\"true\"", result[0])
-        self.assertEqual(result[3], {"__type__": "update"})
+    def test_guest_profile_email_field_is_hidden(self):
+        self.assertEqual(app._account_profile_email_visibility_ui(None),
+                         {"visible": False, "__type__": "update"})
+        self.assertEqual(
+            app._account_profile_email_visibility_ui({"user_id": "user-123"}),
+            {"visible": True, "__type__": "update"},
+        )
 
     def test_guest_connection_save_keeps_profile_and_settings_visible(self):
         calls = []

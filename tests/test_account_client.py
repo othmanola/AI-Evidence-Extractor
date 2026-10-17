@@ -29,7 +29,7 @@ class AccountClientTests(unittest.TestCase):
 
     def test_config_requires_secure_base_url_and_public_key(self):
         for url in (
-            "http://example.supabase.co",
+            "http://example.com",
             "https://example.supabase.co/path",
             "https://user:password@example.supabase.co",
             "https://example.supabase.co:invalid",
@@ -43,6 +43,19 @@ class AccountClientTests(unittest.TestCase):
                 "https://example.supabase.co/", "public-key"
             )["project_url"],
             "https://example.supabase.co",
+        )
+        self.assertEqual(
+            account_client._validate_config(
+                "example.supabase.co", "public-key"
+            )["project_url"],
+            "https://example.supabase.co",
+        )
+        self.assertEqual(
+            account_client._validate_config(
+                "https://supabase.com/dashboard/project/abcd1234",
+                "public-key",
+            )["project_url"],
+            "https://abcd1234.supabase.co",
         )
 
     def test_api_sends_public_key_and_bearer_session_to_project(self):
@@ -197,7 +210,7 @@ class AccountClientTests(unittest.TestCase):
                              root / "guest_profile_photos"),
             ):
                 (root / "guest_profile.json").write_text(
-                    '{"country":"Canada","phone_country_code":"+1",'
+                    '{"contact_email":"saved@example.com","country":"Canada","phone_country_code":"+1",'
                     '"phone_number":"4165551234","time_zone":"America/Toronto"}',
                     encoding="utf-8",
                 )
@@ -213,6 +226,27 @@ class AccountClientTests(unittest.TestCase):
         self.assertEqual(profile["phone_number"], "4165551234")
         self.assertEqual(profile["time_zone"], "America/Toronto")
         self.assertEqual(loaded, profile)
+
+    def test_guest_profile_save_preserves_legacy_contact_email(self):
+        with TemporaryDirectory() as temp_dir:
+            profile_file = Path(temp_dir) / "guest_profile.json"
+            profile_file.write_text(
+                '{"display_name":"Guest","contact_email":"saved@example.com"}',
+                encoding="utf-8",
+            )
+            with (
+                patch.object(account_client, "APP_DATA", Path(temp_dir)),
+                patch.object(account_client, "GUEST_PROFILE_FILE", profile_file),
+                patch.object(
+                    account_client, "GUEST_AVATAR_DIR",
+                    Path(temp_dir) / "guest_profile_photos",
+                ),
+            ):
+                profile = account_client.save_guest_profile_settings(
+                    "Guest", "", "",
+                )
+
+        self.assertEqual(profile["contact_email"], "saved@example.com")
 
     def test_old_guest_profile_files_receive_defaults(self):
         with TemporaryDirectory() as temp_dir:

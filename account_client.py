@@ -200,8 +200,9 @@ def save_guest_profile_settings(
     data.update({
         "display_name": settings["display_name"],
         "username": settings["username"],
-        "contact_email": settings["email"],
     })
+    if settings["email"]:
+        data["contact_email"] = settings["email"]
     if photo:
         extension, content, _content_type = photo
         GUEST_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
@@ -261,20 +262,40 @@ def _save_guest_mode() -> None:
 
 
 def _validate_config(project_url: str, anon_key: str) -> dict[str, str]:
-    project_url = project_url.strip().rstrip("/")
+    project_url = project_url.strip()
+    if project_url and "://" not in project_url:
+        project_url = "https://" + project_url
     anon_key = anon_key.strip()
     parsed = urllib.parse.urlsplit(project_url)
+    if (parsed.scheme == "http" and parsed.hostname
+            and parsed.hostname.lower().endswith(".supabase.co")
+            and not parsed.username and not parsed.password):
+        parsed = parsed._replace(scheme="https")
+        project_url = urllib.parse.urlunsplit(parsed)
+    project_path = [part for part in parsed.path.split("/") if part]
+    if (parsed.scheme == "https" and parsed.hostname == "supabase.com"
+            and len(project_path) == 3 and project_path[:2] == ["dashboard", "project"]
+            and re.fullmatch(r"[a-z0-9]+", project_path[2])):
+        project_url = f"https://{project_path[2]}.supabase.co"
+        parsed = urllib.parse.urlsplit(project_url)
     try:
         port = parsed.port
     except ValueError as exc:
         raise AccountError("The Supabase project URL contains an invalid port.") from exc
     if (parsed.scheme != "https" or not parsed.hostname or parsed.username
             or parsed.password or (port is not None and not 1 <= port <= 65535)):
-        raise AccountError("Enter your Supabase project URL using HTTPS.")
+        raise AccountError(
+            "Enter the Supabase project API URL, such as "
+            "https://your-project-ref.supabase.co. A project reference or "
+            "Supabase dashboard URL is accepted too."
+        )
     if parsed.query or parsed.fragment or parsed.path not in ("", "/"):
         raise AccountError("The project URL must be the base URL, without a path or query.")
     if not anon_key or len(anon_key) > 4096:
         raise AccountError("Enter the Supabase public anon key from your project settings.")
+    project_url = urllib.parse.urlunsplit(
+        parsed._replace(path="", query="", fragment="")
+    ).rstrip("/")
     return {"project_url": project_url, "anon_key": anon_key}
 
 

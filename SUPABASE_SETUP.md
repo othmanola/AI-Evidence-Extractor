@@ -16,6 +16,10 @@ Create a project at [supabase.com](https://supabase.com/). In **Project Settings
 API**, copy the project URL and the public **publishable** key (or legacy `anon`
 key). Enter them in **Account > Connection setup** in the app. Never enter or
 distribute a `service_role` key or any secret key in the desktop app.
+Use the project API URL (`https://<project-ref>.supabase.co`), a project
+reference host without the scheme, or the project's Supabase dashboard URL.
+The app converts the dashboard URL to its API host and upgrades an HTTP
+`*.supabase.co` URL to HTTPS; other insecure HTTP URLs are rejected.
 The app tests the supplied URL and key before saving them, so an unsuccessful
 connection check leaves the previous working settings unchanged. A successful
 check confirms the Supabase Auth endpoint is reachable; run the SQL below to
@@ -107,10 +111,11 @@ opens the system browser. Return to the app after Google confirms the sign-in.
 
 Guest mode requires no Supabase project and keeps app usage local. The guest
 choice is saved on the computer so the app does not ask again at every launch.
-Guest profile settings can set a display name, username, contact email, and
-optional photo, all stored only on that computer. When signed in, the same
-profile details are saved to Supabase Auth metadata and the existing
-profile/photo storage. Existing saved country, phone, and time-zone values are
+Guest profile settings can set a display name, username, and optional photo,
+all stored only on that computer; email is not required or shown in guest mode.
+Any legacy guest contact email is preserved locally but not displayed. When
+signed in, the same profile details are saved to Supabase Auth metadata and the
+existing profile/photo storage. Existing saved country, phone, and time-zone values are
 left intact but are no longer shown or edited. A requested email change
 is reported as pending unless Supabase returns the new address immediately;
 the user must confirm it when confirmation is required by the project. Analysis

@@ -1765,6 +1765,14 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   background:rgba(148,163,184,.08);transform:translateX(1px);}
 .aee-settings-nav button[aria-current="page"]{color:#f8fafc;border-color:rgba(248,113,113,.2);
   background:linear-gradient(90deg,rgba(248,113,113,.13),rgba(148,163,184,.045));}
+.aee-settings-language-control{display:grid;grid-template-columns:18px auto minmax(0,1fr);
+  align-items:center;gap:9px;padding:9px 10px;border:1px solid rgba(148,163,184,.12);
+  border-radius:11px;color:#b8c3d5;background:rgba(148,163,184,.045);font-size:.78rem;font-weight:650;}
+.aee-settings-language-control svg{width:16px;height:16px;color:#a9b7cb;}
+.aee-settings-language-control select{width:100%;min-width:0;padding:6px 22px 6px 8px;
+  border:1px solid rgba(148,163,184,.18);border-radius:8px;color:#f5f7fb;
+  background:#222b3c;font:600 .72rem Inter,system-ui,sans-serif;}
+.aee-settings-language-control select:focus-visible{outline:2px solid #ff7770;outline-offset:2px;}
 .aee-settings-nav button:focus-visible,.aee-settings-theme-button:focus-visible,
 .aee-settings-layout button:focus-visible,.aee-settings-layout input:focus-visible,
 .aee-settings-layout select:focus-visible{outline:2px solid #ff7770!important;outline-offset:2px!important;}
@@ -1775,12 +1783,14 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   background:rgba(9,15,28,.86);border-color:rgba(148,163,184,.12);}
 .aee-account-shell .aee-project-page-heading{gap:13px;}
 .aee-account-shell .aee-project-page-heading h1{font-size:1.55rem;letter-spacing:-.045em;}
-.aee-settings-profile-header{align-items:stretch!important;gap:14px!important;margin:0 0 16px!important;}
+.aee-settings-profile-header{position:relative!important;align-items:stretch!important;
+  gap:14px!important;margin:0 0 16px!important;}
 .aee-settings-profile-header{
   border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-settings-profile-header>#aee-account-profile-source{flex:1 1 auto!important;width:auto!important;min-width:0!important;}
-.aee-settings-photo-actions{flex:0 0 126px!important;width:126px!important;min-width:0!important;
-  align-items:flex-end!important;justify-content:center!important;gap:8px!important;margin:0!important;}
+.aee-settings-photo-actions{position:absolute!important;z-index:3;right:16px;bottom:15px;
+  flex:none!important;width:126px!important;min-width:0!important;
+  align-items:stretch!important;justify-content:flex-end!important;gap:8px!important;margin:0!important;}
 .aee-settings-photo-button,.aee-settings-photo-button button{
   width:100%!important;min-height:40px!important;padding:0 13px!important;
   border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;
@@ -1797,6 +1807,14 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
 .aee-settings-photo-preview .image-container img{object-fit:cover!important;}
 .aee-settings-photo-preview .wrap{padding:3px!important;}
 .aee-settings-photo-preview label{display:none!important;}
+.aee-photo-editor-panel{padding:16px!important;border:1px solid rgba(148,163,184,.16)!important;
+  border-radius:16px!important;background:rgba(20,28,45,.88)!important;}
+.aee-photo-editor-panel .image-editor{border-radius:12px!important;overflow:hidden;}
+.aee-photo-editor-actions{justify-content:flex-end!important;gap:9px!important;margin-top:10px!important;}
+.aee-photo-editor-actions button{width:auto!important;min-width:108px!important;min-height:40px!important;
+  border-radius:10px!important;font-weight:650!important;}
+.aee-photo-apply-button button{color:#fff!important;
+  background:linear-gradient(120deg,#ef665f,#dc4c59)!important;}
 .aee-settings-profile-header .aee-account-profile{height:auto;margin:0;}
 .aee-account-shell .aee-account-profile-form{
   border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
@@ -1809,7 +1827,7 @@ body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
   border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-account-profile-form{max-width:none;margin:0;}
 .aee-account-shell .aee-account-profile{position:relative;min-height:132px;box-sizing:border-box;
-  align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 20px 17px;
+  align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 160px 17px 20px;
   overflow:hidden;border-color:rgba(148,163,184,.15);border-radius:18px;
   background:linear-gradient(180deg,rgba(28,36,57,.96),rgba(18,26,43,.97));}
 .aee-account-shell .aee-account-profile:before{position:absolute;inset:0 0 auto;height:64%;content:"";
@@ -1928,6 +1946,9 @@ html[data-theme="light"] .aee-settings-nav{background:rgba(255,255,255,.82);bord
 html[data-theme="light"] .aee-settings-nav button{color:#475569;}
 html[data-theme="light"] .aee-settings-nav button:hover{color:#0f172a;background:rgba(100,116,139,.07);}
 html[data-theme="light"] .aee-settings-nav button[aria-current="page"]{color:#0f172a;background:rgba(248,113,113,.1);}
+html[data-theme="light"] .aee-settings-language-control{color:#334155;background:rgba(100,116,139,.055);}
+html[data-theme="light"] .aee-settings-language-control select{color:#172033;background:#f1f4f9;
+  border-color:rgba(15,23,42,.13);}
 html[data-theme="light"] .aee-account-shell .aee-account-profile{background:linear-gradient(180deg,#f5f6fb,#fff);}
 html[data-theme="light"] .aee-account-shell .aee-account-profile:before{
   background:linear-gradient(110deg,rgba(225,75,91,.21),rgba(126,75,126,.18) 55%,rgba(74,81,152,.15));}
@@ -2037,7 +2058,9 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-settings-profile-header{gap:10px!important;}
   .aee-settings-profile-header>#aee-account-profile-source{
     flex:1 1 0!important;width:auto!important;min-width:0!important;}
-  .aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;gap:7px!important;}
+  .aee-account-shell .aee-account-profile{padding-right:116px;}
+  .aee-photo-editor-panel{padding:10px!important;}
+  .aee-settings-photo-actions{right:9px;bottom:10px;width:96px!important;gap:7px!important;}
   .aee-settings-photo-button button{min-height:36px!important;padding:0 6px!important;font-size:.66rem!important;}
   .aee-settings-photo-preview{width:58px!important;min-width:58px!important;max-width:58px!important;}
   .aee-settings-photo-preview .image-container{min-height:56px!important;max-height:56px!important;}
@@ -3938,6 +3961,29 @@ _JS_HEAD = r"""
     field.dataset.aeeInitialValue = field.value;
     delete field.dataset.aeeModified;
   }
+  function applyAeeLanguage(language, persist){
+    const arabic = language === 'Arabic';
+    document.documentElement.lang = arabic ? 'ar' : 'en';
+    document.documentElement.dir = arabic ? 'rtl' : 'ltr';
+    if (persist){
+      try { localStorage.setItem('aee-language', arabic ? 'Arabic' : 'English'); }
+      catch (error) { console.warn('Could not save language preference.', error); }
+    }
+  }
+  function initializeAeeLanguageSelector(){
+    const languageSelector = document.getElementById('aee-language-selector');
+    if (!languageSelector) return;
+    let savedLanguage = 'English';
+    try { savedLanguage = localStorage.getItem('aee-language') || 'English'; }
+    catch (error) { console.warn('Could not read language preference.', error); }
+    if (!languageSelector.dataset.aeeLanguageInitialized){
+      languageSelector.value = savedLanguage === 'Arabic' ? 'Arabic' : 'English';
+      languageSelector.dataset.aeeLanguageInitialized = 'true';
+      languageSelector.addEventListener('change', () =>
+        applyAeeLanguage(languageSelector.value, true));
+    }
+    applyAeeLanguage(languageSelector.value, false);
+  }
   function initializeAeeProfileFieldValues(){
       document.querySelectorAll(
         '.aee-settings-fields input, .aee-settings-fields select')
@@ -3971,6 +4017,7 @@ _JS_HEAD = r"""
     {childList:true,subtree:true});
   function liftAeeNavigation(){
     applyAeeAccessGate();
+    initializeAeeLanguageSelector();
     syncAeeProfileTool();
     syncAeeTopbarLayout();
     syncAeeUpdateShortcut();
@@ -5452,17 +5499,11 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
             'referrerpolicy="no-referrer">'
             if avatar_url else _html.escape(initials[:2].upper())
         )
-        contact_email = str(profile.get("contact_email") or "")
-        details = (
-            f'<span>{_html.escape(contact_email)} · Local profile</span>'
-            if contact_email else
-            '<span>Local profile · This device only</span>'
-        )
         return ('''<section class="aee-account-profile" aria-label="Guest account">
           <div class="aee-account-avatar">''' + avatar + '''</div>
           <div class="aee-account-identity"><strong>''' +
                 _html.escape(name or "Guest mode") + '''</strong>
-            ''' + details + '''
+            <span>Local profile · This device only</span>
             <span class="aee-account-mode">LOCAL ONLY</span></div>
         </section>''')
     profile = profile if isinstance(profile, dict) else {}
@@ -5551,7 +5592,7 @@ def _account_initial_session():
 
 def _account_profile_settings_values(profile, session=None):
     profile = profile if isinstance(profile, dict) else {}
-    email = str((session or {}).get("email") or profile.get("contact_email") or "")
+    email = str((session or {}).get("email") or "") if session else ""
     return {
         "display_name": str(profile.get("display_name") or ""),
         "username": str(profile.get("username") or ""),
@@ -5567,6 +5608,10 @@ def _account_profile_settings_values_ui(session):
     else:
         profile = {}
     return tuple(_account_profile_settings_values(profile, session).values())
+
+
+def _account_profile_email_visibility_ui(session):
+    return gr.update(visible=bool(session))
 
 
 def _account_profile_settings_refresh_ui(session):
@@ -5779,56 +5824,60 @@ def _account_save_name_ui(display_name, session):
                 _account_profile_html(session), session, str(display_name or ""))
 
 
-def _account_save_profile_settings_ui(
-    display_name, username, email, image_path, session,
-):
+def _account_save_profile_settings_ui(display_name, username, email, session):
     try:
         if not session:
             profile = _account_client.save_guest_profile_settings(
-                display_name, username, email, image_path,
+                display_name, username, email,
             )
             message = "Profile details saved on this computer."
             return (_account_status_html(message, "success", profile_saved=True),
-                    _account_profile_html(profile=profile), None,
-                    gr.update(value=None, visible=False), None)
+                    _account_profile_html(profile=profile), None)
 
         profile, session, email_pending = _account_client.save_profile_settings(
             session, display_name, username, email,
         )
-        photo_error = None
-        if image_path:
-            try:
-                profile, session = _account_client.upload_profile_photo(session, image_path)
-            except _account_client.AccountError as exc:
-                photo_error = str(exc)
         profile_html, session, refresh_error = _account_render_signed_in(session)
         message = "Profile details saved to your account."
         if email_pending:
             message += (
                 f" Confirm the email change using the link sent to {email.strip()}."
             )
-        if photo_error:
-            message += f" Other details were saved, but the photo was not: {photo_error}"
         if refresh_error:
             message += f" The updated profile could not be refreshed: {refresh_error}"
-        tone = "error" if photo_error or refresh_error else "success"
-        return (_account_status_html(message, tone, profile_saved=not photo_error),
-                profile_html, session,
-                gr.update(value=None, visible=False) if not photo_error else gr.skip(),
-                None if not photo_error else gr.skip())
+        return (_account_status_html(
+                    message, "error" if refresh_error else "success",
+                    profile_saved=not refresh_error),
+                profile_html, session)
     except _account_client.AccountError as exc:
         return (_account_status_html(str(exc), "error"),
-                _account_profile_html(session), session, gr.skip(), gr.skip())
+                _account_profile_html(session), session)
     except Exception as exc:
         log.exception("Could not save profile settings")
         return (_account_status_html(f"Could not save profile settings: {exc}", "error"),
-                _account_profile_html(session), session, gr.skip(), gr.skip())
+                _account_profile_html(session), session)
 
 
 def _account_preview_photo_ui(image_path):
     if not image_path:
-        return gr.update(value=None, visible=False), None
-    return gr.update(value=image_path, visible=True), image_path
+        return gr.update(value=None), gr.update(visible=False)
+    return gr.update(value=image_path), gr.update(visible=True)
+
+
+def _account_apply_photo_ui(image_value, session):
+    image_path = image_value.get("composite") if isinstance(image_value, dict) else None
+    if not image_path:
+        return (_account_status_html("Crop or resize a photo before applying it.", "error"),
+                gr.skip(), gr.skip(), gr.skip(), gr.update(visible=True))
+    status, profile_html, session = _account_upload_photo_ui(image_path, session)
+    if 'data-kind="success"' in status:
+        return (status, profile_html, session, gr.update(value=None),
+                gr.update(visible=False))
+    return status, profile_html, session, gr.skip(), gr.update(visible=True)
+
+
+def _account_cancel_photo_ui():
+    return gr.update(value=None), gr.update(visible=False)
 
 
 def _account_upload_photo_ui(image_path, session):
@@ -6086,10 +6135,14 @@ def _side_navigation_html():
 def _settings_navigation_html():
     return '''<nav class="aee-settings-nav" aria-label="Settings sections">
       <div class="aee-settings-nav-label">Settings</div>
-      <button type="button" data-aee-settings-section="language" aria-current="page">
+      <label class="aee-settings-language-control">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
         <span>Language</span>
-      </button>
+        <select id="aee-language-selector" aria-label="Language">
+          <option value="English">English</option>
+          <option value="Arabic">Arabic</option>
+        </select>
+      </label>
       <button type="button" data-aee-settings-section="security">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         <span>Security</span>
@@ -6331,15 +6384,26 @@ def build_ui():
                                             file_count="single",
                                             type="filepath",
                                             elem_classes=["aee-settings-photo-button"])
-                                        account_photo_input = gr.Image(
-                                            label=None,
-                                            value=None,
-                                            interactive=False,
-                                            visible=False,
-                                            height=74,
-                                            image_mode="RGB",
-                                            elem_classes=["aee-settings-photo-preview"])
-                                        account_photo_state = gr.State(None)
+                                with gr.Group(
+                                    visible=False,
+                                    elem_classes=["aee-photo-editor-panel"],
+                                ) as account_photo_editor_panel:
+                                    account_photo_editor = gr.ImageEditor(
+                                        label="Adjust your profile photo",
+                                        sources=["upload"],
+                                        type="filepath",
+                                        transforms=["crop", "resize"],
+                                        layers=False,
+                                        canvas_size=(600, 600),
+                                        fixed_canvas=False,
+                                        height=340,
+                                        elem_classes=["aee-photo-editor"])
+                                    with gr.Row(elem_classes=["aee-photo-editor-actions"]):
+                                        account_cancel_photo_btn = gr.Button(
+                                            "Cancel", variant="secondary")
+                                        account_apply_photo_btn = gr.Button(
+                                            "Apply photo", variant="primary",
+                                            elem_classes=["aee-photo-apply-button"])
                                 with gr.Group(elem_classes=["aee-settings-card"]):
                                     with gr.Row(elem_classes=["aee-settings-card-heading"]):
                                         gr.HTML('''<div><h2>Personal information</h2>
@@ -6363,9 +6427,11 @@ def build_ui():
                                             label="Email",
                                             value=account_profile_settings_initial.get("email", ""),
                                             placeholder="you@example.com",
-                                            type="email", max_lines=1)
+                                            type="email", max_lines=1,
+                                            visible=bool(account_session_initial),
+                                            elem_id="aee-settings-profile-email")
                                     gr.HTML('''<div class="aee-account-settings-copy">
-                                      Guest profile details and contact email stay on this computer.
+                                      Guest profile details stay on this computer.
                                       Signed-in profile details are saved to your Supabase account.
                                       Email changes require confirmation from your inbox.</div>''')
                                     with gr.Row(elem_classes=["aee-account-profile-actions"]):
@@ -6417,15 +6483,6 @@ def build_ui():
                                 value=_ACCOUNT_SETUP_SQL, language="sql",
                                 label="Run in Supabase SQL Editor",
                                 interactive=False, lines=25)
-                        with gr.Group(
-                            elem_id="aee-settings-language-section",
-                            elem_classes=["aee-settings-panel", "aee-settings-card",
-                                          "aee-settings-language-card"],
-                        ):
-                            gr.HTML('''<div><strong>Interface language</strong>
-                              <span>The app interface is currently available in English.</span></div>
-                              <span class="aee-settings-language-badge"
-                                aria-label="Current language: English">English</span>''')
                 account_oauth_transaction = gr.State(None)
                 account_oauth_timer = gr.Timer(value=1, active=False)
 
@@ -6622,7 +6679,9 @@ def build_ui():
             queue=False)
         account_oauth_poll_event.then(
             fn=_account_profile_settings_refresh_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         account_signin_event = account_signin_btn.click(
             fn=_account_sign_in_ui,
             inputs=[account_email_input, account_password_input, account_session,
@@ -6635,7 +6694,9 @@ def build_ui():
             queue=False)
         account_signin_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         account_signup_event = account_signup_btn.click(
             fn=_account_sign_up_ui,
             inputs=[account_display_name_input, account_email_input,
@@ -6648,7 +6709,9 @@ def build_ui():
             queue=False)
         account_signup_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         account_guest_event = account_guest_btn.click(
             fn=_account_guest_ui, inputs=[account_session, account_access_state],
             outputs=[account_status, account_profile, account_session, account_profile_name,
@@ -6659,7 +6722,9 @@ def build_ui():
             queue=False)
         account_guest_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         account_signout_event = account_signout_btn.click(
             fn=_account_guest_ui, inputs=[account_session, account_access_state],
             outputs=[account_status, account_profile, account_session, account_profile_name,
@@ -6670,7 +6735,9 @@ def build_ui():
             queue=False)
         account_signout_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         account_change_account_event = account_change_account_btn.click(
             fn=_account_change_account_ui, inputs=[account_session],
             outputs=[account_status, account_profile, account_session, account_profile_name,
@@ -6681,7 +6748,9 @@ def build_ui():
             queue=False)
         account_change_account_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         account_refresh_profile_btn.click(
             fn=_account_refresh_profile_ui, inputs=[account_session],
             outputs=[account_status, account_profile, account_session, account_profile_name],
@@ -6689,13 +6758,21 @@ def build_ui():
         account_save_name_btn.click(
             fn=_account_save_profile_settings_ui,
             inputs=[account_profile_name, account_profile_username,
-                    account_profile_email, account_photo_state, account_session],
-            outputs=[account_status, account_profile, account_session,
-                     account_photo_input, account_photo_state],
+                    account_profile_email, account_session],
+            outputs=[account_status, account_profile, account_session],
             queue=False)
         account_photo_picker.upload(
             fn=_account_preview_photo_ui, inputs=[account_photo_picker],
-            outputs=[account_photo_input, account_photo_state], queue=False)
+            outputs=[account_photo_editor, account_photo_editor_panel], queue=False)
+        account_apply_photo_btn.click(
+            fn=_account_apply_photo_ui,
+            inputs=[account_photo_editor, account_session],
+            outputs=[account_status, account_profile, account_session,
+                     account_photo_editor, account_photo_editor_panel],
+            queue=False)
+        account_cancel_photo_btn.click(
+            fn=_account_cancel_photo_ui, inputs=[],
+            outputs=[account_photo_editor, account_photo_editor_panel], queue=False)
         account_save_config_event = account_save_config_btn.click(
             fn=_account_save_config_ui,
             inputs=[account_project_url, account_anon_key, account_session,
@@ -6708,7 +6785,9 @@ def build_ui():
             queue=False)
         account_save_config_event.then(
             fn=_account_profile_settings_values_ui, inputs=[account_session],
-            outputs=account_profile_settings_fields, queue=False)
+            outputs=account_profile_settings_fields, queue=False).then(
+            fn=_account_profile_email_visibility_ui, inputs=[account_session],
+            outputs=[account_profile_email], queue=False)
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
                      update_apply_btn], queue=False)
