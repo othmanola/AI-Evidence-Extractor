@@ -5,12 +5,12 @@ Installed copies use a small HTTPS JSON manifest to check the current release. G
 ## Connect this build to your release feed
 
 1. The public repository serves the manifest from its `main` branch. This build is configured to check:
-   `https://raw.githubusercontent.com/othmanola/AI-Evidence-Extractor/refs/heads/main/latest.json`
+   `https://raw.githubusercontent.com/othmanola/AI-Evidence-Extractor/main/latest.json`
 2. Keep that URL in every installer you distribute. If the repository becomes private or its default branch changes, configure another public HTTPS manifest URL in `update_config.json` and rebuild.
 
 ## Publish a new version
 
-1. Increase `version.txt` to the next three-part version (this release is `1.2.10`).
+1. Increase `version.txt` to the next three-part version (this release is `1.2.11`).
 2. Build `dist/AI_Evidence_Extractor_Setup.exe` and `dist/AI_Evidence_Extractor_Update.zip` with `build_windows.ps1`.
 3. Create a GitHub Release with the matching version tag and upload both files. The setup is for first installs and recovery; the update archive is used by the in-app updater.
 4. Calculate both checksums in PowerShell:

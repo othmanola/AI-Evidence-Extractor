@@ -1,10 +1,10 @@
 {
     "app_id":  "ai-evidence-extractor",
-    "version":  "1.2.10",
+    "version":  "1.2.11",
     "published_at":  "2026-10-17",
-    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.10/AI_Evidence_Extractor_Setup.exe",
-    "sha256":  "ef0617db51a2b6f82c2f61f2e40fa4dfddb63e9f4eb90f4dd7aa99bbbd5b4e74",
-    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.10/AI_Evidence_Extractor_Update.zip",
-    "package_sha256":  "e1e49da6929235c7b807b1d2153c23dbb207ebb493b20a599fb6caed084a9a77",
-    "release_notes":  "Fixes startup by launching the app directly through its installed Python runtime."
+    "download_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.11/AI_Evidence_Extractor_Setup.exe",
+    "sha256":  "f76b2080000f6d7a37f404785aa1cb16751fdfa7d14f9805e7a9b0952afec5d0",
+    "package_url":  "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.11/AI_Evidence_Extractor_Update.zip",
+    "package_sha256":  "fe4e045677c66066441c50d55c99104adca7dd7fd8b1d3008dac1ce099cfd4e7",
+    "release_notes":  "Fixes startup extraction failures and avoids stale cached update manifests."
 }
