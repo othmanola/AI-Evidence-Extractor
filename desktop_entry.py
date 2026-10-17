@@ -25,14 +25,14 @@ def main() -> int:
         venv = cuda_venv
     pythonw = venv / "Scripts" / "pythonw.exe"
     launcher = app_dir / "desktop_launcher.py"
-    runtime_dir = app_dir / "runtime"
+    runtime_dir = app_dir
     log_path = data_dir / "startup.log"
     data_dir.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as log:
         log.write(
             f"Desktop bootstrap: executable={sys.executable!r}; app_dir={str(app_dir)!r}; "
             f"pythonw_exists={pythonw.is_file()}; launcher_exists={launcher.is_file()}; "
-            f"runtime_exists={runtime_dir.is_dir()}\n"
+            f"app_dir_exists={runtime_dir.is_dir()}\n"
         )
 
     if not pythonw.is_file() or not launcher.is_file() or not runtime_dir.is_dir():

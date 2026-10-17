@@ -6,6 +6,7 @@ if not exist "%AEE_DATA_DIR%" mkdir "%AEE_DATA_DIR%"
 set "AEE_LOG=%AEE_DATA_DIR%\startup.log"
 set "AEE_RUNTIME_DIR=%AEE_APP_DIR%runtime"
 set "AEE_PYTHON=%AEE_RUNTIME_DIR%\python.exe"
+set "AEE_PYTHON_COMMAND="
 set "AEE_VENV=%AEE_DATA_DIR%\runtimeenv"
 set "AEE_VENV_PYTHON=%AEE_VENV%\Scripts\python.exe"
 set "AEE_VENV_PYW=%AEE_VENV%\Scripts\pythonw.exe"
@@ -13,17 +14,28 @@ set "AEE_SETUP_MARKER=%AEE_DATA_DIR%\setup_complete.txt"
 echo ==== AI Evidence Extractor launch %DATE% %TIME% ====>>"%AEE_LOG%"
 
 if not exist "%AEE_PYTHON%" (
-  echo Private Python runtime is missing. Reinstall the app using Setup.exe.
-  echo Runtime missing at %AEE_PYTHON%>>"%AEE_LOG%"
-  pause
-  exit /b 1
+  py -3.13 --version >nul 2>&1
+  if errorlevel 1 (
+    echo Python 3.13 is missing. Reinstall AI Evidence Extractor or install Python 3.13.
+    echo No private runtime or registered Python 3.13 was found.>>"%AEE_LOG%"
+    pause
+    exit /b 1
+  )
+  set "AEE_PYTHON_COMMAND=py -3.13"
+  set "AEE_RUNTIME_DIR=%AEE_APP_DIR%"
 )
 pushd "%AEE_RUNTIME_DIR%" || goto :error
 
 findstr /x /c:"desktop-v1" "%AEE_SETUP_MARKER%" >nul 2>nul
 if errorlevel 1 (
   echo Preparing the app environment. This can take several minutes and requires internet access.
-  if not exist "%AEE_VENV_PYTHON%" "%AEE_PYTHON%" -m venv "%AEE_VENV%" >>"%AEE_LOG%" 2>&1 || goto :error
+  if not exist "%AEE_VENV_PYTHON%" (
+    if defined AEE_PYTHON_COMMAND (
+      %AEE_PYTHON_COMMAND% -m venv "%AEE_VENV%" >>"%AEE_LOG%" 2>&1 || goto :error
+    ) else (
+      "%AEE_PYTHON%" -m venv "%AEE_VENV%" >>"%AEE_LOG%" 2>&1 || goto :error
+    )
+  )
   "%AEE_VENV_PYTHON%" -m pip install --upgrade pip >>"%AEE_LOG%" 2>&1 || goto :error
   "%AEE_VENV_PYTHON%" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu >>"%AEE_LOG%" 2>&1 || goto :error
   "%AEE_VENV_PYTHON%" -m pip install -r "%AEE_APP_DIR%requirements.txt" >>"%AEE_LOG%" 2>&1 || goto :error
