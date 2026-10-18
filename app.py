@@ -244,6 +244,34 @@ def _remove_history_entry(entry_id):
     return len(remaining), warnings
 
 
+def _clear_analysis_history():
+    with _HISTORY_LOCK:
+        entries = _read_analysis_history()
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        partial_path = HISTORY_FILE.with_name(HISTORY_FILE.name + ".partial")
+        try:
+            partial_path.write_text("[]", encoding="utf-8")
+            os.replace(partial_path, HISTORY_FILE)
+        except Exception:
+            log.exception("Could not clear analysis history")
+            partial_path.unlink(missing_ok=True)
+            raise
+
+    warnings = []
+    for index, entry in enumerate(entries):
+        if isinstance(entry, dict):
+            warnings.extend(_remove_history_artifacts(entry, []))
+            entry_id = _history_entry_id(entry, index)
+            export_path = OUTPUT_DIR / "history_exports" / f"{safe_slug(entry_id)}.zip"
+            if export_path.parent.resolve() == (OUTPUT_DIR / "history_exports").resolve():
+                try:
+                    export_path.unlink(missing_ok=True)
+                except OSError as exc:
+                    log.exception("Could not remove cached history ZIP: %s", export_path)
+                    warnings.append(f"Could not remove a cached ZIP: {exc}")
+    return len(entries), warnings
+
+
 def _history_detail_ui(entry_id):
     if not entry_id:
         empty = ('<section class="aee-history-empty"><strong>Select an analysis</strong>'
@@ -504,6 +532,41 @@ def _history_remove_ui(entry_id, refresh_count=0):
         pd.DataFrame(),
         pd.DataFrame(),
         None,
+        status,
+    )
+
+
+def _history_clear_ui(refresh_count=0):
+    try:
+        removed_count, cleanup_warnings = _clear_analysis_history()
+    except OSError as exc:
+        log.exception("Could not clear analysis history")
+        return (
+            refresh_count,
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            gr.update(),
+            '<div class="aee-history-warning"><strong>Could not clear history</strong> '
+            f'{_html.escape(str(exc))}</div>',
+        )
+    status = f'<div class="aee-history-export-status">{removed_count} saved analysis(es) cleared.'
+    if cleanup_warnings:
+        status += (
+            '<div class="aee-history-warning"><strong>Some generated files need cleanup</strong><ul>'
+            + "".join(f"<li>{_html.escape(warning)}</li>" for warning in cleanup_warnings)
+            + "</ul></div>"
+        )
+    status += "</div>"
+    return (
+        refresh_count + 1,
+        '<section class="aee-history-empty"><strong>History cleared</strong>'
+        '<span>Completed video analyses will appear here.</span></section>',
+        [],
+        [],
+        pd.DataFrame(),
+        pd.DataFrame(),
         status,
     )
 
@@ -2552,7 +2615,7 @@ html[data-theme="light"] .aee-history-window .aee-history-section-heading p{colo
   gap:18px;margin:4px 0 18px;}
 .aee-history-heading h2{margin:0;color:#f1f5f9;font-size:1.35rem;font-weight:750;letter-spacing:-.03em;}
 .aee-history-heading p{margin:6px 0 0;color:#94a3b8;font-size:.82rem;line-height:1.55;}
-.aee-history-toolbar{display:flex;align-items:flex-end;gap:12px;margin-bottom:16px;}
+.aee-history-toolbar{display:flex;align-items:flex-end;gap:10px;margin-bottom:16px;}
 .aee-history-toolbar>.block{flex:1 1 auto;min-width:0;}
 .aee-history-toolbar label span{color:#aab5c6!important;font-size:.75rem!important;}
 .aee-history-list{display:grid!important;gap:10px!important;margin:0 0 20px;}
@@ -2564,23 +2627,27 @@ html[data-theme="light"] .aee-history-window .aee-history-section-heading p{colo
 .aee-history-row-title{overflow:hidden;color:#e7edf7;font-size:.9rem;font-weight:700;
   text-overflow:ellipsis;white-space:nowrap;}
 .aee-history-row-meta{margin-top:5px;color:#94a3b8;font-size:.72rem;line-height:1.45;}
-.aee-history-row-actions{flex:0 0 auto!important;gap:8px!important;}
-.aee-history-row-actions button{min-height:36px!important;padding:0 12px!important;
-  border-radius:9px!important;font-size:.73rem!important;font-weight:650!important;}
+.aee-history-row-actions{flex:0 0 auto!important;gap:6px!important;margin-left:auto!important;}
+.aee-history-row-actions button{min-height:30px!important;padding:0 9px!important;
+  border-radius:8px!important;font-size:.68rem!important;font-weight:650!important;}
 .aee-history-row-actions .aee-history-remove button{border-color:rgba(248,113,113,.27)!important;
-  color:#fecaca!important;background:rgba(239,68,68,.09)!important;}
-.aee-history-row-actions .aee-history-remove button:hover{background:rgba(239,68,68,.18)!important;}
+  color:#fff!important;background:#dc2626!important;}
+.aee-history-row-actions .aee-history-remove button:hover{background:#b91c1c!important;}
 html[data-theme="light"] .aee-history-row{border-color:rgba(100,116,139,.16);
   background:linear-gradient(120deg,#fff,#f8fafc);}
 html[data-theme="light"] .aee-history-row-title{color:#172033;}
 html[data-theme="light"] .aee-history-row-meta{color:#64748b;}
-html[data-theme="light"] .aee-history-row-actions .aee-history-remove button{color:#b4232f!important;}
+html[data-theme="light"] .aee-history-row-actions .aee-history-remove button{color:#fff!important;}
 .aee-history-toolbar input,.aee-history-toolbar select{
   min-height:42px!important;border:1px solid rgba(148,163,184,.17)!important;
   border-radius:10px!important;color:#e2e8f0!important;background:#172033!important;}
 .aee-history-refresh button{min-height:42px!important;border-radius:10px!important;
   border:1px solid rgba(148,163,184,.2)!important;color:#e2e8f0!important;
   background:rgba(148,163,184,.08)!important;font-weight:650!important;}
+.aee-history-clear button{min-height:36px!important;padding:0 12px!important;
+  border-radius:9px!important;border:1px solid rgba(248,113,113,.32)!important;
+  color:#fff!important;background:#dc2626!important;font-size:.73rem!important;font-weight:700!important;}
+.aee-history-clear button:hover{background:#b91c1c!important;}
 .aee-history-detail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
   gap:10px;margin:0 0 16px;padding:16px;border:1px solid rgba(148,163,184,.14);
   border-radius:16px;background:#111a2a;}
@@ -7554,7 +7621,17 @@ def build_ui():
                         all_history_zip = gr.DownloadButton(
                             label="Download all history ZIP",
                             variant="secondary", size="sm")
+                        clear_history_btn = gr.Button(
+                            "Clear all history", size="sm", variant="stop",
+                            elem_classes=["aee-history-clear"], scale=0)
                     history_zip_status = gr.HTML()
+                    clear_history_btn.click(
+                        fn=_history_clear_ui,
+                        inputs=[history_refresh_state],
+                        outputs=[history_refresh_state, history_detail, history_gallery,
+                                 history_files, history_detections, history_tracks,
+                                 history_zip_status],
+                    )
                     with gr.Column(elem_classes=["aee-history-list"]):
                         @gr.render(inputs=[history_refresh_state])
                         def render_history_rows(_refresh_count):

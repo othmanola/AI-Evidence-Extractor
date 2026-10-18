@@ -54,6 +54,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Download ZIP", ui_constants)
         self.assertIn("Details", ui_constants)
         self.assertIn("Remove", ui_constants)
+        self.assertIn("Clear all history", ui_constants)
+        self.assertIn("#dc2626", app.CSS)
 
     def test_detailed_history_opens_as_a_fullscreen_utility_window(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))
@@ -157,6 +159,40 @@ class AccountUiTests(unittest.TestCase):
             self.assertFalse(run_dir.exists())
             self.assertTrue(source_video.is_file())
             self.assertTrue(outside_artifact.is_file())
+
+    def test_clear_analysis_history_removes_managed_files_and_preserves_sources(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            history_file = root / "analysis_history.json"
+            history_dir = root / "outputs" / "history"
+            capture = history_dir / "run-1" / "001-video" / "captures" / "capture.jpg"
+            capture.parent.mkdir(parents=True)
+            capture.write_bytes(b"capture")
+            source_video = root / "source.mp4"
+            source_video.write_bytes(b"original")
+            export_dir = root / "outputs" / "history_exports"
+            export_dir.mkdir(parents=True)
+            export = export_dir / "saved-id.zip"
+            export.write_bytes(b"zip")
+            history_file.write_text(json.dumps([{
+                "id": "saved-id",
+                "source_path": str(source_video),
+                "details": {"captures": [str(capture)]},
+            }]), encoding="utf-8")
+
+            with (
+                patch.object(app, "HISTORY_FILE", history_file),
+                patch.object(app, "HISTORY_DIR", history_dir),
+                patch.object(app, "OUTPUT_DIR", root / "outputs"),
+            ):
+                removed_count, cleanup_warnings = app._clear_analysis_history()
+
+            self.assertEqual(removed_count, 1)
+            self.assertEqual(cleanup_warnings, [])
+            self.assertEqual(json.loads(history_file.read_text(encoding="utf-8")), [])
+            self.assertFalse(capture.parent.parent.parent.exists())
+            self.assertFalse(export.exists())
+            self.assertTrue(source_video.is_file())
 
     def test_utility_windows_have_distinct_descriptive_headers(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))
