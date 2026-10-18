@@ -53,14 +53,15 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Download selected analysis ZIP", ui_constants)
         self.assertIn("Download all history ZIP", ui_constants)
 
-    def test_history_stays_on_workspace_while_detailed_history_is_hidden_from_tab_bar(self):
+    def test_detailed_history_opens_as_a_fullscreen_utility_window(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))
         self.assertIn("History", constants)
-        self.assertIn("Detailed History", constants)
-        self.assertIn(
-            ".aee-tabs [role=\"tab\"]:last-child{display:none!important;}",
-            app.CSS,
-        )
+        self.assertIn("aee-detailed-history-window", constants)
+        self.assertIn("Detailed History", app._JS_HEAD)
+        self.assertIn("activateAeeUtilityWindow(windowName)", app._JS_HEAD)
+        self.assertIn(".aee-history-window .aee-history-page", app.CSS)
+        self.assertIn(".aee-history-window .aee-history-toolbar", app.CSS)
+        self.assertNotIn('with gr.Tab("Detailed History")', app.build_ui.__code__.co_consts)
 
     def test_utility_windows_have_distinct_descriptive_headers(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))

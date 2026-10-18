@@ -2372,8 +2372,31 @@ button#aee-account-signout,.aee-settings-card .aee-account-signout button,
 .aee-settings-card .aee-settings-option-list button{transition:transform .16s,border-color .16s,background .16s!important;}
 .aee-settings-card .aee-settings-option-list button:hover{transform:translateY(-1px);}
 .aee-settings-card .aee-account-profile-actions{max-width:none;margin:10px 0 0;}
-.aee-tabs [role="tab"]:last-child{display:none!important;}
 .aee-history-page{max-width:1280px;margin:0 auto;padding:8px 0 30px;}
+.aee-history-window .column.wrap{padding-bottom:56px!important;}
+.aee-history-window .aee-history-page{width:100%;max-width:1320px;margin:0 auto;padding:0 0 34px;}
+.aee-history-window .aee-history-heading{margin:4px 0 20px;padding:22px 24px;
+  border:1px solid rgba(148,163,184,.13);border-radius:18px;
+  background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(139,92,246,.07) 58%,rgba(15,23,42,.62));
+  box-shadow:0 18px 50px -42px rgba(59,130,246,.65);}
+.aee-history-window .aee-history-heading h2{font-size:1.25rem;}
+.aee-history-window .aee-history-heading p{max-width:760px;}
+.aee-history-window .aee-history-toolbar{padding:16px;border:1px solid rgba(148,163,184,.12);
+  border-radius:16px;background:rgba(15,23,42,.48);}
+.aee-history-window .aee-history-gallery,
+.aee-history-window .aee-history-detections{box-shadow:0 16px 40px -34px rgba(0,0,0,.75);}
+.aee-history-window .aee-history-section-heading{margin:24px 0 12px;padding:0 2px;}
+.aee-history-window .aee-history-section-heading h2{margin:0;color:#e2e8f0;
+  font-size:1rem;font-weight:720;letter-spacing:-.02em;}
+.aee-history-window .aee-history-section-heading p{margin:5px 0 0;color:#94a3b8;
+  font-size:.76rem;line-height:1.5;}
+html[data-theme="light"] .aee-history-window .aee-history-heading{
+  border-color:rgba(100,116,139,.16);
+  background:linear-gradient(135deg,rgba(219,234,254,.8),rgba(237,233,254,.64) 58%,#fff);}
+html[data-theme="light"] .aee-history-window .aee-history-toolbar{border-color:rgba(100,116,139,.15);
+  background:rgba(255,255,255,.78);}
+html[data-theme="light"] .aee-history-window .aee-history-section-heading h2{color:#172033;}
+html[data-theme="light"] .aee-history-window .aee-history-section-heading p{color:#64748b;}
 .aee-history-heading{display:flex;align-items:flex-end;justify-content:space-between;
   gap:18px;margin:4px 0 18px;}
 .aee-history-heading h2{margin:0;color:#f1f5f9;font-size:1.35rem;font-weight:750;letter-spacing:-.03em;}
@@ -4896,7 +4919,7 @@ _JS_HEAD = r"""
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
-      if (['Account','Settings','Updates','About Us','Contact Us'].includes(name)){
+      if (['Account','Settings','Updates','About Us','Contact Us','Detailed History'].includes(name)){
         const windowName = ['Account', 'Settings'].includes(name) ? 'account' :
           name.toLowerCase().replace(/\s+/g, '-');
         activateAeeUtilityWindow(windowName); return;
@@ -7315,15 +7338,28 @@ def build_ui():
                     datatype=["str", "str", "number", "number", "str", "str"],
                     interactive=False, wrap=True, show_row_numbers=True)
 
-            with gr.Tab("Detailed History"):
+        history_choices, history_selected = _history_choices()
+        history_initial = _history_detail_ui(history_selected)
+        with gr.Group(visible=True, elem_id="aee-detailed-history-window",
+                      elem_classes=["aee-utility-window-shell", "aee-history-window"]):
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+                      <div><small>ANALYSIS ARCHIVE</small><h1>Detailed History</h1>
+                        <p>Browse saved analyses, evidence files, detection records, and object tracks.</p></div>
+                    </header>''')
+                    detailed_history_close = gr.Button(
+                        "Back to app", size="sm",
+                        elem_classes=["aee-utility-window-close"],
+                        elem_id="aee-detailed-history-close")
                 with gr.Column(elem_classes=["aee-history-page"]):
                     gr.HTML(
                         '<header class="aee-history-heading">'
-                        '<div><h2>Detailed analysis archive</h2>'
-                        '<p>Review every saved analysis and download its records and generated evidence as a ZIP.</p>'
+                        '<div><h2>Your analysis archive</h2>'
+                        '<p>Choose an analysis to inspect its saved evidence, reports, detections, and tracks. '
+                        'Export one analysis or your full archive as a ZIP.</p>'
                         '</div></header>')
-                    history_choices, history_selected = _history_choices()
-                    history_initial = _history_detail_ui(history_selected)
                     with gr.Row(elem_classes=["aee-history-toolbar"]):
                         detailed_history_selector = gr.Dropdown(
                             choices=history_choices, value=history_selected,
@@ -7351,16 +7387,14 @@ def build_ui():
                         file_count="multiple", interactive=False,
                         elem_classes=["aee-history-files"])
                     gr.HTML(
-                        '<div class="aee-history-heading"><div><h2>Detection records</h2>'
-                        '<p>Complete saved detections for the selected analysis.</p>'
-                        '</div></div>')
+                        '<div class="aee-history-section-heading"><h2>Detection records</h2>'
+                        '<p>Complete saved detections for the selected analysis.</p></div>')
                     history_detections = gr.Dataframe(
                         value=history_initial[3], interactive=False, wrap=True,
                         show_row_numbers=True, elem_classes=["aee-history-detections"])
                     gr.HTML(
-                        '<div class="aee-history-heading"><div><h2>Object tracks</h2>'
-                        '<p>Saved per-object tracking and threat analytics.</p>'
-                        '</div></div>')
+                        '<div class="aee-history-section-heading"><h2>Object tracks</h2>'
+                        '<p>Saved per-object tracking and threat analytics.</p></div>')
                     history_tracks = gr.Dataframe(
                         value=history_initial[4], interactive=False, wrap=True,
                         show_row_numbers=True, elem_classes=["aee-history-detections"])
