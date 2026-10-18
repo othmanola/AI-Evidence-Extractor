@@ -18,6 +18,35 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_update_progress_bar_supports_unknown_download_size(self):
+        progress = app._update_progress_html(
+            0, "Downloading update package (size unknown)", indeterminate=True
+        )
+
+        self.assertIn("aee-update-progress-indeterminate", progress)
+        self.assertIn('aria-valuenow="0"', progress)
+        self.assertIn("Downloading update package (size unknown)", progress)
+
+    def test_update_download_and_install_keep_completed_progress_visible(self):
+        staged = {"app_id": app._update_client.APP_ID, "version": "1.2.51"}
+        download_steps = [
+            (0.5, "Downloading update package", None, None, False),
+            (1, "Update downloaded", staged, None, True),
+        ]
+        with patch.object(app, "_run_update_task", return_value=iter(download_steps)):
+            download_result = list(app._download_update_ui({"available": True}))
+        self.assertIn("Download complete and verified", download_result[-1][0])
+        self.assertIn('aria-valuenow="100"', download_result[-1][0])
+
+        install_steps = [
+            (0.5, "Installing update: app.py", None, None, False),
+            (1, "Update installed", None, None, True),
+        ]
+        with patch.object(app, "_run_update_task", return_value=iter(install_steps)):
+            install_result = list(app._apply_update_ui(staged))
+        self.assertIn("Installation complete", install_result[-1][0])
+        self.assertIn('aria-valuenow="100"', install_result[-1][0])
+
     def test_guest_startup_restores_profile_and_settings_state(self):
         profile = {"display_name": "Local Guest", "avatar_url": ""}
         with (

@@ -267,7 +267,10 @@ def download_and_stage_update(
                     digest.update(chunk)
                     if progress:
                         fraction = min(downloaded / total, 0.99) if total else 0
-                        progress(fraction, desc="Downloading update package")
+                        description = "Downloading update package"
+                        if not total:
+                            description += " (size unknown)"
+                        progress(fraction, desc=description)
         if downloaded == 0 or digest.hexdigest().lower() != expected_hash:
             raise UpdateError("The update package checksum did not match. The package was discarded.")
         os.replace(partial, package)

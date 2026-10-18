@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.51 keeps the completed download and installation progress bars
+visible and shows an animated progress indicator when the download size is
+unknown.
+
 Version 1.2.50 fixes the Detailed History remove action output mapping so saved
 files, detection tables, tracking tables, and download controls receive the
 correct values.

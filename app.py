@@ -2141,6 +2141,10 @@ html[data-theme="light"] .aee-update-app:hover{background:#eff6ff;border-color:r
 .aee-update-progress-fill{height:100%;border-radius:inherit;
   background:linear-gradient(90deg,#38bdf8,#6366f1,#a78bfa);
   box-shadow:0 0 16px rgba(99,102,241,.4);transition:width .22s ease;}
+.aee-update-progress-indeterminate .aee-update-progress-fill{
+  width:35%!important;animation:aee-update-progress-sweep 1.25s ease-in-out infinite alternate;}
+@keyframes aee-update-progress-sweep{from{transform:translateX(0)}
+  to{transform:translateX(185%)}}
 .aee-update-notes{margin:10px 0 0;color:var(--text-muted);white-space:pre-wrap;}
 .aee-update-dialog-shell{position:fixed!important;inset:0!important;z-index:12000!important;
   padding:22px!important;
@@ -6586,11 +6590,12 @@ def cancel_active_analysis():
     return "Analysis stopped."
 
 
-def _update_progress_html(fraction, description):
+def _update_progress_html(fraction, description, indeterminate=False):
     percent = max(0, min(100, round(float(fraction) * 100)))
     label = _html.escape(str(description))
+    progress_state = " aee-update-progress-indeterminate" if indeterminate else ""
     return (
-        '<div class="aee-update-progress" role="status" aria-live="polite">'
+        f'<div class="aee-update-progress{progress_state}" role="status" aria-live="polite">'
         f'<div class="aee-update-progress-label"><span>{label}</span><span>{percent}%</span></div>'
         '<div class="aee-update-progress-track" role="progressbar" '
         f'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}">'
@@ -7368,17 +7373,21 @@ def _download_update_ui(update):
                 update_available=bool(update and update.get("available"))),
                 gr.update(visible=False), update)
         elif not finished:
+            unknown_size = "(size unknown)" in description
             yield (_update_status_html(
                 "Downloading and verifying update…", "neutral",
                 update_available=bool(update and update.get("available")),
-                progress=_update_progress_html(fraction, description)),
+                progress=_update_progress_html(
+                    fraction, description, indeterminate=unknown_size)),
                 gr.update(), gr.skip())
         else:
             yield (_update_status_html(
             "The update is downloaded, checksum-verified, and ready to apply. "
             "Select Install Update to see the in-app installation progress.",
-            "success", update_available=True),
-                gr.update(visible=True), staged)
+            "success", update_available=True,
+            progress=_update_progress_html(
+                1, "Download complete and verified")),
+            gr.update(visible=True), staged)
 
 
 def _apply_update_ui(staged):
@@ -7406,7 +7415,9 @@ def _apply_update_ui(staged):
             yield (_update_status_html(
                 f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "
                 "The files are updated. Select Restart App below to finish and load the new version.",
-                "success"), gr.update(visible=False), gr.update(visible=True))
+                "success", progress=_update_progress_html(
+                    1, "Installation complete")),
+                gr.update(visible=False), gr.update(visible=True))
 
 
 def _restart_app_ui():
