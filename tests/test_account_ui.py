@@ -39,7 +39,7 @@ class AccountUiTests(unittest.TestCase):
     def test_project_navigation_exposes_account_and_history(self):
         navigation = app._side_navigation_html()
         self.assertIn('data-aee-nav-tab="Account"', navigation)
-        self.assertIn('data-aee-nav-tab="History"', navigation)
+        self.assertNotIn('data-aee-nav-tab="History"', navigation)
         self.assertIn('data-aee-nav-tab="Detailed History"', navigation)
         self.assertNotIn('data-aee-nav-tab="Settings"', navigation)
         self.assertIn('<span>Updates</span>', navigation)
@@ -52,6 +52,15 @@ class AccountUiTests(unittest.TestCase):
         ))
         self.assertIn("Download selected analysis ZIP", ui_constants)
         self.assertIn("Download all history ZIP", ui_constants)
+
+    def test_history_stays_on_workspace_while_detailed_history_is_hidden_from_tab_bar(self):
+        constants = tuple(_nested_code_constants(app.build_ui.__code__))
+        self.assertIn("History", constants)
+        self.assertIn("Detailed History", constants)
+        self.assertIn(
+            ".aee-tabs [role=\"tab\"]:last-child{display:none!important;}",
+            app.CSS,
+        )
 
     def test_utility_windows_have_distinct_descriptive_headers(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))

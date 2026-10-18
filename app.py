@@ -2372,6 +2372,7 @@ button#aee-account-signout,.aee-settings-card .aee-account-signout button,
 .aee-settings-card .aee-settings-option-list button{transition:transform .16s,border-color .16s,background .16s!important;}
 .aee-settings-card .aee-settings-option-list button:hover{transform:translateY(-1px);}
 .aee-settings-card .aee-account-profile-actions{max-width:none;margin:10px 0 0;}
+.aee-tabs [role="tab"]:last-child{display:none!important;}
 .aee-history-page{max-width:1280px;margin:0 auto;padding:8px 0 30px;}
 .aee-history-heading{display:flex;align-items:flex-end;justify-content:space-between;
   gap:18px;margin:4px 0 18px;}
@@ -7112,10 +7113,6 @@ def _side_navigation_html():
             <button class="aee-nav-item" type="button" data-aee-nav-tab="Account">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
               <span>Account</span>
-            </button>
-            <button class="aee-nav-item" type="button" data-aee-nav-tab="History">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
-              <span>History</span>
             </button>
             <button class="aee-nav-item" type="button" data-aee-nav-tab="Detailed History">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
