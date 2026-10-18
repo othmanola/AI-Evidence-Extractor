@@ -50,8 +50,10 @@ class AccountUiTests(unittest.TestCase):
             isinstance(value, str) and "Recent analyzed videos" in value
             for value in ui_constants
         ))
-        self.assertIn("Download selected analysis ZIP", ui_constants)
         self.assertIn("Download all history ZIP", ui_constants)
+        self.assertIn("Download ZIP", ui_constants)
+        self.assertIn("Details", ui_constants)
+        self.assertIn("Remove", ui_constants)
 
     def test_detailed_history_opens_as_a_fullscreen_utility_window(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))
@@ -61,7 +63,100 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("activateAeeUtilityWindow(windowName)", app._JS_HEAD)
         self.assertIn(".aee-history-window .aee-history-page", app.CSS)
         self.assertIn(".aee-history-window .aee-history-toolbar", app.CSS)
+        self.assertIn(".aee-history-row-actions", app.CSS)
         self.assertNotIn('with gr.Tab("Detailed History")', app.build_ui.__code__.co_consts)
+
+    def test_history_list_is_newest_first_with_row_actions(self):
+        entries = [
+            {
+                "id": "older",
+                "analyzed_at": "2025-01-01T10:00:00+00:00",
+                "video": "older.mp4",
+                "detections": 2,
+            },
+            {
+                "id": "newer",
+                "analyzed_at": "2025-01-02T10:00:00+00:00",
+                "video": "newer.mp4",
+                "detections": 5,
+            },
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            history_file = Path(temp_dir) / "analysis_history.json"
+            history_file.write_text(json.dumps(entries), encoding="utf-8")
+            with patch.object(app, "HISTORY_FILE", history_file):
+                items = app._history_list_items()
+
+        self.assertEqual([item["id"] for item in items], ["newer", "older"])
+        self.assertEqual(items[0]["video"], "newer.mp4")
+        self.assertEqual(items[0]["detections"], 5)
+
+    def test_remove_history_entry_deletes_only_managed_per_video_artifacts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            history_file = root / "analysis_history.json"
+            history_dir = root / "outputs" / "history"
+            run_dir = history_dir / "run-1"
+            first_video_dir = run_dir / "001-first"
+            second_video_dir = run_dir / "002-second"
+            first_capture = first_video_dir / "captures" / "capture.jpg"
+            second_capture = second_video_dir / "captures" / "capture.jpg"
+            first_capture.parent.mkdir(parents=True)
+            second_capture.parent.mkdir(parents=True)
+            first_capture.write_bytes(b"first")
+            second_capture.write_bytes(b"second")
+            shared_report = run_dir / "reports" / "report.pdf"
+            shared_report.parent.mkdir()
+            shared_report.write_bytes(b"report")
+            source_video = root / "source.mp4"
+            source_video.write_bytes(b"original")
+            outside_artifact = root / "outside.jpg"
+            outside_artifact.write_bytes(b"outside")
+            entries = [
+                {
+                    "id": "first",
+                    "source_path": str(source_video),
+                    "details": {
+                        "captures": [str(first_capture)],
+                        "report_pdf": str(shared_report),
+                    },
+                },
+                {
+                    "id": "second",
+                    "details": {
+                        "captures": [str(second_capture)],
+                        "heatmaps": [str(outside_artifact)],
+                    },
+                },
+            ]
+            history_file.write_text(json.dumps(entries), encoding="utf-8")
+            with (
+                patch.object(app, "HISTORY_FILE", history_file),
+                patch.object(app, "HISTORY_DIR", history_dir),
+                patch.object(app, "OUTPUT_DIR", root / "outputs"),
+            ):
+                remaining_count, cleanup_warnings = app._remove_history_entry("first")
+
+            saved = json.loads(history_file.read_text(encoding="utf-8"))
+            self.assertEqual(remaining_count, 1)
+            self.assertEqual(cleanup_warnings, [])
+            self.assertEqual([entry["id"] for entry in saved], ["second"])
+            self.assertFalse(first_video_dir.exists())
+            self.assertTrue(second_capture.is_file())
+            self.assertTrue(shared_report.is_file())
+            self.assertTrue(source_video.is_file())
+            self.assertTrue(outside_artifact.is_file())
+            with (
+                patch.object(app, "HISTORY_FILE", history_file),
+                patch.object(app, "HISTORY_DIR", history_dir),
+                patch.object(app, "OUTPUT_DIR", root / "outputs"),
+            ):
+                remaining_count, cleanup_warnings = app._remove_history_entry("second")
+            self.assertEqual(remaining_count, 0)
+            self.assertEqual(cleanup_warnings, [])
+            self.assertFalse(run_dir.exists())
+            self.assertTrue(source_video.is_file())
+            self.assertTrue(outside_artifact.is_file())
 
     def test_utility_windows_have_distinct_descriptive_headers(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))
