@@ -7765,7 +7765,7 @@ def build_ui():
                                         _history_remove_ui(entry_id, count),
                                     inputs=[],
                                     outputs=[history_refresh_state, history_detail, history_gallery,
-                                             history_detections, history_tracks,
+                                             history_files, history_detections, history_tracks,
                                              all_history_zip, history_zip_status],
                                 )
                     history_detail = gr.HTML(value=history_initial[0])

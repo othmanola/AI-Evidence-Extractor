@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.50 fixes the Detailed History remove action output mapping so saved
+files, detection tables, tracking tables, and download controls receive the
+correct values.
+
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and an in-app update archive. The app downloads and verifies the archive, then applies it in place when the user selects Install Update. The app shows download progress and file-by-file installation progress; no setup file is opened. Restart the app afterward to load the new version. The setup installer remains for first installations and recovery.
 
 Version 1.2.40 presents Detailed History as a newest-first video list with
