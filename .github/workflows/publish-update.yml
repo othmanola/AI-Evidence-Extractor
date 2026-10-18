@@ -33,6 +33,14 @@ jobs:
           python -m py_compile app.py update_client.py build_update_package.py
           if ($LASTEXITCODE -ne 0) { throw "Python source validation failed." }
 
+      - name: Install application and packaging dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { throw "Could not upgrade pip." }
+          python -m pip install -r requirements.txt pyinstaller
+          if ($LASTEXITCODE -ne 0) { throw "Could not install build dependencies." }
+
       - name: Build installer and update package
         shell: pwsh
         run: |
