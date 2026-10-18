@@ -6,6 +6,9 @@ Version 1.2.40 presents Detailed History as a newest-first video list with
 per-analysis details, ZIP downloads, and safe removal of saved analysis data.
 The release workflow installs the project and packaging dependencies before
 building the Windows installer and in-app update package.
+Version 1.2.41 installs updates from the Updates page using a quiet setup
+progress window, closing and automatically restarting the app around file
+replacement.
 Version 1.2.30 gives the setup wizard a modern dark polar theme and creates
 the desktop AI Evidence Extractor shortcut during installation.
 Version 1.2.29 restores the basic History summary view and adds a separate

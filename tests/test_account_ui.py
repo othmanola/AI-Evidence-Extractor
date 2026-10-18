@@ -509,7 +509,7 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertTrue(result[1]["visible"])
 
-    def test_frozen_update_download_launches_verified_installer(self):
+    def test_frozen_update_download_launches_progress_install_and_restarts_app(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             update_dir = Path(temp_dir)
             installer = update_dir / "AI_Evidence_Extractor_Setup_1.2.13.exe"
@@ -534,10 +534,24 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertTrue(downloaded[1]["visible"])
         self.assertIn(str(installer), downloaded[2]["installer_path"])
-        self.assertIn("Setup is open", applied[0])
+        self.assertIn("installation started", applied[0])
         self.assertFalse(applied[1]["visible"])
         self.assertFalse(applied[2]["visible"])
         launch_installer.assert_called_once()
+        command = launch_installer.call_args.args[0]
+        self.assertEqual(command[0], str(installer))
+        self.assertIn("/SILENT", command)
+        self.assertIn("/SUPPRESSMSGBOXES", command)
+        self.assertIn("/CLOSEAPPLICATIONS", command)
+        self.assertIn("/RESTARTAPPLICATIONS", command)
+        self.assertTrue(any(argument.startswith("/LOG=") for argument in command))
+
+    def test_installer_is_configured_to_close_and_restart_the_app(self):
+        installer_script = (
+            Path(__file__).resolve().parents[1] / "installer.iss"
+        ).read_text(encoding="utf-8-sig")
+        self.assertIn("CloseApplications=force", installer_script)
+        self.assertIn("RestartApplications=yes", installer_script)
 
     def test_google_sign_in_can_start_from_settings(self):
         with patch.object(

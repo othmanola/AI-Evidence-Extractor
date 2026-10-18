@@ -25,6 +25,8 @@ WizardSmallImageFile=assets\aee.png
 SetupLogging=yes
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
+CloseApplications=force
+RestartApplications=yes
 
 [Messages]
 WelcomeLabel1=Welcome to AI Evidence Extractor

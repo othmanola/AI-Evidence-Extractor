@@ -7185,7 +7185,8 @@ def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
                 "installer": True,
             }
             return (_update_status_html(
-                "The installer was downloaded and verified. Select Install Update to open setup.",
+                "The update was downloaded and verified. Select Install Update to install it "
+                "with a progress indicator. The app will close and reopen automatically.",
                 "success", update_available=True),
                 gr.update(visible=True), staged)
         staged = _update_client.download_and_stage_update(update, progress)
@@ -7224,13 +7225,22 @@ def _apply_update_ui(staged, progress=gr.Progress(track_tqdm=False)):
                 raise _update_client.UpdateError(
                     "The update installer changed after verification. Download it again."
                 )
+            installer_log = _update_client.UPDATE_DIR / f"install_{staged['version']}.log"
             subprocess.Popen(
-                [str(installer)],
+                [
+                    str(installer),
+                    "/SILENT",
+                    "/SUPPRESSMSGBOXES",
+                    "/CLOSEAPPLICATIONS",
+                    "/RESTARTAPPLICATIONS",
+                    f"/LOG={installer_log}",
+                ],
                 cwd=str(_update_client.UPDATE_DIR),
                 close_fds=True,
             )
             return (_update_status_html(
-                "Setup is open. Complete installation, then launch AI Evidence Extractor again.",
+                "Update installation started. Follow the progress window; the app will "
+                "reopen automatically when installation finishes.",
                 "success"), gr.update(visible=False), gr.update(visible=False))
         _update_client.apply_staged_update(staged, progress)
         return (_update_status_html(
