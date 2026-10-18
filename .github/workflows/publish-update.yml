@@ -58,7 +58,6 @@ jobs:
           $tag = "v$version"
           $setup = Get-Item .\dist\AI_Evidence_Extractor_Setup.exe
           $package = Get-Item .\dist\AI_Evidence_Extractor_Update.zip
-          $shortcut = Get-Item ".\dist\AI Evidence Extractor.lnk"
           $releaseUrl = "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/$tag"
           $manifest = [ordered]@{
             app_id = "ai-evidence-extractor"
@@ -94,7 +93,6 @@ jobs:
           $assets = @(
             ".\dist\AI_Evidence_Extractor_Setup.exe",
             ".\dist\AI_Evidence_Extractor_Update.zip",
-            ".\dist\AI Evidence Extractor.lnk",
             ".\dist\latest.json"
           )
           gh release view $tag --repo othmanola/AI-Evidence-Extractor *> $null

@@ -2,7 +2,7 @@
 
 Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
 
-Version 1.2.39 presents Detailed History as a newest-first video list with
+Version 1.2.40 presents Detailed History as a newest-first video list with
 per-analysis details, ZIP downloads, and safe removal of saved analysis data.
 The release workflow installs the project and packaging dependencies before
 building the Windows installer and in-app update package.
