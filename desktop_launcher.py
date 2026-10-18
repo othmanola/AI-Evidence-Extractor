@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+import sys
 from html import escape as _html_escape
 import socket
 import threading
@@ -14,8 +15,18 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-APP_DIR = Path(__file__).resolve().parent
-APP_ICON = APP_DIR / "assets" / "aee.ico"
+APP_DIR = Path(os.environ.get(
+    "AEE_APP_DIR",
+    str(Path(__file__).resolve().parent),
+)).resolve()
+_BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
+APP_ICON = next(
+    (candidate for candidate in (
+        APP_DIR / "assets" / "aee.ico",
+        _BUNDLE_DIR / "assets" / "aee.ico",
+    ) if candidate.is_file()),
+    APP_DIR / "assets" / "aee.ico",
+)
 WINDOWS_APP_ID = "AI.EvidenceExtractor.Desktop"
 APP_DATA = Path(__import__("os").environ.get(
     "AEE_DATA_DIR", str(Path.home() / "AppData" / "Local" / "AI Evidence Extractor")
@@ -57,14 +68,14 @@ def wait_for_server(url: str, thread: threading.Thread,
     while time.monotonic() < deadline:
         if startup_error:
             raise RuntimeError("Could not start the local AI Evidence Extractor service") from startup_error[0]
-        if not thread.is_alive():
-            raise RuntimeError("The local AI Evidence Extractor service stopped during startup")
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
                 if response.status < 500:
                     return
         except (OSError, urllib.error.URLError) as exc:
             last_error = exc
+        if not thread.is_alive():
+            raise RuntimeError("The local AI Evidence Extractor service stopped during startup")
         time.sleep(0.4)
     raise TimeoutError(f"The local app did not become ready in {timeout:.0f}s: {last_error}")
 
@@ -84,6 +95,8 @@ def show_error(message: str) -> None:
 
 def main() -> None:
     set_windows_app_identity()
+    if getattr(sys, "frozen", False):
+        os.environ["YOLO_AUTOINSTALL"] = "false"
     import webview
     # pywebview cancels WebView2 DownloadStarting events unless this setting is enabled.
     # Gradio serves report files from the app-data outputs folder, so allow its buttons

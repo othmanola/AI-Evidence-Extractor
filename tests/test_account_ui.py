@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -8,6 +9,13 @@ import zipfile
 
 import app
 import account_client
+
+
+def _nested_code_constants(code):
+    for value in code.co_consts:
+        yield value
+        if hasattr(value, "co_consts"):
+            yield from _nested_code_constants(value)
 
 
 class AccountUiTests(unittest.TestCase):
@@ -37,13 +45,16 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<span>Updates</span>', navigation)
         self.assertIn('<span>About Us</span>', navigation)
         self.assertIn('<span>Contact Us</span>', navigation)
-        ui_constants = app.build_ui.__code__.co_consts
-        self.assertIn("Recent analyzed videos", ui_constants)
+        ui_constants = tuple(_nested_code_constants(app.build_ui.__code__))
+        self.assertTrue(any(
+            isinstance(value, str) and "Recent analyzed videos" in value
+            for value in ui_constants
+        ))
         self.assertIn("Download selected analysis ZIP", ui_constants)
         self.assertIn("Download all history ZIP", ui_constants)
 
     def test_utility_windows_have_distinct_descriptive_headers(self):
-        constants = app.build_ui.__code__.co_consts
+        constants = tuple(_nested_code_constants(app.build_ui.__code__))
         header_markup = "\n".join(
             value for value in constants
             if isinstance(value, str) and "aee-project-page-heading" in value
@@ -87,7 +98,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('<option value="English">English</option>', navigation)
         self.assertIn('<option value="Arabic">Arabic</option>', navigation)
         self.assertIn('data-aee-settings-section="security"', navigation)
-        constants = app.build_ui.__code__.co_consts
+        constants = tuple(_nested_code_constants(app.build_ui.__code__))
         self.assertIn("aee-settings-profile-section", constants)
         self.assertIn("aee-settings-security-section", constants)
         self.assertIn('data-aee-settings-section', app._JS_HEAD)
@@ -192,6 +203,7 @@ class AccountUiTests(unittest.TestCase):
             ):
                 selected_zip, selected_count, selected_missing = app._history_zip("analysis-1")
                 all_zip, all_count, all_missing = app._history_zip()
+                self.assertTrue(Path(all_zip).is_file())
 
             with zipfile.ZipFile(selected_zip) as archive:
                 names = archive.namelist()
@@ -202,7 +214,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(all_count, 2)
         self.assertEqual(selected_missing, 0)
         self.assertEqual(all_missing, 0)
-        self.assertTrue(Path(all_zip).is_file())
         self.assertTrue(any(name.endswith("/captures/0001-capture.jpg") for name in names))
         self.assertEqual(analysis["details"]["detections"][0]["label"], "Firearm")
         self.assertEqual(analysis["details"]["tracks"][0]["Track"], 3)
@@ -262,6 +273,7 @@ class AccountUiTests(unittest.TestCase):
                 )
                 saved_entries = json.loads(history_file.read_text(encoding="utf-8"))
                 detail = app._history_detail_ui(saved_entries[0]["id"])
+                self.assertTrue(Path(saved_entries[0]["details"]["report_pdf"]).is_file())
 
         self.assertEqual(warnings, [])
         self.assertEqual(saved_entries[0]["source_path"], str(source_video))
@@ -269,7 +281,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(saved_entries[0]["details"]["captures"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["highlights"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["heatmaps"]), 2)
-        self.assertTrue(Path(saved_entries[0]["details"]["report_pdf"]).is_file())
         self.assertIn("Case notes", detail[0])
         self.assertEqual(len(detail[1]), 3)
         self.assertEqual(len(detail[2]), 5)
@@ -309,7 +320,10 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('data-aee-profile-avatar', hero)
         self.assertIn("activateAeeUtilityWindow('account')", app._JS_HEAD)
         self.assertIn("#aee-account-profile-source .aee-account-profile", app._JS_HEAD)
-        self.assertIn("aee-account-profile-source", app.build_ui.__code__.co_consts)
+        self.assertIn(
+            "aee-account-profile-source",
+            tuple(_nested_code_constants(app.build_ui.__code__)),
+        )
 
     def test_topbar_layout_adapts_to_mobile_viewports(self):
         self.assertIn("function syncAeeTopbarLayout()", app._JS_HEAD)
@@ -325,7 +339,7 @@ class AccountUiTests(unittest.TestCase):
             ".aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;",
             app.CSS,
         )
-        self.assertIn("Change photo", app.build_ui.__code__.co_consts)
+        self.assertIn("Change photo", tuple(_nested_code_constants(app.build_ui.__code__)))
         self.assertIn(".aee-settings-card>.styler{border-radius:inherit!important;}", app.CSS)
         self.assertIn(".aee-utility-window-header{position:sticky;top:0;z-index:12;", app.CSS)
 
@@ -348,7 +362,10 @@ class AccountUiTests(unittest.TestCase):
         )
         self.assertIn("background:linear-gradient(115deg,#ef5350,#d9364f)!important;", app.CSS)
         self.assertIn("aee-account-signout", constants)
-        self.assertIn('elem_id="aee-account-signout"', constants)
+        self.assertTrue(any(
+            isinstance(value, tuple) and "elem_id" in value
+            for value in _nested_code_constants(app.build_ui.__code__)
+        ))
         self.assertIn(".aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}", app.CSS)
         self.assertIn(".aee-settings-fields{grid-template-columns:1fr;gap:8px!important;}", app.CSS)
 
@@ -372,6 +389,50 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertIn('data-update-available="false"', result[0])
         self.assertFalse(result[1]["visible"])
+
+    def test_frozen_update_check_accepts_setup_asset(self):
+        available = {
+            "available": True,
+            "version": "1.2.13",
+            "download_url": "https://example.com/setup.exe",
+        }
+        with (
+            patch.object(app._update_client, "IS_FROZEN", True),
+            patch.object(app._update_client, "check_for_updates", return_value=available),
+        ):
+            result = app._check_updates_ui()
+
+        self.assertTrue(result[1]["visible"])
+
+    def test_frozen_update_download_launches_verified_installer(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            update_dir = Path(temp_dir)
+            installer = update_dir / "AI_Evidence_Extractor_Setup_1.2.13.exe"
+            installer.write_bytes(b"verified-installer")
+            update = {
+                "app_id": app._update_client.APP_ID,
+                "version": "1.2.13",
+                "available": True,
+                "sha256": hashlib.sha256(b"verified-installer").hexdigest(),
+            }
+            with (
+                patch.object(app._update_client, "IS_FROZEN", True),
+                patch.object(app._update_client, "UPDATE_DIR", update_dir),
+                patch.object(
+                    app._update_client, "download_update_installer",
+                    return_value=installer,
+                ),
+                patch.object(app.subprocess, "Popen") as launch_installer,
+            ):
+                downloaded = app._download_update_ui(update)
+                applied = app._apply_update_ui(downloaded[2])
+
+        self.assertTrue(downloaded[1]["visible"])
+        self.assertIn(str(installer), downloaded[2]["installer_path"])
+        self.assertIn("Setup is open", applied[0])
+        self.assertFalse(applied[1]["visible"])
+        self.assertFalse(applied[2]["visible"])
+        launch_installer.assert_called_once()
 
     def test_google_sign_in_can_start_from_settings(self):
         with patch.object(

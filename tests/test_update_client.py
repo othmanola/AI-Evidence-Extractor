@@ -41,6 +41,33 @@ class UpdateClientTests(unittest.TestCase):
         self.assertEqual(result["version"], "1.2.13")
         self.assertTrue(result["available"])
 
+    def test_frozen_build_accepts_verified_setup_asset_without_source_package(self):
+        manifest = {
+            "app_id": update_client.APP_ID,
+            "version": "1.2.13",
+            "download_url": "https://example.com/setup.exe",
+            "sha256": "b" * 64,
+        }
+
+        class Response(io.BytesIO):
+            def geturl(self):
+                return "https://example.com/latest.json"
+
+        response = Response(json.dumps(manifest).encode("utf-8"))
+        with (
+            patch.object(update_client, "IS_FROZEN", True),
+            patch.object(
+                update_client, "_manifest_url",
+                return_value="https://example.com/latest.json",
+            ),
+            patch.object(update_client, "current_version", return_value="1.2.12"),
+            patch.object(update_client.urllib.request, "urlopen", return_value=response),
+        ):
+            result = update_client.check_for_updates()
+
+        self.assertTrue(result["available"])
+        self.assertEqual(result["download_url"], "https://example.com/setup.exe")
+
     def test_new_builds_use_latest_release_asset_as_update_feed(self):
         config = json.loads(update_client.CONFIG_FILE.read_text(encoding="utf-8"))
         self.assertEqual(

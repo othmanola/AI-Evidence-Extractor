@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -17,14 +18,16 @@ from typing import Callable
 
 
 APP_ID = "ai-evidence-extractor"
-APP_DIR = Path(__file__).resolve().parent
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+APP_DIR = Path(os.environ.get("AEE_APP_DIR", str(Path(__file__).resolve().parent))).resolve()
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
 DATA_DIR = Path(os.environ.get(
     "AEE_DATA_DIR",
     str(Path.home() / "AppData" / "Local" / "AI Evidence Extractor"),
 ))
 UPDATE_DIR = DATA_DIR / "updates"
-VERSION_FILE = APP_DIR / "version.txt"
-CONFIG_FILE = APP_DIR / "update_config.json"
+VERSION_FILE = RESOURCE_DIR / "version.txt"
+CONFIG_FILE = RESOURCE_DIR / "update_config.json"
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
 MAX_MANIFEST_BYTES = 1024 * 1024
@@ -130,8 +133,10 @@ def check_for_updates() -> dict:
         raise UpdateError("The legacy installer must be hosted over HTTPS.")
     if download_url and not SHA256_RE.fullmatch(digest):
         raise UpdateError("The legacy installer is missing a valid SHA-256 checksum.")
-    if latest_key > _version_key(installed) and not package_url:
-        raise UpdateError("This release has no in-app update package yet.")
+    required_update_asset = download_url if IS_FROZEN else package_url
+    if latest_key > _version_key(installed) and not required_update_asset:
+        asset_kind = "installer" if IS_FROZEN else "in-app update package"
+        raise UpdateError(f"This release has no {asset_kind} yet.")
 
     return {
         "app_id": APP_ID,

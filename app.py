@@ -2632,7 +2632,7 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-settings-profile-header>#aee-account-profile-source{
     flex:1 1 0!important;width:auto!important;min-width:0!important;}
   .aee-account-shell .aee-account-profile{padding-right:116px;}
-  .aee-settings-photo-actions{right:9px;bottom:10px;width:96px!important;gap:7px!important;}
+  .aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;right:9px;bottom:10px;gap:7px!important;}
   .aee-settings-photo-button button{min-height:36px!important;padding:0 6px!important;font-size:.66rem!important;}
   .aee-photo-editor-header{height:54px;padding:0 12px;}
   .aee-photo-editor-heading{gap:11px;}
@@ -6958,9 +6958,13 @@ def _check_updates_ui():
                 gr.update(visible=False), None, gr.update(visible=False))
 
     if update["available"]:
-        if not update.get("package_url"):
+        has_update_asset = (
+            update.get("download_url") if _update_client.IS_FROZEN
+            else update.get("package_url")
+        )
+        if not has_update_asset:
             return (_update_status_html(
-                "This release needs the one-time updater migration before it can be applied in-app.",
+                "This release does not include an update package compatible with this installation.",
                 "error"), gr.update(visible=False), update, gr.update(visible=False))
         return (_update_status_html("A new version is available.", "available", update),
                 gr.update(visible=True), update, gr.update(visible=False))
@@ -6972,6 +6976,19 @@ def _check_updates_ui():
 
 def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
     try:
+        if _update_client.IS_FROZEN:
+            installer = _update_client.download_update_installer(update, progress)
+            staged = {
+                "app_id": _update_client.APP_ID,
+                "version": update["version"],
+                "installer_path": str(installer),
+                "sha256": update["sha256"],
+                "installer": True,
+            }
+            return (_update_status_html(
+                "The installer was downloaded and verified. Select Install Update to open setup.",
+                "success", update_available=True),
+                gr.update(visible=True), staged)
         staged = _update_client.download_and_stage_update(update, progress)
         return (_update_status_html(
             "The update package was downloaded, checksum-verified, and prepared. "
@@ -6990,6 +7007,32 @@ def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
 
 def _apply_update_ui(staged, progress=gr.Progress(track_tqdm=False)):
     try:
+        if (_update_client.IS_FROZEN and isinstance(staged, dict)
+                and staged.get("installer")):
+            installer = Path(staged.get("installer_path", "")).resolve()
+            if installer.parent != _update_client.UPDATE_DIR.resolve() or not installer.is_file():
+                raise _update_client.UpdateError(
+                    "The verified update installer is missing. Download it again."
+                )
+            expected_digest = str(staged.get("sha256", "")).lower()
+            if not _update_client.SHA256_RE.fullmatch(expected_digest):
+                raise _update_client.UpdateError(
+                    "The update installer verification data is missing. Download it again."
+                )
+            with installer.open("rb") as installer_file:
+                actual_digest = hashlib.file_digest(installer_file, "sha256").hexdigest()
+            if actual_digest != expected_digest:
+                raise _update_client.UpdateError(
+                    "The update installer changed after verification. Download it again."
+                )
+            subprocess.Popen(
+                [str(installer)],
+                cwd=str(_update_client.UPDATE_DIR),
+                close_fds=True,
+            )
+            return (_update_status_html(
+                "Setup is open. Complete installation, then launch AI Evidence Extractor again.",
+                "success"), gr.update(visible=False), gr.update(visible=False))
         _update_client.apply_staged_update(staged, progress)
         return (_update_status_html(
             f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "

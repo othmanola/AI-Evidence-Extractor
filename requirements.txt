@@ -5,6 +5,7 @@ opencv-python-headless
 soundfile
 gradio
 ultralytics
+omegaconf
 huggingface_hub
 librosa
 reportlab
