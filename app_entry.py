@@ -18,6 +18,9 @@ def main() -> int:
     os.environ["AEE_APP_DIR"] = str(app_dir)
     os.environ["AEE_DATA_DIR"] = str(data_dir)
     try:
+        if getattr(sys, "frozen", False):
+            from desktop_entry import main as launch_source_app
+            return launch_source_app()
         from desktop_launcher import main as launch_desktop
         launch_desktop()
         return 0

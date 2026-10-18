@@ -25,6 +25,8 @@ def main() -> int:
         venv = cuda_venv
     pythonw = venv / "Scripts" / "pythonw.exe"
     launcher = app_dir / "desktop_launcher.py"
+    if not pythonw.is_file():
+        pythonw = app_dir / "runtime" / "pythonw.exe"
     runtime_dir = app_dir
     log_path = data_dir / "startup.log"
     data_dir.mkdir(parents=True, exist_ok=True)

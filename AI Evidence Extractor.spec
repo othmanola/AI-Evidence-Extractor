@@ -15,11 +15,20 @@ webview_datas, webview_binaries, webview_hidden = collect_all("webview")
 safehttpx_datas, safehttpx_binaries, safehttpx_hidden = collect_all("safehttpx")
 groovy_datas, groovy_binaries, groovy_hidden = collect_all("groovy")
 
+source_modules = [
+    "app.py",
+    "account_client.py",
+    "desktop_entry.py",
+    "desktop_launcher.py",
+    "update_apply.py",
+    "update_client.py",
+]
+
 datas = [
     ("assets", "assets"),
     ("version.txt", "."),
     ("update_config.json", "."),
-] + gradio_datas + webview_datas + safehttpx_datas + groovy_datas + collect_data_files("ultralytics")
+] + [(name, ".") for name in source_modules] + gradio_datas + webview_datas + safehttpx_datas + groovy_datas + collect_data_files("ultralytics")
 binaries = (
     gradio_binaries + webview_binaries + safehttpx_binaries + groovy_binaries
     + collect_dynamic_libs("torchvision")
@@ -34,6 +43,7 @@ hiddenimports = gradio_hidden + webview_hidden + safehttpx_hidden + groovy_hidde
     "update_client",
     "update_apply",
     "desktop_launcher",
+    "desktop_entry",
     "download_models",
     "clr",
     "pythonnet",

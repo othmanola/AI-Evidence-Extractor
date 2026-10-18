@@ -23,6 +23,8 @@ Version 1.2.47 streams a visible progress bar through update checks, downloads,
 and internal installation in the Updates window.
 Version 1.2.48 modernizes Details, ZIP download, Refresh, and Download all ZIP
 actions in Detailed History with coordinated gradients and hover states.
+Version 1.2.49 launches packaged installs through the installed Python runtime
+and loose source modules so future in-app updates affect the code loaded on restart.
 Version 1.2.30 gives the setup wizard a modern dark polar theme and creates
 the desktop AI Evidence Extractor shortcut during installation.
 Version 1.2.29 restores the basic History summary view and adds a separate

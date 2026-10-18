@@ -362,6 +362,9 @@ def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
 
     if pythonw.is_file() and launcher.is_file() and runtime_dir.is_dir():
         return [str(pythonw.resolve()), str(launcher.resolve())], runtime_dir
+    runtime_pythonw = app_dir / "runtime" / "pythonw.exe"
+    if runtime_pythonw.is_file() and launcher.is_file():
+        return [str(runtime_pythonw.resolve()), str(launcher.resolve())], app_dir
     if os.name == "nt" and batch_launcher.is_file():
         return [os.environ.get("COMSPEC", "cmd.exe"), "/c", str(batch_launcher.resolve())], app_dir
     if launcher.is_file():
