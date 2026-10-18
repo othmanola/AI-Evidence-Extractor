@@ -7625,13 +7625,6 @@ def build_ui():
                             "Clear all history", size="sm", variant="stop",
                             elem_classes=["aee-history-clear"], scale=0)
                     history_zip_status = gr.HTML()
-                    clear_history_btn.click(
-                        fn=_history_clear_ui,
-                        inputs=[history_refresh_state],
-                        outputs=[history_refresh_state, history_detail, history_gallery,
-                                 history_files, history_detections, history_tracks,
-                                 history_zip_status],
-                    )
                     with gr.Column(elem_classes=["aee-history-list"]):
                         @gr.render(inputs=[history_refresh_state])
                         def render_history_rows(_refresh_count):
@@ -7702,6 +7695,13 @@ def build_ui():
                     history_tracks = gr.Dataframe(
                         value=history_initial[4], interactive=False, wrap=True,
                         show_row_numbers=True, elem_classes=["aee-history-detections"])
+                    clear_history_btn.click(
+                        fn=_history_clear_ui,
+                        inputs=[history_refresh_state],
+                        outputs=[history_refresh_state, history_detail, history_gallery,
+                                 history_files, history_detections, history_tracks,
+                                 history_zip_status],
+                    )
 
         with gr.Group(visible=True, elem_id="aee-account-window",
                       elem_classes=["aee-utility-window-shell", "aee-account-shell"]):
