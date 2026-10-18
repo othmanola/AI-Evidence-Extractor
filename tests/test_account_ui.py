@@ -523,14 +523,14 @@ class AccountUiTests(unittest.TestCase):
             "package_url": "https://example.com/update.zip",
         }
         with patch.object(app._update_client, "check_for_updates", return_value=available):
-            result = app._check_updates_ui()
+            result = list(app._check_updates_ui())[-1]
 
         self.assertIn('data-update-available="true"', result[0])
         self.assertTrue(result[1]["visible"])
 
         current = {"available": False, "installed_version": "1.2.12"}
         with patch.object(app._update_client, "check_for_updates", return_value=current):
-            result = app._check_updates_ui()
+            result = list(app._check_updates_ui())[-1]
 
         self.assertIn('data-update-available="false"', result[0])
         self.assertFalse(result[1]["visible"])
@@ -545,7 +545,7 @@ class AccountUiTests(unittest.TestCase):
             patch.object(app._update_client, "IS_FROZEN", True),
             patch.object(app._update_client, "check_for_updates", return_value=available),
         ):
-            result = app._check_updates_ui()
+            result = list(app._check_updates_ui())[-1]
 
         self.assertFalse(result[1]["visible"])
         self.assertIn("in-app update package", result[0])
@@ -571,8 +571,8 @@ class AccountUiTests(unittest.TestCase):
             patch.object(app._update_client, "apply_staged_update") as apply,
             patch.object(app.subprocess, "Popen") as launch_installer,
         ):
-            downloaded = app._download_update_ui(update)
-            applied = app._apply_update_ui(downloaded[2])
+            downloaded = list(app._download_update_ui(update))[-1]
+            applied = list(app._apply_update_ui(downloaded[2]))[-1]
 
         download.assert_called_once_with(update, unittest.mock.ANY)
         apply.assert_called_once_with(staged, unittest.mock.ANY)
@@ -591,6 +591,30 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Install Update", ui_strings)
         self.assertIn("Restart App", ui_strings)
         self.assertIn("progress", app._updates_intro_html().lower())
+        progress_html = app._update_progress_html(0.42, "Installing update: app.py")
+        self.assertIn('aria-valuenow="42"', progress_html)
+        self.assertIn("width:42%", progress_html)
+        self.assertIn("Installing update: app.py", progress_html)
+
+    def test_update_check_streams_progress_before_returning_result(self):
+        available = {
+            "available": True,
+            "version": "1.2.13",
+            "package_url": "https://example.com/update.zip",
+        }
+
+        def check(progress):
+            progress(0.25, desc="Connecting to the update service")
+            progress(0.8, desc="Reading release information")
+            return available
+
+        with patch.object(app._update_client, "check_for_updates", side_effect=check):
+            updates = list(app._check_updates_ui())
+
+        self.assertGreaterEqual(len(updates), 4)
+        streamed_status = [result[0] for result in updates[:-1]]
+        self.assertTrue(any("aria-valuenow=" in status for status in streamed_status))
+        self.assertIn('data-update-available="true"', updates[-1][0])
 
     def test_google_sign_in_can_start_from_settings(self):
         with patch.object(

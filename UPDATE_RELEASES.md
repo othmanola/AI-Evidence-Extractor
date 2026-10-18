@@ -19,6 +19,8 @@ Version 1.2.45 applies updates internally in packaged builds and shows
 download and file-by-file installation progress in the Updates window.
 Version 1.2.46 gives Detailed History destructive actions explicit red
 gradients, stronger button selectors, and modern hover styling.
+Version 1.2.47 streams a visible progress bar through update checks, downloads,
+and internal installation in the Updates window.
 Version 1.2.30 gives the setup wizard a modern dark polar theme and creates
 the desktop AI Evidence Extractor shortcut during installation.
 Version 1.2.29 restores the basic History summary view and adds a separate

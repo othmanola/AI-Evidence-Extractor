@@ -2133,6 +2133,14 @@ html[data-theme="light"] .aee-update-app:hover{background:#eff6ff;border-color:r
 .aee-update-status[data-tone="success"]{border-color:rgba(16,185,129,.32);background:rgba(16,185,129,.07);}
 .aee-update-status[data-tone="available"]{border-color:rgba(59,130,246,.42);background:rgba(59,130,246,.09);}
 .aee-update-status[data-tone="error"]{border-color:rgba(239,68,68,.32);background:rgba(239,68,68,.07);}
+.aee-update-progress{display:grid;gap:7px;margin-top:14px;}
+.aee-update-progress-label{display:flex;justify-content:space-between;gap:12px;
+  color:var(--text-muted);font-size:.74rem;font-weight:650;}
+.aee-update-progress-track{height:9px;overflow:hidden;border:1px solid rgba(148,163,184,.2);
+  border-radius:999px;background:rgba(148,163,184,.12);}
+.aee-update-progress-fill{height:100%;border-radius:inherit;
+  background:linear-gradient(90deg,#38bdf8,#6366f1,#a78bfa);
+  box-shadow:0 0 16px rgba(99,102,241,.4);transition:width .22s ease;}
 .aee-update-notes{margin:10px 0 0;color:var(--text-muted);white-space:pre-wrap;}
 .aee-update-dialog-shell{position:fixed!important;inset:0!important;z-index:12000!important;
   padding:22px!important;
@@ -6545,7 +6553,49 @@ def cancel_active_analysis():
     return "Analysis stopped."
 
 
-def _update_status_html(message, tone="neutral", update=None, update_available=None):
+def _update_progress_html(fraction, description):
+    percent = max(0, min(100, round(float(fraction) * 100)))
+    label = _html.escape(str(description))
+    return (
+        '<div class="aee-update-progress" role="status" aria-live="polite">'
+        f'<div class="aee-update-progress-label"><span>{label}</span><span>{percent}%</span></div>'
+        '<div class="aee-update-progress-track" role="progressbar" '
+        f'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}">'
+        f'<div class="aee-update-progress-fill" style="width:{percent}%"></div></div></div>'
+    )
+
+
+def _run_update_task(operation, initial_description):
+    events = queue.Queue()
+    finished = object()
+
+    def report(fraction, desc=None):
+        events.put(("progress", fraction, desc or initial_description))
+
+    def run():
+        try:
+            result = operation(report)
+            events.put(("result", result, None))
+        except Exception as exc:
+            events.put(("result", None, exc))
+        finally:
+            events.put((finished, None, None))
+
+    worker = threading.Thread(target=run, name="aee-update-task", daemon=True)
+    worker.start()
+    yield 0, initial_description, None, None, False
+    while True:
+        kind, value, detail = events.get()
+        if kind is finished:
+            break
+        if kind == "progress":
+            yield value, detail, None, None, False
+        else:
+            yield 1, initial_description, value, detail, True
+
+
+def _update_status_html(message, tone="neutral", update=None, update_available=None,
+                        progress=None):
     safe_message = _html.escape(str(message))
     available = (bool(update and update.get("available"))
                  if update_available is None else bool(update_available))
@@ -6553,7 +6603,7 @@ def _update_status_html(message, tone="neutral", update=None, update_available=N
     if not update or not update.get("available"):
         return (f'<div class="aee-update-status" data-tone="{_html.escape(tone)}">'
                 f'<span data-update-available="{availability}" hidden></span>'
-                f'{safe_message}</div>')
+                f'{safe_message}{progress or ""}</div>')
     version = _html.escape(str(update.get("version", "")))
     published = _html.escape(str(update.get("published_at", "")))
     notes = _html.escape(str(update.get("release_notes", "")))
@@ -6562,7 +6612,7 @@ def _update_status_html(message, tone="neutral", update=None, update_available=N
     return (f'<div class="aee-update-status" data-tone="available">'
             '<span data-update-available="true" hidden></span>'
             f'<strong>Version {version} is ready.</strong> {date}'
-            f'{details}</div>')
+            f'{details}{progress or ""}</div>')
 
 
 _ACCOUNT_SETUP_SQL = """create table if not exists public.profiles (
@@ -7225,65 +7275,105 @@ def _account_save_config_ui(project_url, anon_key, session, access_ready):
 
 
 def _check_updates_ui():
-    try:
-        update = _update_client.check_for_updates()
-    except _update_client.UpdateNotConfigured as exc:
-        return (_update_status_html(str(exc), "neutral"), gr.update(visible=False),
-                None, gr.update(visible=False))
-    except _update_client.UpdateError as exc:
-        return (_update_status_html(str(exc), "error"), gr.update(visible=False),
-                None, gr.update(visible=False))
-    except Exception as exc:
-        log.exception("Update check failed")
-        return (_update_status_html(f"Update check failed: {exc}", "error"),
+    for fraction, description, update, error, finished in _run_update_task(
+        _update_client.check_for_updates, "Checking for updates"
+    ):
+        if error:
+            if isinstance(error, _update_client.UpdateNotConfigured):
+                tone = "neutral"
+            else:
+                tone = "error"
+                if not isinstance(error, _update_client.UpdateError):
+                    log.error(
+                        "Update check failed",
+                        exc_info=(type(error), error, error.__traceback__),
+                    )
+            yield (_update_status_html(
+                str(error) if isinstance(error, _update_client.UpdateError)
+                else f"Update check failed: {error}",
+                tone, progress=_update_progress_html(fraction, description)),
                 gr.update(visible=False), None, gr.update(visible=False))
+            return
+        if not finished:
+            yield (_update_status_html(
+                "Checking for the latest release…",
+                "neutral", progress=_update_progress_html(fraction, description)),
+                gr.update(), gr.skip(), gr.update())
+            continue
+        if update["available"]:
+            if not update.get("package_url"):
+                yield (_update_status_html(
+                    "This release does not include a compatible in-app update package.",
+                    "error"), gr.update(visible=False), update, gr.update(visible=False))
+                return
+            yield (_update_status_html("A new version is available.", "available", update),
+                   gr.update(visible=True), update, gr.update(visible=False))
+        else:
+            current = _html.escape(update["installed_version"])
+            yield (_update_status_html(
+                f"No updates right now. You are using the latest version ({current}).",
+                "success"), gr.update(visible=False), update, gr.update(visible=False))
+        return
 
-    if update["available"]:
-        has_update_asset = update.get("package_url")
-        if not has_update_asset:
-            return (_update_status_html(
-                "This release does not include a compatible in-app update package.",
-                "error"), gr.update(visible=False), update, gr.update(visible=False))
-        return (_update_status_html("A new version is available.", "available", update),
-                gr.update(visible=True), update, gr.update(visible=False))
-    current = _html.escape(update["installed_version"])
-    return (_update_status_html(
-        f"No updates right now. You are using the latest version ({current}).", "success"),
-        gr.update(visible=False), update, gr.update(visible=False))
 
-
-def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
-    try:
-        staged = _update_client.download_and_stage_update(update, progress)
-        return (_update_status_html(
+def _download_update_ui(update):
+    for fraction, description, staged, error, finished in _run_update_task(
+        lambda report: _update_client.download_and_stage_update(update, report),
+        "Preparing update download",
+    ):
+        if error:
+            if isinstance(error, _update_client.UpdateError):
+                message = str(error)
+            else:
+                log.error(
+                    "Could not download and prepare the update",
+                    exc_info=(type(error), error, error.__traceback__),
+                )
+                message = f"Could not prepare the update: {error}"
+            yield (_update_status_html(
+                message, "error",
+                update_available=bool(update and update.get("available"))),
+                gr.update(visible=False), update)
+        elif not finished:
+            yield (_update_status_html(
+                "Downloading and verifying update…", "neutral",
+                update_available=bool(update and update.get("available")),
+                progress=_update_progress_html(fraction, description)),
+                gr.update(), gr.skip())
+        else:
+            yield (_update_status_html(
             "The update is downloaded, checksum-verified, and ready to apply. "
             "Select Install Update to see the in-app installation progress.",
             "success", update_available=True),
-            gr.update(visible=True), staged)
-    except _update_client.UpdateError as exc:
-        return (_update_status_html(str(exc), "error",
-                                   update_available=bool(update and update.get("available"))),
-                gr.update(visible=False), update)
-    except Exception as exc:
-        log.exception("Could not download and prepare the update")
-        return (_update_status_html(f"Could not prepare the update: {exc}", "error"),
-                gr.update(visible=False), update)
+                gr.update(visible=True), staged)
 
 
-def _apply_update_ui(staged, progress=gr.Progress(track_tqdm=False)):
-    try:
-        _update_client.apply_staged_update(staged, progress)
-        return (_update_status_html(
-            f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "
-            "The files are updated. Select Restart App below to finish and load the new version.",
-            "success"), gr.update(visible=False), gr.update(visible=True))
-    except _update_client.UpdateError as exc:
-        return (_update_status_html(str(exc), "error"),
-                gr.update(visible=True), gr.update(visible=False))
-    except Exception as exc:
-        log.exception("Could not start applying the update")
-        return (_update_status_html(f"Could not start the update: {exc}", "error"),
-                gr.update(visible=True), gr.update(visible=False))
+def _apply_update_ui(staged):
+    for fraction, description, result, error, finished in _run_update_task(
+        lambda report: _update_client.apply_staged_update(staged, report),
+        "Installing update",
+    ):
+        if error:
+            if isinstance(error, _update_client.UpdateError):
+                message = str(error)
+            else:
+                log.error(
+                    "Could not start applying the update",
+                    exc_info=(type(error), error, error.__traceback__),
+                )
+                message = f"Could not start the update: {error}"
+            yield (_update_status_html(message, "error"),
+                   gr.update(visible=True), gr.update(visible=False))
+        elif not finished:
+            yield (_update_status_html(
+                "Applying update files…", "neutral",
+                progress=_update_progress_html(fraction, description)),
+                gr.skip(), gr.update(visible=False))
+        else:
+            yield (_update_status_html(
+                f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "
+                "The files are updated. Select Restart App below to finish and load the new version.",
+                "success"), gr.update(visible=False), gr.update(visible=True))
 
 
 def _restart_app_ui():
@@ -8173,16 +8263,16 @@ def build_ui():
             outputs=[account_google_btn], queue=False)
         update_check_btn.click(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
-                     update_apply_btn], queue=False)
+                     update_apply_btn])
         update_download_btn.click(fn=_download_update_ui, inputs=[update_state],
-            outputs=[update_status, update_apply_btn, update_state], show_progress="full")
+            outputs=[update_status, update_apply_btn, update_state])
         update_apply_btn.click(fn=_apply_update_ui, inputs=[update_state],
-            outputs=[update_status, update_apply_btn, update_restart_btn], show_progress="full")
+            outputs=[update_status, update_apply_btn, update_restart_btn])
         update_restart_btn.click(fn=_restart_app_ui, inputs=[],
             outputs=[update_status, update_restart_btn], queue=False)
         app.load(fn=_check_updates_ui, inputs=[],
             outputs=[update_status, update_download_btn, update_state,
-                     update_apply_btn], queue=False)
+                     update_apply_btn])
         sum_select.change(fn=pick_summary, inputs=[sum_select, sums_state],
                           outputs=[sum_video])
         cap_filter.change(fn=filter_gallery,

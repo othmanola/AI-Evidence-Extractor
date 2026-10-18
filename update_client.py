@@ -86,7 +86,7 @@ def _manifest_url() -> str:
     return url
 
 
-def check_for_updates() -> dict:
+def check_for_updates(progress: Callable | None = None) -> dict:
     url = _manifest_url()
     request = urllib.request.Request(
         f"{url}{'&' if '?' in url else '?'}aee_check={time.time_ns()}",
@@ -98,10 +98,14 @@ def check_for_updates() -> dict:
         },
     )
     try:
+        if progress:
+            progress(0.1, desc="Connecting to the update service")
         with urllib.request.urlopen(request, timeout=15) as response:
             if not response.geturl().lower().startswith("https://"):
                 raise UpdateError("The update feed redirected to an insecure address.")
             payload = response.read(MAX_MANIFEST_BYTES + 1)
+            if progress:
+                progress(0.75, desc="Reading release information")
     except (OSError, urllib.error.URLError, TimeoutError) as exc:
         raise UpdateError(
             "Could not reach the update service. Check your internet connection and try again."
@@ -137,6 +141,8 @@ def check_for_updates() -> dict:
     if latest_key > _version_key(installed) and not required_update_asset:
         raise UpdateError("This release has no in-app update package yet.")
 
+    if progress:
+        progress(1, desc="Update check complete")
     return {
         "app_id": APP_ID,
         "installed_version": installed,
