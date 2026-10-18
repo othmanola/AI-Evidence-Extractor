@@ -1,10 +1,10 @@
 {
   "app_id": "ai-evidence-extractor",
-  "version": "1.2.49",
+  "version": "1.2.50",
   "published_at": "2026-10-18",
-  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.49/AI_Evidence_Extractor_Setup.exe",
-  "sha256": "3d799b0b7316026d437cca97655458f1fd089c332b60313bf682dda919679bf3",
-  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.49/AI_Evidence_Extractor_Update.zip",
-  "package_sha256": "26f3962d607c3f0ce561c323f6b6265bd4e90c7f36b85f559c617ae9ad931f41",
+  "download_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.50/AI_Evidence_Extractor_Setup.exe",
+  "sha256": "133b841d423b1e32b0f2d19fad5cb47efa4dfd73e928a168b6fae24ddcfd8c8e",
+  "package_url": "https://github.com/othmanola/AI-Evidence-Extractor/releases/download/v1.2.50/AI_Evidence_Extractor_Update.zip",
+  "package_sha256": "988755562c96a82497d069b13f5f420ffd454ff8aa42772ac8e9bee0c40d9894",
   "release_notes": "Includes the latest app fixes and improvements."
 }
