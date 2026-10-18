@@ -13,6 +13,8 @@ Version 1.2.42 makes Detailed History actions smaller and right-aligned,
 highlights destructive actions in red, and adds a safe Clear all history
 action that preserves original source videos.
 Version 1.2.43 fixes startup when building the Detailed History controls.
+Version 1.2.44 further compacts and right-aligns Detailed History actions,
+including the refresh, ZIP, and clear-history controls.
 Version 1.2.30 gives the setup wizard a modern dark polar theme and creates
 the desktop AI Evidence Extractor shortcut during installation.
 Version 1.2.29 restores the basic History summary view and adds a separate

@@ -56,6 +56,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Remove", ui_constants)
         self.assertIn("Clear all history", ui_constants)
         self.assertIn("#dc2626", app.CSS)
+        self.assertIn("justify-content:flex-end!important", app.CSS)
+        self.assertIn("min-height:27px!important", app.CSS)
 
     def test_detailed_history_opens_as_a_fullscreen_utility_window(self):
         constants = tuple(_nested_code_constants(app.build_ui.__code__))

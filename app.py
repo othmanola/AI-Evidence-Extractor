@@ -2615,8 +2615,8 @@ html[data-theme="light"] .aee-history-window .aee-history-section-heading p{colo
   gap:18px;margin:4px 0 18px;}
 .aee-history-heading h2{margin:0;color:#f1f5f9;font-size:1.35rem;font-weight:750;letter-spacing:-.03em;}
 .aee-history-heading p{margin:6px 0 0;color:#94a3b8;font-size:.82rem;line-height:1.55;}
-.aee-history-toolbar{display:flex;align-items:flex-end;gap:10px;margin-bottom:16px;}
-.aee-history-toolbar>.block{flex:1 1 auto;min-width:0;}
+.aee-history-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:14px;}
+.aee-history-toolbar>.block{flex:0 0 auto!important;min-width:0;}
 .aee-history-toolbar label span{color:#aab5c6!important;font-size:.75rem!important;}
 .aee-history-list{display:grid!important;gap:10px!important;margin:0 0 20px;}
 .aee-history-row{align-items:center!important;gap:16px!important;padding:14px 16px;
@@ -2627,9 +2627,10 @@ html[data-theme="light"] .aee-history-window .aee-history-section-heading p{colo
 .aee-history-row-title{overflow:hidden;color:#e7edf7;font-size:.9rem;font-weight:700;
   text-overflow:ellipsis;white-space:nowrap;}
 .aee-history-row-meta{margin-top:5px;color:#94a3b8;font-size:.72rem;line-height:1.45;}
-.aee-history-row-actions{flex:0 0 auto!important;gap:6px!important;margin-left:auto!important;}
-.aee-history-row-actions button{min-height:30px!important;padding:0 9px!important;
-  border-radius:8px!important;font-size:.68rem!important;font-weight:650!important;}
+.aee-history-row-actions{display:flex!important;flex:0 0 auto!important;justify-content:flex-end!important;
+  gap:5px!important;width:auto!important;margin-left:auto!important;}
+.aee-history-row-actions button{min-height:27px!important;padding:0 8px!important;
+  border-radius:7px!important;font-size:.65rem!important;font-weight:650!important;}
 .aee-history-row-actions .aee-history-remove button{border-color:rgba(248,113,113,.27)!important;
   color:#fff!important;background:#dc2626!important;}
 .aee-history-row-actions .aee-history-remove button:hover{background:#b91c1c!important;}
@@ -2641,12 +2642,14 @@ html[data-theme="light"] .aee-history-row-actions .aee-history-remove button{col
 .aee-history-toolbar input,.aee-history-toolbar select{
   min-height:42px!important;border:1px solid rgba(148,163,184,.17)!important;
   border-radius:10px!important;color:#e2e8f0!important;background:#172033!important;}
-.aee-history-refresh button{min-height:42px!important;border-radius:10px!important;
+.aee-history-refresh button,.aee-history-download-all button{min-height:30px!important;padding:0 9px!important;
+  border-radius:8px!important;font-size:.68rem!important;font-weight:650!important;}
+.aee-history-refresh button{border-radius:8px!important;
   border:1px solid rgba(148,163,184,.2)!important;color:#e2e8f0!important;
   background:rgba(148,163,184,.08)!important;font-weight:650!important;}
-.aee-history-clear button{min-height:36px!important;padding:0 12px!important;
-  border-radius:9px!important;border:1px solid rgba(248,113,113,.32)!important;
-  color:#fff!important;background:#dc2626!important;font-size:.73rem!important;font-weight:700!important;}
+.aee-history-clear button{min-height:30px!important;padding:0 10px!important;
+  border-radius:8px!important;border:1px solid rgba(248,113,113,.32)!important;
+  color:#fff!important;background:#dc2626!important;font-size:.68rem!important;font-weight:700!important;}
 .aee-history-clear button:hover{background:#b91c1c!important;}
 .aee-history-detail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
   gap:10px;margin:0 0 16px;padding:16px;border:1px solid rgba(148,163,184,.14);
@@ -7616,11 +7619,12 @@ def build_ui():
                         '</div></header>')
                     with gr.Row(elem_classes=["aee-history-toolbar"]):
                         detailed_history_refresh = gr.Button(
-                            "Refresh history", size="sm", scale=1,
+                            "Refresh history", size="sm", scale=0,
                             elem_classes=["aee-history-refresh"])
                         all_history_zip = gr.DownloadButton(
                             label="Download all history ZIP",
-                            variant="secondary", size="sm")
+                            variant="secondary", size="sm",
+                            elem_classes=["aee-history-download-all"], scale=0)
                         clear_history_btn = gr.Button(
                             "Clear all history", size="sm", variant="stop",
                             elem_classes=["aee-history-clear"], scale=0)
