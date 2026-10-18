@@ -55,6 +55,9 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Remove", ui_constants)
         self.assertIn("Clear all history", ui_constants)
         self.assertIn("#dc2626", app.CSS)
+        self.assertIn("#aee-history-remove button", app.CSS)
+        self.assertIn("#aee-history-clear button", app.CSS)
+        self.assertIn("linear-gradient(135deg,#ef4444,#b91c1c)", app.CSS)
         self.assertIn("justify-content:flex-end!important", app.CSS)
         self.assertIn("min-height:27px!important", app.CSS)
 
