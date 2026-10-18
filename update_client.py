@@ -125,18 +125,17 @@ def check_for_updates() -> dict:
     if package_url and not SHA256_RE.fullmatch(package_digest):
         raise UpdateError("The update package is missing a valid SHA-256 checksum.")
 
-    # Keep the installer fields for older app versions during the one-time
-    # migration to the in-app updater. New clients use the package fields.
+    # Keep installer fields in the response for older clients and recovery,
+    # but all current clients install from the verified update package.
     download_url = str(manifest.get("download_url", "")).strip()
     digest = str(manifest.get("sha256", "")).strip()
     if download_url and not download_url.lower().startswith("https://"):
         raise UpdateError("The legacy installer must be hosted over HTTPS.")
     if download_url and not SHA256_RE.fullmatch(digest):
         raise UpdateError("The legacy installer is missing a valid SHA-256 checksum.")
-    required_update_asset = download_url if IS_FROZEN else package_url
+    required_update_asset = package_url
     if latest_key > _version_key(installed) and not required_update_asset:
-        asset_kind = "installer" if IS_FROZEN else "in-app update package"
-        raise UpdateError(f"This release has no {asset_kind} yet.")
+        raise UpdateError("This release has no in-app update package yet.")
 
     return {
         "app_id": APP_ID,

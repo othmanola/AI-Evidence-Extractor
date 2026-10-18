@@ -7227,13 +7227,10 @@ def _check_updates_ui():
                 gr.update(visible=False), None, gr.update(visible=False))
 
     if update["available"]:
-        has_update_asset = (
-            update.get("download_url") if _update_client.IS_FROZEN
-            else update.get("package_url")
-        )
+        has_update_asset = update.get("package_url")
         if not has_update_asset:
             return (_update_status_html(
-                "This release does not include an update package compatible with this installation.",
+                "This release does not include a compatible in-app update package.",
                 "error"), gr.update(visible=False), update, gr.update(visible=False))
         return (_update_status_html("A new version is available.", "available", update),
                 gr.update(visible=True), update, gr.update(visible=False))
@@ -7245,24 +7242,10 @@ def _check_updates_ui():
 
 def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
     try:
-        if _update_client.IS_FROZEN:
-            installer = _update_client.download_update_installer(update, progress)
-            staged = {
-                "app_id": _update_client.APP_ID,
-                "version": update["version"],
-                "installer_path": str(installer),
-                "sha256": update["sha256"],
-                "installer": True,
-            }
-            return (_update_status_html(
-                "The update was downloaded and verified. Select Install Update to install it "
-                "with a progress indicator. The app will close and reopen automatically.",
-                "success", update_available=True),
-                gr.update(visible=True), staged)
         staged = _update_client.download_and_stage_update(update, progress)
         return (_update_status_html(
-            "The update package was downloaded, checksum-verified, and prepared. "
-              "Your installed app has not changed yet. Select Install Update when ready.",
+            "The update is downloaded, checksum-verified, and ready to apply. "
+            "Select Install Update to see the in-app installation progress.",
             "success", update_available=True),
             gr.update(visible=True), staged)
     except _update_client.UpdateError as exc:
@@ -7277,45 +7260,10 @@ def _download_update_ui(update, progress=gr.Progress(track_tqdm=False)):
 
 def _apply_update_ui(staged, progress=gr.Progress(track_tqdm=False)):
     try:
-        if (_update_client.IS_FROZEN and isinstance(staged, dict)
-                and staged.get("installer")):
-            installer = Path(staged.get("installer_path", "")).resolve()
-            if installer.parent != _update_client.UPDATE_DIR.resolve() or not installer.is_file():
-                raise _update_client.UpdateError(
-                    "The verified update installer is missing. Download it again."
-                )
-            expected_digest = str(staged.get("sha256", "")).lower()
-            if not _update_client.SHA256_RE.fullmatch(expected_digest):
-                raise _update_client.UpdateError(
-                    "The update installer verification data is missing. Download it again."
-                )
-            with installer.open("rb") as installer_file:
-                actual_digest = hashlib.file_digest(installer_file, "sha256").hexdigest()
-            if actual_digest != expected_digest:
-                raise _update_client.UpdateError(
-                    "The update installer changed after verification. Download it again."
-                )
-            installer_log = _update_client.UPDATE_DIR / f"install_{staged['version']}.log"
-            subprocess.Popen(
-                [
-                    str(installer),
-                    "/SILENT",
-                    "/SUPPRESSMSGBOXES",
-                    "/CLOSEAPPLICATIONS",
-                    "/RESTARTAPPLICATIONS",
-                    f"/LOG={installer_log}",
-                ],
-                cwd=str(_update_client.UPDATE_DIR),
-                close_fds=True,
-            )
-            return (_update_status_html(
-                "Update installation started. Follow the progress window; the app will "
-                "reopen automatically when installation finishes.",
-                "success"), gr.update(visible=False), gr.update(visible=False))
         _update_client.apply_staged_update(staged, progress)
         return (_update_status_html(
             f"Update {_html.escape(str(staged.get('version', '')))} installed successfully. "
-            "Click Restart App below to load the new version.",
+            "The files are updated. Select Restart App below to finish and load the new version.",
             "success"), gr.update(visible=False), gr.update(visible=True))
     except _update_client.UpdateError as exc:
         return (_update_status_html(str(exc), "error"),
@@ -7347,16 +7295,16 @@ def _updates_intro_html():
     return f'''<section class="aee-update-card">
       <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Update center</div>
       <h2 class="aee-update-title">A smoother way to stay current.</h2>
-      <div class="aee-update-copy">Check for a release, review it, and install when you are ready.
-        Downloads are verified before installation, and progress is shown right here in the app.</div>
+      <div class="aee-update-copy">Check for a release, review it, and update without opening a setup file.
+        The download and each installation step show live progress in this window.</div>
       <div class="aee-version-pill">Installed version&nbsp; v{version}</div>
       <div class="aee-update-steps" aria-label="How app updates work">
         <div class="aee-update-step"><span class="aee-update-step-number">01</span>
           <div><strong>Check</strong><span>Look for the latest release securely.</span></div></div>
         <div class="aee-update-step"><span class="aee-update-step-number">02</span>
-          <div><strong>Verify</strong><span>Confirm the downloaded package before installing.</span></div></div>
+          <div><strong>Download</strong><span>Track download and checksum verification in the app.</span></div></div>
         <div class="aee-update-step"><span class="aee-update-step-number">03</span>
-          <div><strong>Restart</strong><span>Apply the update, then restart to finish.</span></div></div>
+          <div><strong>Apply</strong><span>Watch file-by-file progress, then restart to load the update.</span></div></div>
       </div>
     </section>'''
 

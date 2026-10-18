@@ -1,5 +1,4 @@
 import base64
-import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -533,7 +532,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('data-update-available="false"', result[0])
         self.assertFalse(result[1]["visible"])
 
-    def test_frozen_update_check_accepts_setup_asset(self):
+    def test_frozen_update_check_requires_in_app_package(self):
         available = {
             "available": True,
             "version": "1.2.13",
@@ -545,51 +544,50 @@ class AccountUiTests(unittest.TestCase):
         ):
             result = app._check_updates_ui()
 
-        self.assertTrue(result[1]["visible"])
+        self.assertFalse(result[1]["visible"])
+        self.assertIn("in-app update package", result[0])
 
-    def test_frozen_update_download_launches_progress_install_and_restarts_app(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            update_dir = Path(temp_dir)
-            installer = update_dir / "AI_Evidence_Extractor_Setup_1.2.13.exe"
-            installer.write_bytes(b"verified-installer")
-            update = {
-                "app_id": app._update_client.APP_ID,
-                "version": "1.2.13",
-                "available": True,
-                "sha256": hashlib.sha256(b"verified-installer").hexdigest(),
-            }
-            with (
-                patch.object(app._update_client, "IS_FROZEN", True),
-                patch.object(app._update_client, "UPDATE_DIR", update_dir),
-                patch.object(
-                    app._update_client, "download_update_installer",
-                    return_value=installer,
-                ),
-                patch.object(app.subprocess, "Popen") as launch_installer,
-            ):
-                downloaded = app._download_update_ui(update)
-                applied = app._apply_update_ui(downloaded[2])
+    def test_frozen_update_downloads_and_applies_package_in_app(self):
+        update = {
+            "app_id": app._update_client.APP_ID,
+            "version": "1.2.13",
+            "available": True,
+            "package_url": "https://example.com/update.zip",
+        }
+        staged = {
+            "app_id": app._update_client.APP_ID,
+            "version": "1.2.13",
+            "stage_dir": "staged",
+            "staged": True,
+        }
+        with (
+            patch.object(app._update_client, "IS_FROZEN", True),
+            patch.object(
+                app._update_client, "download_and_stage_update", return_value=staged
+            ) as download,
+            patch.object(app._update_client, "apply_staged_update") as apply,
+            patch.object(app.subprocess, "Popen") as launch_installer,
+        ):
+            downloaded = app._download_update_ui(update)
+            applied = app._apply_update_ui(downloaded[2])
 
+        download.assert_called_once_with(update, unittest.mock.ANY)
+        apply.assert_called_once_with(staged, unittest.mock.ANY)
+        launch_installer.assert_not_called()
         self.assertTrue(downloaded[1]["visible"])
-        self.assertIn(str(installer), downloaded[2]["installer_path"])
-        self.assertIn("installation started", applied[0])
-        self.assertFalse(applied[1]["visible"])
-        self.assertFalse(applied[2]["visible"])
-        launch_installer.assert_called_once()
-        command = launch_installer.call_args.args[0]
-        self.assertEqual(command[0], str(installer))
-        self.assertIn("/SILENT", command)
-        self.assertIn("/SUPPRESSMSGBOXES", command)
-        self.assertIn("/CLOSEAPPLICATIONS", command)
-        self.assertIn("/RESTARTAPPLICATIONS", command)
-        self.assertTrue(any(argument.startswith("/LOG=") for argument in command))
+        self.assertIn("in-app installation progress", downloaded[0])
+        self.assertIn("installed successfully", applied[0])
+        self.assertTrue(applied[2]["visible"])
 
-    def test_installer_is_configured_to_close_and_restart_the_app(self):
-        installer_script = (
-            Path(__file__).resolve().parents[1] / "installer.iss"
-        ).read_text(encoding="utf-8-sig")
-        self.assertIn("CloseApplications=force", installer_script)
-        self.assertIn("RestartApplications=yes", installer_script)
+    def test_update_progress_is_shown_in_the_gui(self):
+        ui_strings = "\n".join(
+            value for value in _nested_code_constants(app.build_ui.__code__)
+            if isinstance(value, str)
+        )
+        self.assertIn("Download Update", ui_strings)
+        self.assertIn("Install Update", ui_strings)
+        self.assertIn("Restart App", ui_strings)
+        self.assertIn("progress", app._updates_intro_html().lower())
 
     def test_google_sign_in_can_start_from_settings(self):
         with patch.object(

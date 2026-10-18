@@ -1,6 +1,6 @@
 # Publishing app updates
 
-Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and a source update archive. The app downloads the archive and installs it in-place when the user selects Install Update; a progress indicator reports each file. Restart the app afterward to load the new version.
+Installed copies use a small HTTPS JSON manifest to check the current release. GitHub Releases host both the full setup installer and an in-app update archive. The app downloads and verifies the archive, then applies it in place when the user selects Install Update. The app shows download progress and file-by-file installation progress; no setup file is opened. Restart the app afterward to load the new version. The setup installer remains for first installations and recovery.
 
 Version 1.2.40 presents Detailed History as a newest-first video list with
 per-analysis details, ZIP downloads, and safe removal of saved analysis data.
@@ -15,6 +15,8 @@ action that preserves original source videos.
 Version 1.2.43 fixes startup when building the Detailed History controls.
 Version 1.2.44 further compacts and right-aligns Detailed History actions,
 including the refresh, ZIP, and clear-history controls.
+Version 1.2.45 applies updates internally in packaged builds and shows
+download and file-by-file installation progress in the Updates window.
 Version 1.2.30 gives the setup wizard a modern dark polar theme and creates
 the desktop AI Evidence Extractor shortcut during installation.
 Version 1.2.29 restores the basic History summary view and adds a separate
@@ -68,6 +70,6 @@ persistence.
 5. The workflow updates `latest.json` on `main` for compatibility with older installed clients; new builds use the release asset as the primary feed.
 6. Apps built before internal updates must be upgraded once with the setup installer. Later releases download and apply their archive from inside the app.
 
-The updater verifies HTTPS, the app identifier, the version, the package checksum, and every archive path before staging files. It only writes staged files under the app's user-data folder while downloading. When the user selects **Install Update**, it replaces the allowlisted app files in-process, shows progress for each file, and rolls back if any replacement fails. The user then restarts the app to load the new version. Keep the setup asset for first installs and recovery.
+The updater verifies HTTPS, the app identifier, the version, the package checksum, and every archive path before staging files. It only writes staged files under the app's user-data folder while downloading. When the user selects **Install Update**, it replaces the allowlisted app files in-process, shows progress for each file in the GUI, and rolls back if any replacement fails. The user then restarts the app to load the new version. Keep the setup asset for first installs and recovery.
 
 The app version is stored in `version.txt` and is embedded into the setup version by `installer.iss`. The publishing workflow generates the manifest only after both release assets have been built and hashed.
