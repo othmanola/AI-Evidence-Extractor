@@ -2639,6 +2639,24 @@ html[data-theme="light"] .aee-history-window .aee-history-section-heading p{colo
   gap:5px!important;width:auto!important;margin-left:auto!important;}
 .aee-history-row-actions button{min-height:27px!important;padding:0 8px!important;
   border-radius:7px!important;font-size:.65rem!important;font-weight:650!important;}
+.aee-history-row-actions .aee-history-details button,#aee-history-details button,
+button#aee-history-details{border:1px solid rgba(125,164,255,.5)!important;color:#eff6ff!important;
+  background:linear-gradient(135deg,#3b82f6,#4f46e5)!important;
+  box-shadow:0 5px 14px -8px rgba(79,70,229,.85)!important;
+  transition:transform .16s ease,box-shadow .16s ease,background .16s ease!important;}
+.aee-history-row-actions .aee-history-details button:hover,#aee-history-details button:hover,
+button#aee-history-details:hover{border-color:#bfdbfe!important;
+  background:linear-gradient(135deg,#60a5fa,#6366f1)!important;
+  box-shadow:0 8px 18px -8px rgba(79,70,229,.95)!important;transform:translateY(-1px);}
+.aee-history-row-actions .aee-history-download button,#aee-history-download button,
+button#aee-history-download{border:1px solid rgba(94,234,212,.42)!important;color:#ecfeff!important;
+  background:linear-gradient(135deg,#0f766e,#2563eb)!important;
+  box-shadow:0 5px 14px -8px rgba(13,148,136,.85)!important;
+  transition:transform .16s ease,box-shadow .16s ease,background .16s ease!important;}
+.aee-history-row-actions .aee-history-download button:hover,#aee-history-download button:hover,
+button#aee-history-download:hover{border-color:#99f6e4!important;
+  background:linear-gradient(135deg,#14b8a6,#3b82f6)!important;
+  box-shadow:0 8px 18px -8px rgba(13,148,136,.95)!important;transform:translateY(-1px);}
 .aee-history-row-actions .aee-history-remove button,#aee-history-remove button,
 button#aee-history-remove{border:1px solid #f87171!important;
   color:#fff!important;background:linear-gradient(135deg,#ef4444,#b91c1c)!important;
@@ -2656,11 +2674,26 @@ html[data-theme="light"] #aee-history-remove button{color:#fff!important;}
 .aee-history-toolbar input,.aee-history-toolbar select{
   min-height:42px!important;border:1px solid rgba(148,163,184,.17)!important;
   border-radius:10px!important;color:#e2e8f0!important;background:#172033!important;}
-.aee-history-refresh button,.aee-history-download-all button{min-height:30px!important;padding:0 9px!important;
-  border-radius:8px!important;font-size:.68rem!important;font-weight:650!important;}
-.aee-history-refresh button{border-radius:8px!important;
-  border:1px solid rgba(148,163,184,.2)!important;color:#e2e8f0!important;
-  background:rgba(148,163,184,.08)!important;font-weight:650!important;}
+.aee-history-refresh button,#aee-history-refresh button,button#aee-history-refresh,
+.aee-history-download-all button,#aee-history-download-all button,button#aee-history-download-all{
+  min-height:30px!important;padding:0 10px!important;border-radius:9px!important;
+  color:#f8fafc!important;font-size:.68rem!important;font-weight:700!important;
+  transition:transform .16s ease,box-shadow .16s ease,background .16s ease!important;}
+.aee-history-refresh button,#aee-history-refresh button,button#aee-history-refresh{
+  border:1px solid rgba(148,163,184,.32)!important;
+  background:linear-gradient(135deg,#334155,#1e293b)!important;
+  box-shadow:0 5px 14px -9px rgba(15,23,42,.9)!important;}
+.aee-history-refresh button:hover,#aee-history-refresh button:hover,button#aee-history-refresh:hover{
+  border-color:#94a3b8!important;background:linear-gradient(135deg,#475569,#334155)!important;
+  box-shadow:0 8px 18px -8px rgba(15,23,42,.95)!important;transform:translateY(-1px);}
+.aee-history-download-all button,#aee-history-download-all button,button#aee-history-download-all{
+  border:1px solid rgba(125,164,255,.45)!important;
+  background:linear-gradient(135deg,#2563eb,#6d28d9)!important;
+  box-shadow:0 6px 16px -9px rgba(79,70,229,.9)!important;}
+.aee-history-download-all button:hover,#aee-history-download-all button:hover,
+button#aee-history-download-all:hover{border-color:#c4b5fd!important;
+  background:linear-gradient(135deg,#3b82f6,#7c3aed)!important;
+  box-shadow:0 9px 20px -8px rgba(79,70,229,.95)!important;transform:translateY(-1px);}
 .aee-history-clear button,#aee-history-clear button,button#aee-history-clear{
   min-height:30px!important;padding:0 11px!important;border-radius:9px!important;
   border:1px solid #f87171!important;color:#fff!important;
@@ -7670,11 +7703,12 @@ def build_ui():
                     with gr.Row(elem_classes=["aee-history-toolbar"]):
                         detailed_history_refresh = gr.Button(
                             "Refresh history", size="sm", scale=0,
-                            elem_classes=["aee-history-refresh"])
+                            elem_classes=["aee-history-refresh"], elem_id="aee-history-refresh")
                         all_history_zip = gr.DownloadButton(
                             label="Download all history ZIP",
                             variant="secondary", size="sm",
-                            elem_classes=["aee-history-download-all"], scale=0)
+                            elem_classes=["aee-history-download-all"],
+                            elem_id="aee-history-download-all", scale=0)
                         clear_history_btn = gr.Button(
                             "Clear all history", size="sm", variant="stop",
                             elem_classes=["aee-history-clear"], elem_id="aee-history-clear",
@@ -7702,8 +7736,14 @@ def build_ui():
                                             f' · {item["detections"]} detections</div>'
                                         )
                                     with gr.Row(elem_classes=["aee-history-row-actions"], scale=0):
-                                        details_btn = gr.Button("Details", size="sm")
-                                        download_btn = gr.Button("Download ZIP", size="sm")
+                                        details_btn = gr.Button(
+                                            "Details", size="sm",
+                                            elem_classes=["aee-history-details"],
+                                            elem_id="aee-history-details")
+                                        download_btn = gr.Button(
+                                            "Download ZIP", size="sm",
+                                            elem_classes=["aee-history-download"],
+                                            elem_id="aee-history-download")
                                         remove_btn = gr.Button(
                                             "Remove", size="sm", variant="stop",
                                             elem_classes=["aee-history-remove"],
