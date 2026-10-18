@@ -951,6 +951,14 @@ class Ensemble:
     def __init__(self):
         self.models = []
         self.device, self.half = _resolve_inference_device()
+        try:
+            self.device_name = (
+                torch.cuda.get_device_name(self.device)
+                if self.device != "cpu" else "CPU"
+            )
+        except Exception as exc:
+            log.warning("Could not identify the inference device: %s", exc)
+            self.device_name = str(self.device)
         if MANIFEST.exists():
             for e in json.loads(MANIFEST.read_text()):
                 if not Path(e["path"]).exists(): continue
@@ -975,8 +983,9 @@ class Ensemble:
             model["enabled"] = model_limit == 0 or index < model_limit
         active_count = sum(1 for model in self.models if model["enabled"])
         precision = "FP16" if self.half else "FP32"
-        log.info("Ensemble: %d/%d active models · device=%s · %s",
-                 active_count, len(self.models), self.device, precision)
+        log.info("Ensemble: %d/%d active models · device=%s (%s) · %s",
+                 active_count, len(self.models), self.device_name,
+                 self.device, precision)
 
     @classmethod
     def get(cls):
@@ -1032,6 +1041,8 @@ class Ensemble:
         active = [m for m in self.models if m.get("enabled", True)]
         return {"loaded": bool(active), "n_models": len(active),
                 "n_total": len(self.models),
+                "device": self.device_name,
+                "precision": "FP16" if self.half else "FP32",
                 "names": [m["name"] for m in active],
                 "classes": sorted({n for m in active for n in m["classes"]}),
                 "members": [{"name": m["name"], "enabled": m["enabled"],
@@ -1546,6 +1557,61 @@ class Processor:
         self.tracker = Tracker()
         self.camcache = CAMCache()
 
+    @staticmethod
+    def _prefetch_frames(capture, cancel_event=None, queue_size=4):
+        frame_queue = queue.Queue(maxsize=queue_size)
+        stop_event = threading.Event()
+        end = object()
+
+        def enqueue(item):
+            while not stop_event.is_set():
+                try:
+                    frame_queue.put(item, timeout=0.1)
+                    return True
+                except queue.Full:
+                    continue
+            return False
+
+        def decode():
+            index = 0
+            consecutive_failures = 0
+            try:
+                while not stop_event.is_set():
+                    if cancel_event is not None and cancel_event.is_set():
+                        break
+                    ok, frame = capture.read()
+                    reported_ms = capture.get(cv2.CAP_PROP_POS_MSEC)
+                    if not enqueue((index, ok, frame, reported_ms)):
+                        break
+                    index += 1
+                    consecutive_failures = (
+                        0 if ok and frame is not None else consecutive_failures + 1
+                    )
+                    if consecutive_failures > 5:
+                        break
+            except Exception as exc:
+                enqueue((None, exc))
+            finally:
+                capture.release()
+                enqueue(end)
+
+        decoder = threading.Thread(
+            target=decode, name="aee-video-decoder", daemon=True)
+        decoder.start()
+        try:
+            while True:
+                if cancel_event is not None and cancel_event.is_set():
+                    return
+                item = frame_queue.get()
+                if item is end:
+                    return
+                if item[0] is None:
+                    raise RuntimeError(f"Video decoding failed: {item[1]}") from item[1]
+                yield item
+        finally:
+            stop_event.set()
+            decoder.join()
+
     def process_stream(self, vp, root, cancel_event=None, high_accuracy=False):
         video = Path(vp)
         if video.suffix.lower() not in CFG.SUPPORTED:
@@ -1610,10 +1676,10 @@ class Processor:
         next_sample_t = 0.0
         last_frame_t = -1.0
         try:
-            while True:
+            for idx, ok, fr, reported_ms in self._prefetch_frames(
+                    cap, cancel_event=cancel_event):
                 if cancel_event is not None and cancel_event.is_set():
                     yield ("cancelled", None); return
-                ok, fr = cap.read()
                 if not ok or fr is None:
                     fails += 1
                     if fails > 5:
@@ -1626,9 +1692,9 @@ class Processor:
                                    "could not be analyzed.")
                             return
                         break
-                    idx += 1; continue
+                    continue
                 fails = 0
-                reported_t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+                reported_t = reported_ms / 1000.0
                 if (math.isfinite(reported_t) and reported_t >= 0
                         and (idx == 0 or reported_t > last_frame_t)):
                     frame_t = reported_t
@@ -1681,7 +1747,6 @@ class Processor:
                                        "fps_processed":proc/max(0.001,time.time()-t0)})
                     yield ("stage", "detect", min(proc/total, 0.995),
                            f"sampled {proc:,}/{total:,} · {len(dets):,} detections")
-                idx += 1
         finally:
             cap.release()
         yield ("stage", "detect", 1.0,
@@ -4080,6 +4145,8 @@ def _formats_html():
 def _ensemble_panel_html(info):
     members = info.get("members", [])
     active = [m for m in members if m["enabled"]]
+    device = _html.escape(str(info.get("device") or "Unknown"))
+    precision = _html.escape(str(info.get("precision") or "Unknown"))
     cards = ""
     for m in members:
         classes = m["classes"]
@@ -4125,6 +4192,7 @@ def _ensemble_panel_html(info):
       <div class="aee-card-sub">
         {len(active)} active · {n_weapon} weapon · {n_context} context · Object Tracking
       </div>
+      <div class="aee-card-sub">Inference device: {device} · {precision}</div>
       <div style="max-height:520px;overflow-y:auto;margin-top:16px;">{cards}</div>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
         <div style="font-size:.72rem;color:var(--text-subtle);font-weight:600;

@@ -18,6 +18,42 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_video_prefetch_keeps_frame_order_and_decode_timestamps(self):
+        class Capture:
+            def __init__(self):
+                self.frames = [("first", 40.0), ("second", 80.0)]
+                self.last_position = 0.0
+                self.released = False
+
+            def read(self):
+                if self.frames:
+                    frame, self.last_position = self.frames.pop(0)
+                    return True, frame
+                return False, None
+
+            def get(self, _property):
+                return self.last_position
+
+            def release(self):
+                self.released = True
+
+        capture = Capture()
+        frames = list(app.Processor._prefetch_frames(capture, queue_size=2))
+
+        self.assertEqual(
+            [(index, frame, timestamp) for index, ok, frame, timestamp in frames if ok],
+            [(0, "first", 40.0), (1, "second", 80.0)],
+        )
+        self.assertTrue(capture.released)
+        self.assertEqual([index for index, _, _, _ in frames], list(range(len(frames))))
+
+    def test_ensemble_panel_reports_active_inference_device_and_precision(self):
+        panel = app._ensemble_panel_html({
+            "members": [], "device": "CPU", "precision": "FP32",
+        })
+
+        self.assertIn("Inference device: CPU · FP32", panel)
+
     def test_update_progress_bar_supports_unknown_download_size(self):
         progress = app._update_progress_html(
             0, "Downloading update package (size unknown)", indeterminate=True

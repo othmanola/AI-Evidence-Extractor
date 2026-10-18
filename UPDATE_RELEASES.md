@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.52 overlaps sequential inference with bounded video-frame
+prefetching, preserving analyzed frame order and selection, and reports the
+active inference device and precision in the ensemble panel.
+
 Version 1.2.51 keeps the completed download and installation progress bars
 visible and shows an animated progress indicator when the download size is
 unknown.
