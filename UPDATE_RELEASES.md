@@ -1,5 +1,8 @@
 # Publishing app updates
 
+Version 1.2.58 refreshes the Account page with clearer profile identity,
+improved local and signed-in profile summaries, and responsive styling.
+
 Version 1.2.57 migrates existing desktop and Start Menu shortcuts from an
 older frozen executable to the installed Python launcher, so in-app source
 updates remain active on later launches.
