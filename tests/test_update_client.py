@@ -9,6 +9,26 @@ import update_client
 
 
 class UpdateClientTests(unittest.TestCase):
+    def test_current_version_prefers_install_marker_when_bundle_is_stale(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "installed"
+            bundle_dir = root / "bundle"
+            app_dir.mkdir()
+            bundle_dir.mkdir()
+            installed_version = app_dir / "version.txt"
+            bundle_version = bundle_dir / "version.txt"
+            installed_version.write_text("1.2.55", encoding="utf-8")
+            bundle_version.write_text("1.2.45", encoding="utf-8")
+
+            with (
+                patch.object(update_client, "APP_DIR", app_dir),
+                patch.object(update_client, "VERSION_FILE", bundle_version),
+            ):
+                version = update_client.current_version()
+
+        self.assertEqual(version, "1.2.55")
+
     def test_installed_version_marker_takes_precedence_over_frozen_bundle(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -1,5 +1,8 @@
 # Publishing app updates
 
+Version 1.2.56 reads the installed version marker directly for each update
+check, even if a frozen bundle still contains an older version marker.
+
 Version 1.2.55 forces the desktop launcher to load updateable modules and
 version metadata from the installed app folder, and logs the resolved module
 and version paths for startup diagnostics.

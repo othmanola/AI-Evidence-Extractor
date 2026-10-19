@@ -63,8 +63,12 @@ class UpdateNotConfigured(UpdateError):
 
 
 def current_version() -> str:
+    installed_version_file = APP_DIR / "version.txt"
+    version_file = (
+        installed_version_file if installed_version_file.is_file() else VERSION_FILE
+    )
     try:
-        version = VERSION_FILE.read_text(encoding="utf-8").strip()
+        version = version_file.read_text(encoding="utf-8").strip()
     except OSError as exc:
         raise UpdateError("The installed app version could not be read.") from exc
     if not VERSION_RE.fullmatch(version):
