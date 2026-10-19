@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.57 migrates existing desktop and Start Menu shortcuts from an
+older frozen executable to the installed Python launcher, so in-app source
+updates remain active on later launches.
+
 Version 1.2.56 reads the installed version marker directly for each update
 check, even if a frozen bundle still contains an older version marker.
 

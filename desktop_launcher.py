@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import ctypes
 import logging
 import os
+import subprocess
 import sys
 from html import escape as _html_escape
 import socket
@@ -28,8 +30,9 @@ APP_ICON = next(
     APP_DIR / "assets" / "aee.ico",
 )
 WINDOWS_APP_ID = "AI.EvidenceExtractor.Desktop"
-APP_DATA = Path(__import__("os").environ.get(
-    "AEE_DATA_DIR", str(Path.home() / "AppData" / "Local" / "AI Evidence Extractor")
+APP_DATA = Path(os.environ.get(
+    "AEE_DATA_DIR",
+    str(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "AI Evidence Extractor"),
 ))
 APP_DATA.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
@@ -48,6 +51,100 @@ def _configure_installed_source_mode(app_dir: Path) -> None:
     if app_path in sys.path:
         sys.path.remove(app_path)
     sys.path.insert(0, app_path)
+
+
+def _migrate_legacy_shortcuts(app_dir: Path) -> None:
+    if sys.platform != "win32":
+        return
+
+    data_dir = Path(os.environ.get("AEE_DATA_DIR", str(APP_DATA)))
+    shortcut_marker = data_dir / "source_launcher_shortcuts_v1"
+    if shortcut_marker.is_file():
+        return
+
+    cuda_venv = data_dir / "runtimeenv_cuda2"
+    cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
+    runtimeenv_pythonw = data_dir / "runtimeenv" / "Scripts" / "pythonw.exe"
+    bundled_pythonw = app_dir / "runtime" / "pythonw.exe"
+    if (cuda_venv / ".aee_cuda_ready").is_file() and cuda_pythonw.is_file():
+        pythonw = cuda_pythonw
+    elif runtimeenv_pythonw.is_file():
+        pythonw = runtimeenv_pythonw
+    elif bundled_pythonw.is_file():
+        pythonw = bundled_pythonw
+    elif not getattr(sys, "frozen", False):
+        pythonw = Path(sys.executable)
+    else:
+        log.warning("Could not migrate app shortcuts: no source Python launcher was found")
+        return
+
+    script = """
+$ErrorActionPreference = 'Stop'
+$shell = New-Object -ComObject WScript.Shell
+$oldTarget = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_OLD_TARGET)
+$newTarget = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_NEW_TARGET)
+$launcher = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_LAUNCHER)
+$appDir = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_APP_DIR)
+$programs = Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs'
+$roots = @(
+  [Environment]::GetFolderPath('Desktop'),
+  (Join-Path $programs 'AI Evidence Extractor'),
+  (Join-Path $env:APPDATA 'Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar')
+)
+foreach ($root in $roots) {
+  if (-not (Test-Path -LiteralPath $root)) { continue }
+  Get-ChildItem -LiteralPath $root -Filter '*.lnk' -File |
+    ForEach-Object {
+      $shortcut = $shell.CreateShortcut($_.FullName)
+      if ($shortcut.TargetPath -and
+          [IO.Path]::GetFullPath($shortcut.TargetPath).Equals(
+            $oldTarget, [StringComparison]::OrdinalIgnoreCase)) {
+        $shortcut.TargetPath = $newTarget
+        $shortcut.Arguments = '"' + $launcher + '"'
+        $shortcut.WorkingDirectory = $appDir
+        $shortcut.Save()
+        Write-Output $_.FullName
+      }
+    }
+}
+"""
+    env = os.environ.copy()
+    env.update({
+        "AEE_SHORTCUT_OLD_TARGET": str(app_dir / "AI Evidence Extractor.exe"),
+        "AEE_SHORTCUT_NEW_TARGET": str(pythonw),
+        "AEE_SHORTCUT_LAUNCHER": str(app_dir / "desktop_launcher.py"),
+        "AEE_SHORTCUT_APP_DIR": str(app_dir),
+    })
+    encoded_script = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    try:
+        result = subprocess.run(
+            [
+                "powershell.exe", "-NoProfile", "-NonInteractive",
+                "-WindowStyle", "Hidden", "-EncodedCommand", encoded_script,
+            ],
+            capture_output=True,
+            check=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            env=env,
+            text=True,
+            timeout=30,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.strip() if exc.stderr else str(exc)
+        log.warning("Could not migrate app shortcuts: %s", detail)
+        return
+    except (OSError, subprocess.SubprocessError) as exc:
+        log.warning("Could not migrate app shortcuts: %s", exc)
+        return
+
+    try:
+        shortcut_marker.parent.mkdir(parents=True, exist_ok=True)
+        shortcut_marker.write_text("1\n", encoding="utf-8")
+    except OSError as exc:
+        log.warning("Could not save app shortcut migration state: %s", exc)
+    changed = result.stdout.strip()
+    if changed:
+        log.info("Migrated app shortcuts to the installed source launcher: %s", changed)
 
 
 def set_windows_app_identity() -> None:
@@ -156,6 +253,7 @@ def main() -> None:
     def run_app() -> None:
         try:
             _configure_installed_source_mode(APP_DIR)
+            _migrate_legacy_shortcuts(APP_DIR)
             import gradio as gr
             import app as application
 
