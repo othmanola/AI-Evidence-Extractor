@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.55 forces the desktop launcher to load updateable modules and
+version metadata from the installed app folder, and logs the resolved module
+and version paths for startup diagnostics.
+
 Version 1.2.54 prefers the installed version marker after an in-app update,
 preventing an older version embedded in the executable from causing the same
 update to be offered on every launch.

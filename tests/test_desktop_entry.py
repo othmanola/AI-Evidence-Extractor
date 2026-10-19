@@ -2,13 +2,40 @@ import os
 import sys
 import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import patch
+from pathlib import Path
 
 import desktop_entry
+import desktop_launcher
 
 
 class DesktopEntryTests(unittest.TestCase):
+    def test_desktop_launcher_forces_installed_source_mode(self):
+        with tempfile.TemporaryDirectory() as temp:
+            app_dir = Path(temp)
+            app_path = str(app_dir.resolve())
+            original_app_dir = os.environ.get("AEE_APP_DIR")
+            original_source_mode = os.environ.get("AEE_SOURCE_MODE")
+            original_sys_path = list(sys.path)
+            try:
+                os.environ.pop("AEE_APP_DIR", None)
+                os.environ.pop("AEE_SOURCE_MODE", None)
+                desktop_launcher._configure_installed_source_mode(app_dir)
+
+                self.assertEqual(os.environ["AEE_APP_DIR"], app_path)
+                self.assertEqual(os.environ["AEE_SOURCE_MODE"], "1")
+                self.assertEqual(sys.path[0], app_path)
+            finally:
+                sys.path[:] = original_sys_path
+                if original_app_dir is None:
+                    os.environ.pop("AEE_APP_DIR", None)
+                else:
+                    os.environ["AEE_APP_DIR"] = original_app_dir
+                if original_source_mode is None:
+                    os.environ.pop("AEE_SOURCE_MODE", None)
+                else:
+                    os.environ["AEE_SOURCE_MODE"] = original_source_mode
+
     def test_frozen_fallback_runs_loose_modules_inside_packaged_runtime(self):
         with tempfile.TemporaryDirectory() as temp:
             app_dir = Path(temp)

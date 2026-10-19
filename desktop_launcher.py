@@ -40,6 +40,16 @@ logging.basicConfig(
 log = logging.getLogger("aee.desktop")
 
 
+def _configure_installed_source_mode(app_dir: Path) -> None:
+    app_dir = app_dir.resolve()
+    os.environ["AEE_APP_DIR"] = str(app_dir)
+    os.environ["AEE_SOURCE_MODE"] = "1"
+    app_path = str(app_dir)
+    if app_path in sys.path:
+        sys.path.remove(app_path)
+    sys.path.insert(0, app_path)
+
+
 def set_windows_app_identity() -> None:
     """Give Windows a stable taskbar identity for the branded app window."""
     if os.name != "nt":
@@ -145,9 +155,21 @@ def main() -> None:
 
     def run_app() -> None:
         try:
+            _configure_installed_source_mode(APP_DIR)
             import gradio as gr
             import app as application
 
+            updater = application._update_client
+            log.info(
+                "Loaded installed app: executable=%r; app_dir=%r; app_module=%r; "
+                "updater_module=%r; version_file=%r; installed_version=%s",
+                sys.executable,
+                str(APP_DIR),
+                str(Path(application.__file__).resolve()),
+                str(Path(updater.__file__).resolve()),
+                str(updater.VERSION_FILE.resolve()),
+                updater.current_version(),
+            )
             blocks = application.build_ui().queue(
                 max_size=8, default_concurrency_limit=1
             )
