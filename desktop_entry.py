@@ -5,7 +5,43 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import importlib.util
 from pathlib import Path
+
+
+def _launch_installed_sources(app_dir: Path, data_dir: Path) -> int:
+    module_names = (
+        "account_client",
+        "update_apply",
+        "update_client",
+        "app",
+        "desktop_launcher",
+    )
+    previous_modules = {name: sys.modules.get(name) for name in module_names}
+    previous_source_mode = os.environ.get("AEE_SOURCE_MODE")
+    os.environ["AEE_SOURCE_MODE"] = "1"
+    sys.path.insert(0, str(app_dir))
+    try:
+        for name in module_names:
+            source = app_dir / f"{name}.py"
+            spec = importlib.util.spec_from_file_location(name, source)
+            if spec is None or spec.loader is None:
+                raise RuntimeError(f"Could not load installed application module: {source}")
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[name] = module
+            spec.loader.exec_module(module)
+        return int(sys.modules["desktop_launcher"].main() or 0)
+    finally:
+        sys.path.remove(str(app_dir))
+        if previous_source_mode is None:
+            os.environ.pop("AEE_SOURCE_MODE", None)
+        else:
+            os.environ["AEE_SOURCE_MODE"] = previous_source_mode
+        for name, module in previous_modules.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
 
 
 def main() -> int:
@@ -25,11 +61,19 @@ def main() -> int:
         venv = cuda_venv
     pythonw = venv / "Scripts" / "pythonw.exe"
     launcher = app_dir / "desktop_launcher.py"
+    runtime_dir = app_dir / "runtime"
     if not pythonw.is_file():
-        pythonw = app_dir / "runtime" / "pythonw.exe"
-    runtime_dir = app_dir
+        pythonw = runtime_dir / "pythonw.exe"
     log_path = data_dir / "startup.log"
     data_dir.mkdir(parents=True, exist_ok=True)
+    if not pythonw.is_file() and getattr(sys, "frozen", False):
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(
+                "Bundled Python launcher unavailable; starting installed sources "
+                "inside the packaged runtime.\n"
+            )
+        return _launch_installed_sources(app_dir, data_dir)
+
     with log_path.open("a", encoding="utf-8") as log:
         log.write(
             f"Desktop bootstrap: executable={sys.executable!r}; app_dir={str(app_dir)!r}; "
@@ -67,6 +111,7 @@ def main() -> int:
     env = os.environ.copy()
     env["AEE_DATA_DIR"] = str(data_dir)
     env["AEE_APP_DIR"] = str(app_dir)
+    env["AEE_SOURCE_MODE"] = "1"
     try:
         process = subprocess.Popen(
             [str(pythonw.resolve()), str(launcher.resolve())],

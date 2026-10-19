@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.53 starts the installed source modules inside the packaged
+Python runtime when no separate runtime is present, so a fresh installation
+does not depend on another Python installation on that computer.
+
 Version 1.2.52 overlaps sequential inference with bounded video-frame
 prefetching, preserving analyzed frame order and selection, and reports the
 active inference device and precision in the ensemble panel.

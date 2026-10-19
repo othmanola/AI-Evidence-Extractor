@@ -20,7 +20,10 @@ from typing import Callable
 APP_ID = "ai-evidence-extractor"
 IS_FROZEN = bool(getattr(sys, "frozen", False))
 APP_DIR = Path(os.environ.get("AEE_APP_DIR", str(Path(__file__).resolve().parent))).resolve()
-RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
+RESOURCE_DIR = (
+    APP_DIR if os.environ.get("AEE_SOURCE_MODE") == "1"
+    else Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
+)
 DATA_DIR = Path(os.environ.get(
     "AEE_DATA_DIR",
     str(Path.home() / "AppData" / "Local" / "AI Evidence Extractor"),

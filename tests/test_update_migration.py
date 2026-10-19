@@ -57,12 +57,24 @@ class UpdateMigrationTests(unittest.TestCase):
         entry = (Path(__file__).resolve().parents[1] / "app_entry.py").read_text(
             encoding="utf-8"
         )
+        installer = (Path(__file__).resolve().parents[1] / "installer.iss").read_text(
+            encoding="utf-8-sig"
+        )
+        desktop_entry = (Path(__file__).resolve().parents[1] / "desktop_entry.py").read_text(
+            encoding="utf-8"
+        )
 
         for module in ("app.py", "desktop_entry.py", "desktop_launcher.py",
                        "update_client.py", "update_apply.py"):
             with self.subTest(module=module):
                 self.assertIn(f'"{module}"', spec)
         self.assertIn("from desktop_entry import main as launch_source_app", entry)
+        self.assertIn(
+            'Source: "dist\\AI Evidence Extractor\\*"; DestDir: "{app}"; '
+            "Flags: ignoreversion recursesubdirs createallsubdirs",
+            installer,
+        )
+        self.assertIn("return _launch_installed_sources(app_dir, data_dir)", desktop_entry)
 
 
 if __name__ == "__main__":
