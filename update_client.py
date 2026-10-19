@@ -20,9 +20,18 @@ from typing import Callable
 APP_ID = "ai-evidence-extractor"
 IS_FROZEN = bool(getattr(sys, "frozen", False))
 APP_DIR = Path(os.environ.get("AEE_APP_DIR", str(Path(__file__).resolve().parent))).resolve()
-RESOURCE_DIR = (
-    APP_DIR if os.environ.get("AEE_SOURCE_MODE") == "1"
-    else Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
+_BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
+_INSTALLED_VERSION_FILE = APP_DIR / "version.txt"
+
+
+def _resource_dir(app_dir: Path, bundle_dir: Path, source_mode: bool) -> Path:
+    if source_mode or (app_dir / "version.txt").is_file():
+        return app_dir
+    return bundle_dir
+
+
+RESOURCE_DIR = _resource_dir(
+    APP_DIR, _BUNDLE_DIR, os.environ.get("AEE_SOURCE_MODE") == "1"
 )
 DATA_DIR = Path(os.environ.get(
     "AEE_DATA_DIR",

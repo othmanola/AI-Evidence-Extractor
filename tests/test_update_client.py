@@ -1,12 +1,43 @@
 import io
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import update_client
 
 
 class UpdateClientTests(unittest.TestCase):
+    def test_installed_version_marker_takes_precedence_over_frozen_bundle(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "installed"
+            bundle_dir = root / "bundle"
+            app_dir.mkdir()
+            bundle_dir.mkdir()
+            (app_dir / "version.txt").write_text("1.2.53", encoding="utf-8")
+            (bundle_dir / "version.txt").write_text("1.2.45", encoding="utf-8")
+
+            resource_dir = update_client._resource_dir(app_dir, bundle_dir, False)
+            self.assertEqual(resource_dir, app_dir)
+            self.assertEqual(
+                (resource_dir / "version.txt").read_text(encoding="utf-8"), "1.2.53"
+            )
+
+    def test_frozen_bundle_version_is_used_before_any_update_is_installed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "installed"
+            bundle_dir = root / "bundle"
+            app_dir.mkdir()
+            bundle_dir.mkdir()
+            (bundle_dir / "version.txt").write_text("1.2.45", encoding="utf-8")
+
+            resource_dir = update_client._resource_dir(app_dir, bundle_dir, False)
+
+        self.assertEqual(resource_dir, bundle_dir)
+
     def test_check_for_updates_uses_fresh_manifest_request(self):
         manifest = {
             "app_id": update_client.APP_ID,

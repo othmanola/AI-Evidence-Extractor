@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.54 prefers the installed version marker after an in-app update,
+preventing an older version embedded in the executable from causing the same
+update to be offered on every launch.
+
 Version 1.2.53 starts the installed source modules inside the packaged
 Python runtime when no separate runtime is present, so a fresh installation
 does not depend on another Python installation on that computer.
