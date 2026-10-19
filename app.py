@@ -2585,21 +2585,34 @@ body.aee-photo-editor-open{overflow:hidden!important;}
 .aee-account-shell [id="aee-settings-profile-section"]{
   border:0!important;background:transparent!important;box-shadow:none!important;}
 .aee-account-profile-form{max-width:none;margin:0;}
-.aee-account-shell .aee-account-profile{position:relative;min-height:132px;box-sizing:border-box;
-  align-items:flex-end;gap:14px;margin:0 0 16px;padding:62px 160px 17px 20px;
-  overflow:hidden;border-color:rgba(148,163,184,.16);border-radius:18px;
-  background:#172033;}
-.aee-account-shell .aee-account-profile:before{display:none;}
+.aee-account-shell .aee-account-profile{position:relative;min-height:148px;box-sizing:border-box;
+  align-items:center;gap:18px;margin:0 0 16px;padding:20px 170px 20px 22px;
+  overflow:hidden;border-color:rgba(148,163,184,.18);border-radius:20px;
+  background:radial-gradient(440px 190px at 100% 0%,rgba(248,113,113,.13),transparent 72%),
+    linear-gradient(125deg,#182238 0%,#131c2c 58%,#171d2c 100%);
+  box-shadow:0 20px 48px -38px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.045) inset;}
+.aee-account-shell .aee-account-profile:before{content:"";position:absolute;left:0;top:22px;bottom:22px;
+  display:block;width:3px;border-radius:0 4px 4px 0;
+  background:linear-gradient(180deg,#fb7770,#e64e5e 72%,transparent);}
 .aee-account-shell .aee-account-avatar,.aee-account-shell .aee-account-identity{position:relative;z-index:1;}
-.aee-account-shell .aee-account-avatar{width:62px;height:62px;border-radius:50%;border:2px solid rgba(248,113,113,.75);
-  color:#fff;background:linear-gradient(145deg,#fa665f,#cb3f54);box-shadow:0 8px 24px -12px rgba(248,113,113,.7);}
-.aee-account-shell .aee-account-identity{padding-bottom:2px;}
-.aee-account-shell .aee-account-identity strong{font-size:1rem;}
-.aee-account-shell .aee-account-identity span{font-size:.77rem;}
-.aee-account-shell .aee-account-mode{margin-top:7px;padding:4px 8px;font-size:.62rem;}
+.aee-account-shell .aee-account-avatar{width:72px;height:72px;border-radius:22px;
+  border:2px solid rgba(255,255,255,.72);color:#fff;
+  background:linear-gradient(145deg,#fa766a,#c83e59);
+  box-shadow:0 0 0 5px rgba(255,255,255,.055),0 12px 28px -14px rgba(248,113,113,.72);}
+.aee-account-shell .aee-account-identity{min-width:0;padding:0;}
+.aee-account-eyebrow{display:block!important;margin:0 0 5px!important;color:#fca5a5!important;
+  font-size:.61rem!important;font-weight:800!important;letter-spacing:.15em!important;
+  line-height:1.3!important;text-transform:uppercase;}
+.aee-account-shell .aee-account-identity strong{font-size:1.1rem;letter-spacing:-.025em;}
+.aee-account-shell .aee-account-identity .aee-account-detail{margin-top:4px;color:#b7c2d3;font-size:.78rem;}
+.aee-account-shell .aee-account-identity .aee-account-joined{margin-top:3px;color:#8897ad;font-size:.7rem;}
+.aee-account-shell .aee-account-mode{margin-top:9px;padding:5px 9px;font-size:.61rem;}
+.aee-settings-profile-header .aee-settings-photo-actions{top:50%;bottom:auto;transform:translateY(-50%);}
 .aee-settings-card{box-sizing:border-box;min-width:0;margin:0;padding:18px;
-  border:1px solid rgba(148,163,184,.15);border-radius:17px;background:rgba(20,28,45,.78);
-  box-shadow:0 20px 50px -42px rgba(0,0,0,.88);}
+  border:1px solid rgba(148,163,184,.16);border-radius:19px;background:rgba(20,28,45,.78);
+  box-shadow:0 18px 46px -40px rgba(0,0,0,.86),0 1px 0 rgba(255,255,255,.025) inset;
+  transition:border-color .18s,background .18s,transform .18s;}
+.aee-settings-card:hover{border-color:rgba(148,163,184,.23);background:rgba(22,31,50,.84);}
 .aee-settings-card>.styler{border-radius:inherit!important;}
 .aee-settings-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
   margin:0 0 15px;padding:0 0 13px;border-bottom:1px solid rgba(148,163,184,.1);}
@@ -2607,7 +2620,7 @@ body.aee-photo-editor-open{overflow:hidden!important;}
   min-height:38px!important;padding:0 13px!important;border:1px solid rgba(248,113,113,.34)!important;
   border-radius:10px!important;color:#fff!important;background:linear-gradient(120deg,#ef665f,#dc4c59)!important;
   box-shadow:0 10px 24px -16px rgba(248,113,113,.9);}
-.aee-settings-card-heading h2{margin:0;color:#edf2fa;font-size:.94rem;font-weight:700;letter-spacing:-.015em;}
+.aee-settings-card-heading h2{margin:0;color:#edf2fa;font-size:.97rem;font-weight:740;letter-spacing:-.02em;}
 .aee-settings-card-heading p{margin:5px 0 0;color:#909db1;font-size:.76rem;line-height:1.55;}
 .aee-settings-fields{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));
   width:100%!important;max-width:none!important;gap:14px!important;align-items:start!important;}
@@ -2907,7 +2920,14 @@ html[data-theme="light"] .aee-settings-language-menu button:hover,
 html[data-theme="light"] .aee-settings-language-menu button[aria-pressed="true"]{
   color:#172033!important;border-color:rgba(100,116,139,.15)!important;
   background:#f1f5f9!important;}
-html[data-theme="light"] .aee-account-shell .aee-account-profile{background:#f1f5f9;}
+html[data-theme="light"] .aee-account-shell .aee-account-profile{
+  border-color:rgba(100,116,139,.17);
+  background:radial-gradient(440px 190px at 100% 0%,rgba(248,113,113,.09),transparent 72%),
+    linear-gradient(125deg,#fff 0%,#f7f8fc 58%,#f1f4f9 100%);
+  box-shadow:0 18px 44px -38px rgba(15,23,42,.28),0 1px 0 rgba(255,255,255,.85) inset;}
+html[data-theme="light"] .aee-account-shell .aee-account-eyebrow{color:#c24149!important;}
+html[data-theme="light"] .aee-account-shell .aee-account-identity .aee-account-detail{color:#475569;}
+html[data-theme="light"] .aee-account-shell .aee-account-identity .aee-account-joined{color:#64748b;}
 html[data-theme="light"] .aee-account-shell .aee-account-mode[data-provider="google"]{
   color:#1e3a8a;border-color:rgba(66,133,244,.22);background:rgba(66,133,244,.08);}
 html[data-theme="light"] .aee-settings-card{background:rgba(255,255,255,.84);border-color:rgba(100,116,139,.17);}
@@ -3014,16 +3034,23 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   .aee-settings-nav-label{display:none;}
   .aee-settings-nav button{width:auto;min-width:max-content;padding:9px 11px;}
   .aee-settings-layout>.aee-settings-main{width:100%!important;flex:1 1 auto!important;}
-  .aee-account-shell .aee-account-profile{min-height:112px;padding:50px 10px 12px;gap:8px;}
-  .aee-account-shell .aee-account-avatar{width:48px;height:48px;}
+  .aee-account-shell .aee-account-profile{min-height:138px;align-items:flex-start;
+    padding:16px 100px 16px 15px;gap:11px;border-radius:16px;}
+  .aee-account-shell .aee-account-profile:before{top:17px;bottom:17px;}
+  .aee-account-shell .aee-account-avatar{width:50px;height:50px;border-radius:16px;}
+  .aee-account-shell .aee-account-identity{padding-top:1px;}
   .aee-account-shell .aee-account-identity strong{font-size:.9rem;}
-  .aee-account-shell .aee-account-identity span{font-size:.7rem;}
+  .aee-account-shell .aee-account-identity .aee-account-detail{font-size:.68rem;}
+  .aee-account-shell .aee-account-identity .aee-account-joined{font-size:.64rem;}
+  .aee-account-shell .aee-account-eyebrow{font-size:.53rem!important;}
+  .aee-account-shell .aee-account-mode{margin-top:7px;padding:4px 7px;font-size:.55rem;}
   .aee-settings-card{padding:15px;}
   .aee-settings-profile-header{gap:10px!important;}
   .aee-settings-profile-header>#aee-account-profile-source{
     flex:1 1 0!important;width:auto!important;min-width:0!important;}
-  .aee-account-shell .aee-account-profile{padding-right:116px;}
-  .aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;right:9px;bottom:10px;gap:7px!important;}
+  .aee-account-shell .aee-account-profile{padding-right:104px;}
+  .aee-settings-photo-actions{flex:0 0 88px!important;width:88px!important;right:9px;top:50%;
+    bottom:auto;transform:translateY(-50%);gap:7px!important;}
   .aee-settings-photo-button button{min-height:36px!important;padding:0 6px!important;font-size:.66rem!important;}
   .aee-photo-editor-header{height:54px;padding:0 12px;}
   .aee-photo-editor-heading{gap:11px;}
@@ -6786,12 +6813,14 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
             'referrerpolicy="no-referrer">'
             if avatar_url else _html.escape(initials[:2].upper())
         )
-        return ('''<section class="aee-account-profile" aria-label="Guest account">
+        return ('''<section class="aee-account-profile" data-account-type="guest"
+          aria-label="Guest account">
           <div class="aee-account-avatar">''' + avatar + '''</div>
-          <div class="aee-account-identity"><strong>''' +
+          <div class="aee-account-identity">
+            <span class="aee-account-eyebrow">Local profile</span><strong>''' +
                 _html.escape(name or "Guest mode") + '''</strong>
-            <span>Local profile · This device only</span>
-            <span class="aee-account-mode">LOCAL ONLY</span></div>
+            <span class="aee-account-detail">Your profile stays on this device</span>
+            <span class="aee-account-mode">GUEST · LOCAL ONLY</span></div>
         </section>''')
     profile = profile if isinstance(profile, dict) else {}
     name = str(profile.get("display_name") or session.get("display_name") or "Your account")
@@ -6816,13 +6845,21 @@ def _account_profile_html(session=None, profile=None, avatar_url=""):
     if created_at:
         try:
             joined_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            joined = f' · Joined {joined_date.strftime("%b %Y")}'
+            joined = joined_date.strftime("%b %Y")
         except ValueError:
             log.warning("The saved account creation date is invalid.")
-    return (f'<section class="aee-account-profile" aria-label="Signed-in account">'
+    joined_html = (
+        f'<span class="aee-account-joined">Member since {_html.escape(joined)}</span>'
+        if joined else ""
+    )
+    return (f'<section class="aee-account-profile" data-account-type="online" '
+            f'aria-label="Signed-in account">'
             f'<div class="aee-account-avatar">{avatar}</div>'
-            f'<div class="aee-account-identity"><strong>{_html.escape(name)}</strong>'
-            f'<span>{_html.escape(email)}{_html.escape(joined)}</span>'
+            f'<div class="aee-account-identity">'
+            f'<span class="aee-account-eyebrow">Account profile</span>'
+            f'<strong>{_html.escape(name)}</strong>'
+            f'<span class="aee-account-detail">{_html.escape(email)}</span>'
+            f'{joined_html}'
             f'{signed_in_badge}</div>'
             f'</section>')
 
@@ -7900,8 +7937,8 @@ def build_ui():
                 with gr.Row(elem_classes=["aee-utility-window-header"]):
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z"/></svg></span>
-                      <div><small>YOUR WORKSPACE</small><h1>Settings</h1>
-                        <p>Manage your profile, preferences, and security.</p></div>
+                      <div><small>ACCOUNT CENTER</small><h1>Account</h1>
+                        <p>Manage your profile, sign-in, and privacy.</p></div>
                     </header>''')
                     account_close_btn = gr.Button(
                         "Back to app", size="sm",

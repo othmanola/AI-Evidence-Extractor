@@ -289,7 +289,7 @@ class AccountUiTests(unittest.TestCase):
         )
 
         for page_title, eyebrow, subtitle in (
-            ("Settings", "YOUR WORKSPACE", "Manage your profile, preferences, and security."),
+            ("Account", "ACCOUNT CENTER", "Manage your profile, sign-in, and privacy."),
             ("Updates", "APP CENTER", "Check for the latest improvements and install updates."),
             ("About Us", "THE PROJECT", "Learn about the workspace and how it supports evidence review."),
             ("Contact Us", "SUPPORT", "Get help, share feedback, or report an issue."),
@@ -304,21 +304,45 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn(".aee-utility-window-shell .aee-project-page-heading p{", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell .aee-project-page-heading h1", app.CSS)
 
-    def test_google_signed_in_profile_has_google_badge_and_solid_background(self):
+    def test_google_signed_in_profile_has_account_identity_and_provider_badge(self):
         session = {
             "auth_provider": "google",
             "display_name": "Alex User",
             "email": "alex@example.com",
+            "created_at": "2024-03-12T00:00:00Z",
         }
         profile_html = app._account_profile_html(session)
 
         self.assertIn('data-provider="google"', profile_html)
         self.assertIn("SIGNED IN WITH GOOGLE", profile_html)
         self.assertIn("<svg viewBox=\"0 0 48 48\"", profile_html)
-        self.assertIn(".aee-account-shell .aee-account-profile:before{display:none;}", app.CSS)
+        self.assertIn('data-account-type="online"', profile_html)
+        self.assertIn("Account profile", profile_html)
+        self.assertIn("alex@example.com", profile_html)
+        self.assertIn("Member since Mar 2024", profile_html)
+        self.assertIn(".aee-account-shell .aee-account-profile:before{content:", app.CSS)
         self.assertIn(".aee-account-shell .aee-account-profile{", app.CSS)
-        self.assertIn("background:#172033;", app.CSS)
-        self.assertIn("html[data-theme=\"light\"] .aee-account-shell .aee-account-profile{background:#f1f5f9;}", app.CSS)
+        self.assertIn("linear-gradient(125deg,#182238", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-account-shell .aee-account-profile{", app.CSS)
+
+    def test_guest_profile_header_explains_local_storage(self):
+        profile_html = app._account_profile_html(
+            None, {"display_name": "Local Guest"}
+        )
+
+        self.assertIn('data-account-type="guest"', profile_html)
+        self.assertIn("Local profile", profile_html)
+        self.assertIn("Your profile stays on this device", profile_html)
+        self.assertIn("GUEST · LOCAL ONLY", profile_html)
+
+    def test_account_profile_header_escapes_identity_content(self):
+        profile_html = app._account_profile_html(
+            {"display_name": "<Alex>", "email": "alex&example.com"}
+        )
+
+        self.assertIn("&lt;Alex&gt;", profile_html)
+        self.assertIn("alex&amp;example.com", profile_html)
+        self.assertNotIn("<Alex>", profile_html)
 
     def test_settings_page_has_navigable_language_and_security_sections(self):
         navigation = app._settings_navigation_html()
@@ -564,7 +588,7 @@ class AccountUiTests(unittest.TestCase):
     def test_profile_dashboard_uses_compact_responsive_photo_picker_and_cards(self):
         self.assertIn(".aee-account-shell .aee-account-profile-form{", app.CSS)
         self.assertIn(
-            ".aee-settings-photo-actions{flex:0 0 96px!important;width:96px!important;",
+            ".aee-settings-photo-actions{flex:0 0 88px!important;width:88px!important;",
             app.CSS,
         )
         self.assertIn("Change photo", tuple(_nested_code_constants(app.build_ui.__code__)))
