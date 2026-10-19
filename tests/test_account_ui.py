@@ -18,6 +18,20 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_updates_badge_uses_installed_version_over_stale_updater_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / "version.txt").write_text("1.2.56", encoding="utf-8")
+            with (
+                patch.dict("os.environ", {"AEE_APP_DIR": temp}),
+                patch.object(
+                    app._update_client, "current_version", return_value="1.2.45"
+                ),
+            ):
+                badge = app._updates_intro_html()
+
+        self.assertIn("Installed version&nbsp; v1.2.56", badge)
+        self.assertNotIn("Installed version&nbsp; v1.2.45", badge)
+
     def test_video_prefetch_keeps_frame_order_and_decode_timestamps(self):
         class Capture:
             def __init__(self):
