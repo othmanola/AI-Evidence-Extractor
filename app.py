@@ -7503,9 +7503,18 @@ def _restart_app_ui():
 
 def _updates_intro_html():
     try:
-        version = _html.escape(_update_client.current_version())
-    except _update_client.UpdateError:
-        version = "unknown"
+        app_dir = Path(os.environ.get("AEE_APP_DIR", Path(__file__).resolve().parent))
+        installed_version = (app_dir / "version.txt").read_text(
+            encoding="utf-8"
+        ).strip()
+        if not _update_client.VERSION_RE.fullmatch(installed_version):
+            raise ValueError("The installed app version file is invalid.")
+        version = _html.escape(installed_version)
+    except (OSError, ValueError):
+        try:
+            version = _html.escape(_update_client.current_version())
+        except _update_client.UpdateError:
+            version = "unknown"
     return f'''<section class="aee-update-card">
       <div class="aee-update-eyebrow"><span class="aee-update-dot"></span> Update center</div>
       <h2 class="aee-update-title">A smoother way to stay current.</h2>
