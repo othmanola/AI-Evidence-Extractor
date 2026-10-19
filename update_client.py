@@ -371,6 +371,10 @@ def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
     runtime_pythonw = app_dir / "runtime" / "pythonw.exe"
     if runtime_pythonw.is_file() and launcher.is_file():
         return [str(runtime_pythonw.resolve()), str(launcher.resolve())], app_dir
+    if getattr(sys, "frozen", False):
+        executable = app_dir / "AI Evidence Extractor.exe"
+        if executable.is_file():
+            return [str(executable.resolve())], app_dir
     if os.name == "nt" and batch_launcher.is_file():
         return [os.environ.get("COMSPEC", "cmd.exe"), "/c", str(batch_launcher.resolve())], app_dir
     if launcher.is_file():
@@ -448,38 +452,69 @@ def restart_app() -> None:
 
     data_dir = DATA_DIR
     command, cwd = _restart_command(data_dir, APP_DIR)
-    helper_interpreter = _restart_helper_interpreter(APP_DIR)
-
-    env = os.environ.copy()
-    env["AEE_DATA_DIR"] = str(data_dir)
-    env["AEE_APP_DIR"] = str(APP_DIR)
-    try:
-        flags = 0
-        if os.name == "nt":
-            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
-        helper_code = (
-            "import json,sys; "
-            "from update_client import _restart_after_exit; "
-            "_restart_after_exit(int(sys.argv[1]), json.loads(sys.argv[2]), "
-            "sys.argv[3], float(sys.argv[4]))"
+    if os.name == "nt" and getattr(sys, "frozen", False) and not (
+        APP_DIR / "runtime" / "python.exe"
+    ).is_file():
+        executable = command[0]
+        ps_quote = lambda value: "'" + str(value).replace("'", "''") + "'"
+        script = (
+            f"Wait-Process -Id {os.getpid()} -ErrorAction SilentlyContinue; "
+            "Start-Sleep -Seconds 2; "
+            f"Start-Process -FilePath {ps_quote(executable)} "
+            f"-WorkingDirectory {ps_quote(cwd)}"
         )
-        log_path = data_dir / "startup.log"
-        with log_path.open("a", encoding="utf-8") as log_file:
-            subprocess.Popen(
-                [
-                    helper_interpreter, "-c", helper_code, str(os.getpid()),
-                    json.dumps(command), str(cwd), "2.0",
-                ],
-                cwd=str(APP_DIR),
-                env=env,
-                close_fds=True,
-                creationflags=flags,
-                stdin=subprocess.DEVNULL,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+        try:
+            with (data_dir / "startup.log").open("a", encoding="utf-8") as log_file:
+                subprocess.Popen(
+                    [
+                        "powershell.exe",
+                        "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
+                        "-Command", script,
+                    ],
+                    cwd=str(cwd),
+                    env=os.environ.copy(),
+                    close_fds=True,
+                    creationflags=flags,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                )
+        except Exception as exc:
+            raise UpdateError(f"Could not restart the application automatically: {exc}") from exc
+    else:
+        helper_interpreter = _restart_helper_interpreter(APP_DIR)
+
+        env = os.environ.copy()
+        env["AEE_DATA_DIR"] = str(data_dir)
+        env["AEE_APP_DIR"] = str(APP_DIR)
+        try:
+            flags = 0
+            if os.name == "nt":
+                flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+            helper_code = (
+                "import json,sys; "
+                "from update_client import _restart_after_exit; "
+                "_restart_after_exit(int(sys.argv[1]), json.loads(sys.argv[2]), "
+                "sys.argv[3], float(sys.argv[4]))"
             )
-    except Exception as exc:
-        raise UpdateError(f"Could not restart the application automatically: {exc}") from exc
+            log_path = data_dir / "startup.log"
+            with log_path.open("a", encoding="utf-8") as log_file:
+                subprocess.Popen(
+                    [
+                        helper_interpreter, "-c", helper_code, str(os.getpid()),
+                        json.dumps(command), str(cwd), "2.0",
+                    ],
+                    cwd=str(APP_DIR),
+                    env=env,
+                    close_fds=True,
+                    creationflags=flags,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                )
+        except Exception as exc:
+            raise UpdateError(f"Could not restart the application automatically: {exc}") from exc
 
     def _terminate():
         import time

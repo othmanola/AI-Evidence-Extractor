@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import update_apply
 import update_client
@@ -48,6 +49,19 @@ class UpdateMigrationTests(unittest.TestCase):
             command, cwd = update_client._restart_command(data_dir, app_dir)
 
         self.assertEqual(command, [str(pythonw.resolve()), str(launcher.resolve())])
+        self.assertEqual(cwd, app_dir)
+
+    def test_frozen_restart_uses_installed_executable_when_private_runtime_is_missing(self):
+        with TemporaryDirectory() as temp:
+            app_dir = Path(temp) / "app"
+            app_dir.mkdir()
+            executable = app_dir / "AI Evidence Extractor.exe"
+            executable.touch()
+
+            with patch("sys.frozen", True, create=True):
+                command, cwd = update_client._restart_command(Path(temp) / "data", app_dir)
+
+        self.assertEqual(command, [str(executable.resolve())])
         self.assertEqual(cwd, app_dir)
 
     def test_installer_packages_loose_sources_for_internal_updates(self):
