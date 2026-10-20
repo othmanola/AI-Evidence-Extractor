@@ -358,7 +358,31 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("window.aeeToggleTheme = toggleTheme", app._JS_HEAD)
         self.assertIn("Discard your unsaved profile changes?", app._JS_HEAD)
         self.assertIn("applyAeeLanguage", app._JS_HEAD)
+        self.assertIn("AEE_ARABIC_TRANSLATIONS", app._JS_HEAD)
+        self.assertIn("'Manage your profile, sign-in, and privacy.'", app._JS_HEAD)
+        self.assertIn("'أدر ملفك الشخصي وتسجيل الدخول وإعدادات الخصوصية.'", app._JS_HEAD)
+        self.assertIn("'Personal information':'المعلومات الشخصية'", app._JS_HEAD)
+        self.assertIn("trimmed.split('AI Evidence Extractor').join(brandMarker)", app._JS_HEAD)
+        self.assertIn("value.trim().replace(/\\s+/g, ' ')", app._JS_HEAD)
+        self.assertIn("aeeTranslateSubtree(document.documentElement, arabic)", app._JS_HEAD)
+        self.assertIn("new MutationObserver(records =>", app._JS_HEAD)
         self.assertIn("aee-language", app._JS_HEAD)
+        self.assertIn(
+            'html[dir="rtl"] .gradio-container [dir="ltr"]{direction:rtl!important;}',
+            app.CSS,
+        )
+        self.assertIn('html[dir="rtl"] .aee-nav-drawer{right:0;left:auto;', app.CSS)
+        self.assertIn(
+            'html[dir="rtl"] .aee-account-shell .aee-settings-photo-actions{right:auto!important;left:14px!important;}',
+            app.CSS,
+        )
+        self.assertIn(
+            'html[dir="rtl"] .aee-account-shell .aee-settings-photo-actions{\n'
+            '    right:auto!important;left:9px!important;}',
+            app.CSS,
+        )
+        self.assertIn('html[dir="rtl"] .gradio-container{', app.CSS)
+        self.assertIn('font-family:Tahoma,Arial,sans-serif!important;', app.CSS)
         self.assertIn(
             '<details class="aee-settings-language-control">',
             navigation,

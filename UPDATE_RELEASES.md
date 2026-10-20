@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.59 adds a complete Arabic interface with right-to-left layout,
+including mirrored navigation and account pages, and fixes mobile placement of
+the profile-photo actions in RTL mode.
+
 Version 1.2.58 refreshes the Account page with clearer profile identity,
 improved local and signed-in profile summaries, and responsive styling.
 

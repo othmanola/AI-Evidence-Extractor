@@ -4047,6 +4047,69 @@ html[data-theme="light"] .aee-upload-shell{
     font-size:.64rem!important;}
   .aee-toolbar .aee-update-app svg{width:14px!important;height:14px!important;}
 }
+html[dir="rtl"],html[dir="rtl"] body,html[dir="rtl"] .gradio-container{
+  direction:rtl;font-family:Tahoma,Arial,sans-serif!important;}
+html[dir="rtl"] .gradio-container [dir="ltr"]{direction:rtl!important;}
+html[dir="rtl"] .gradio-container .aee-account-profile{direction:rtl;}
+html[dir="rtl"] .aee-hero,html[dir="rtl"] .aee-project-page-heading,
+html[dir="rtl"] .aee-history-heading,html[dir="rtl"] .aee-history-section-heading,
+html[dir="rtl"] .aee-update-copy,html[dir="rtl"] .aee-settings-card,
+html[dir="rtl"] .aee-settings-nav,html[dir="rtl"] .aee-account-shell,
+html[dir="rtl"] .aee-history-window,html[dir="rtl"] .aee-update-window,
+html[dir="rtl"] .aee-about-window,html[dir="rtl"] .aee-contact-window{
+  text-align:right;}
+html[dir="rtl"] .aee-nav-toggle{right:16px;left:auto;}
+html[dir="rtl"] .aee-nav-drawer{right:0;left:auto;transform:translateX(105%);}
+html[dir="rtl"] .aee-nav-open .aee-nav-drawer{transform:translateX(0);}
+html[dir="rtl"] .aee-nav-item:hover{transform:translateX(-2px);}
+html[dir="rtl"] .aee-nav-group-label,html[dir="rtl"] .aee-nav-foot{text-align:right;}
+html[dir="rtl"] .aee-account-shell .aee-account-profile:before{right:0;left:auto;
+  border-radius:4px 0 0 4px;}
+html[dir="rtl"] .aee-account-shell .aee-account-profile{padding-right:22px;padding-left:170px;}
+html[dir="rtl"] .aee-account-shell .aee-settings-photo-actions{right:auto!important;left:14px!important;}
+@media(max-width:640px){
+  html[dir="rtl"] .aee-account-shell .aee-account-profile{
+    padding-right:15px!important;padding-left:104px!important;}
+  html[dir="rtl"] .aee-account-shell .aee-settings-photo-actions{
+    right:auto!important;left:9px!important;}
+}
+html[dir="rtl"] .aee-settings-nav button,html[dir="rtl"] .aee-settings-nav summary,
+html[dir="rtl"] .aee-settings-language-menu button{text-align:right;}
+html[dir="rtl"] .aee-history-metadata dt,html[dir="rtl"] .aee-history-metadata dd,
+html[dir="rtl"] .aee-history-row-info,html[dir="rtl"] .aee-history-detail{
+  text-align:right;}
+html[dir="rtl"] .aee-update-actions,html[dir="rtl"] .aee-account-actions,
+html[dir="rtl"] .aee-account-profile-actions{direction:rtl;}
+html[dir="rtl"] .aee-update-progress-detail{text-align:left;}
+html[dir="rtl"] .aee-account-shell input[type="email"],html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="password"],html[dir="rtl"] input[type="search"],
+html[dir="rtl"] input[type="number"],html[dir="rtl"] .aee-history-row-title,
+html[dir="rtl"] .aee-history-metadata dd,html[dir="rtl"] code,html[dir="rtl"] pre,
+html[dir="rtl"] .aee-version-pill{
+  direction:ltr!important;unicode-bidi:plaintext;text-align:left;}
+html[dir="rtl"] input[placeholder^="https://"],
+html[dir="rtl"] input[placeholder^="sb_"]{direction:ltr!important;text-align:left;}
+html[dir="rtl"] .aee-about-card:before,html[dir="rtl"] .aee-contact-card:before{
+  right:0;left:auto;border-radius:4px 0 0 4px;}
+html[dir="rtl"] .aee-progress-bar{transform-origin:right center;}
+html[dir="rtl"] .aee-up-progress-detail{text-align:right;}
+html[dir="rtl"] .aee-up-progress.indeterminate .aee-up-progress-bar{
+  animation-name:aee-progress-indeterminate-rtl;}
+@keyframes aee-progress-indeterminate-rtl{
+  0%{transform:translateX(120%);}100%{transform:translateX(-320%);}}
+html[dir="rtl"] .aee-heat-jump{margin-right:auto;margin-left:0;}
+html[dir="rtl"] .aee-heat-model-chip{direction:rtl;}
+html[dir="rtl"] .aee-settings-language-menu button[aria-pressed="true"]:after{
+  right:auto;left:12px;}
+html[dir="rtl"] .aee-formats-title,html[dir="rtl"] .aee-formats-note,
+html[dir="rtl"] .aee-up-head,html[dir="rtl"] .aee-up-progress-hint{
+  direction:rtl;}
+html[dir="rtl"] .aee-account-divider:before,html[dir="rtl"] .aee-account-divider:after{
+  background:linear-gradient(270deg,transparent,rgba(148,163,184,.28),transparent);}
+html[dir="rtl"] .aee-account-divider{letter-spacing:0;}
+html[dir="rtl"] .aee-account-eyebrow,html[dir="rtl"] .aee-settings-section-label,
+html[dir="rtl"] .aee-stat-lbl,html[dir="rtl"] .aee-nav-group-label{
+  letter-spacing:0;}
 """
 
 
@@ -5193,10 +5256,348 @@ _JS_HEAD = r"""
     field.dataset.aeeInitialValue = field.value;
     delete field.dataset.aeeModified;
   }
+  const AEE_ARABIC_TRANSLATIONS = Object.freeze({
+    'English':'الإنجليزية','Arabic':'العربية',
+    'Open navigation':'فتح قائمة التنقل','Close navigation':'إغلاق قائمة التنقل',
+    'App navigation':'قائمة التطبيق','Project menu':'قائمة المشروع',
+    'Workspace':'مساحة العمل','Back to workspace':'العودة إلى مساحة العمل',
+    'Project':'المشروع','Account':'الحساب','account':'الحساب',
+    'Detailed History':'السجل التفصيلي',
+    'Updates':'التحديثات','About Us':'من نحن','Contact Us':'اتصل بنا',
+    'AI-assisted video evidence review':'مراجعة أدلة الفيديو بمساعدة الذكاء الاصطناعي',
+    'Human review remains essential.':'تظل المراجعة البشرية ضرورية.',
+    'Video intelligence workspace':'منصة ذكية لتحليل الفيديو',
+    'AI-assisted forensic video analysis':'تحليل جنائي للفيديو بمساعدة الذكاء الاصطناعي',
+    'Review detections, follow object tracks, inspect model explanations, and export a complete evidence report from one workspace.':'راجع نتائج الاكتشاف، وتتبّع الأجسام، وافحص تفسيرات النماذج، وصدّر تقرير أدلة متكاملاً من مساحة عمل واحدة.',
+    'Threat scoring':'تقييم مستوى التهديد','Object tracking':'تتبّع الأجسام',
+    'Model explainability':'تفسير نتائج النماذج','Learned':'تعلّم آلي',
+    'Agreement':'توافق النماذج','models':'نماذج','fusion':'دمج',
+    'Analysis workflow':'خطوات التحليل','Add video':'إضافة فيديو',
+    'Configure':'الإعدادات','Analyze':'تحليل','Review & export':'مراجعة وتصدير',
+    'Evidence intake':'استيراد الأدلة','batch supported':'يدعم المعالجة الدفعية',
+    'Fingerprint every byte before analysis':'تحقق من سلامة البيانات قبل التحليل',
+    'READY':'جاهز','Supported video formats':'تنسيقات الفيديو المدعومة',
+    'Supported formats':'التنسيقات المدعومة','total':'إجمالاً',
+    'supported':'مدعوم','weapon':'سلاح',
+    'Weapon':'سلاح','Firearm':'سلاح ناري','Gun':'سلاح ناري',
+    'Blunt_Weapon':'سلاح غير ناري','Explosive':'مادة متفجرة',
+    'Fire_Smoke':'حريق أو دخان','Melee_Weapon':'سلاح أبيض',
+    'Person':'شخص','person':'شخص','face':'وجه','knife':'سكين',
+    'pistol':'مسدس','Tool':'أداة','Violence':'عنف','Criminal':'مجرم',
+    'Context':'سياق','classes':'فئات','conf':'الثقة','gate':'الحد',
+    'Object Tracking':'تتبّع الأجسام','History':'السجل',
+    'Analyzed':'تم التحليل','analysed':'تم التحليل','clips':'مقاطع',
+    'sec':'ثانية','avg':'المتوسط',
+    'No size limit · batch upload supported · content-hashed':'بلا حد للحجم · يدعم التحميل الدفعي · مع التحقق من سلامة الملفات',
+    'Preparing upload…':'جارٍ تجهيز التحميل…','Connecting…':'جارٍ الاتصال…',
+    'Preparing a secure upload.':'جارٍ إعداد تحميل آمن.',
+    'Use test-time augmentation on supported models for difficult or small objects.':'استخدم تحسين وقت الاختبار مع النماذج المدعومة لاكتشاف الأجسام الصغيرة أو صعبة الرصد.',
+    'Ensemble Configuration':'إعداد مجموعة النماذج',
+    'active':'نشط','context':'سياق',
+    'Inference device:':'جهاز الاستدلال:','Combined vocabulary':'الفئات المجمّعة',
+    'Supported formats ·':'التنسيقات المدعومة ·',
+    'download any clip below':'نزّل أي مقطع أدناه',
+    'Download any clip below':'نزّل أي مقطع أدناه',
+    'More tabs':'علامات تبويب إضافية','Empty value':'قيمة فارغة',
+    'Thumbnail':'صورة مصغّرة','detections':'اكتشافات',
+    'Duration':'المدة','Mode':'الوضع','Standard':'قياسي',
+    'Case':'القضية','Not specified':'غير محدد','Original video':'الفيديو الأصلي',
+    'Resolution':'الدقة','Frame rate':'معدل الإطارات',
+    'Downloading':'جارٍ التنزيل','Preparing':'جارٍ التجهيز',
+    'Display name':'الاسم المعروض','Personal information':'المعلومات الشخصية',
+    'Update the profile details associated with your account.':'حدّث بيانات الملف الشخصي المرتبطة بحسابك.',
+    'Unsaved changes · Save to keep your updates.':'توجد تغييرات غير محفوظة · احفظها للاحتفاظ بالتعديلات.',
+    'Guest profile details stay on this computer. Signed-in profile details are saved to your Supabase account. Email changes require confirmation from your inbox.':'تُحفظ بيانات ملف الضيف على هذا الكمبيوتر. أما بيانات الملف المرتبط بحساب، فتُحفظ في حسابك على Supabase. يتطلب تغيير البريد الإلكتروني تأكيداً عبر صندوق الوارد.',
+    'Security & account':'الأمان والحساب','security':'الأمان',
+    'Manage how you sign in and connect your account.':'أدر طرق تسجيل الدخول وربط حسابك.',
+    'Saved account session restored.':'تمت استعادة جلسة الحساب المحفوظة.',
+    'Email changes require confirmation from your inbox.':'يتطلب تغيير البريد الإلكتروني تأكيداً عبر صندوق الوارد.',
+    'Enhanced accuracy (slower)':'دقة محسّنة (أبطأ)',
+    'Ready to analyze':'جاهز للتحليل',
+    'Upload footage and press':'حمّل مقطع الفيديو واضغط على',
+    'to extract weapon evidence with threat scoring, object identity, and EigenCAM explainability.':'لاستخراج أدلة الأسلحة وتقييم التهديدات وتتبع الأجسام وتفسير النتائج باستخدام EigenCAM.',
+    'Metadata':'البيانات الوصفية','Audio':'الصوت','Detect':'اكتشاف',
+    'Highlights':'المقاطع المهمة','Summaries':'الملخصات','Overall':'الإجمالي',
+    'Frame':'الإطار','Sampled':'العينات','Throughput':'معدل المعالجة',
+    'Detections':'الاكتشافات','detections':'اكتشافات',
+    'Per-model inference time':'زمن الاستدلال لكل نموذج',
+    'Recent analyzed videos':'مقاطع الفيديو التي جرى تحليلها مؤخراً',
+    'A simple overview of completed analyses saved on this computer.':'عرض موجز للتحليلات المكتملة المحفوظة على هذا الجهاز.',
+    'Preview summary':'معاينة الملخص','Filter by object, source, or video':'تصفية حسب الجسم أو المصدر أو الفيديو',
+    'Video summaries':'ملخصات الفيديو',
+    'Explainability':'تفسير النتائج','Evidence log':'سجل الأدلة',
+    'Reports & exports':'التقارير والتصدير','Captures':'اللقطات',
+    'Object track analytics':'تحليلات تتبّع الأجسام',
+    'Per-track lifecycle, persistence, threat level, and re-identification events aggregated across all analysed videos.':'ملخص دورة حياة كل مسار واستمراريته ومستوى تهديده وأحداث إعادة التعرّف عبر جميع مقاطع الفيديو.',
+    'Class-agnostic activation heatmaps per weapon detection. Heatmap-only and blended views are cached for every detection.':'خرائط تنشيط حرارية لكل اكتشاف سلاح، بصورتها الحرارية أو المدمجة، مع حفظ نسخة لكل اكتشاف.',
+    'Master summary video':'الفيديو الموجز الرئيسي',
+    'Union of every detection.':'يجمع جميع الاكتشافات.',
+    'Forensic PDF report':'تقرير الأدلة الجنائية بصيغة PDF',
+    'Evidence log + object-track threat analytics.':'سجل الأدلة وتحليلات تهديد مسارات الأجسام.',
+    'ANALYSIS ARCHIVE':'أرشيف التحليلات',
+    'Browse saved analyses, evidence files, detection records, and object tracks.':'استعرض التحليلات المحفوظة وملفات الأدلة وسجلات الاكتشاف ومسارات الأجسام.',
+    'Download all history ZIP':'تنزيل السجل كاملاً بصيغة ZIP',
+    'Save your profile':'حفظ الملف الشخصي',
+    'Connect your Supabase project':'ربط مشروع Supabase',
+    'Copy the project URL and public publishable key (or legacy anon key) from your Supabase project API settings. Never use a service-role or secret key. Run the setup SQL below in the Supabase SQL Editor. The connection is tested before these settings are saved, and the SQL is safe to rerun.':'انسخ رابط المشروع ومفتاح النشر العام (أو مفتاح anon القديم) من إعدادات واجهة API في مشروع Supabase. لا تستخدم مفتاح الخدمة أو أي مفتاح سري. نفّذ استعلام SQL أدناه في محرر SQL لدى Supabase. سيُختبر الاتصال قبل حفظ الإعدادات، ويمكن إعادة تشغيل الاستعلام بأمان.',
+    'View setup instructions':'عرض تعليمات الإعداد',
+    'Supabase project URL':'رابط مشروع Supabase',
+    'Supabase public API key':'مفتاح Supabase العام لواجهة API',
+    'Save and test connection':'حفظ الإعدادات واختبار الاتصال',
+    'Run in Supabase SQL Editor':'التنفيذ في محرر SQL لدى Supabase',
+    'Connection setup':'إعداد الاتصال','Account security':'أمان الحساب',
+    'Profile details':'تفاصيل الملف الشخصي',
+    'Your work stays private. Videos, analysis history, and reports remain on this device, whether you create an account or continue as a guest.':'تبقى بياناتك خاصة. تُحفظ مقاطع الفيديو وسجل التحليلات والتقارير على هذا الجهاز، سواء أنشأت حساباً أو تابعت كضيف.',
+    'Online sign-in is not configured on this device yet. Continue as a guest, or ask your administrator to configure online accounts.':'لم يُعدّ تسجيل الدخول عبر الإنترنت على هذا الجهاز بعد. يمكنك المتابعة كضيف أو طلب إعداد الحسابات عبر الإنترنت من المسؤول.',
+    'Built for careful review':'مصمم لمراجعة دقيقة',
+    'Evidence deserves a clearer picture.':'تستحق الأدلة عرضاً أوضح.',
+    'AI Evidence Extractor brings video analysis and evidence review together in one desktop workspace. Explore object detections, follow tracks, inspect model explanations, and prepare reports without losing sight of the source footage.':'يجمع AI Evidence Extractor تحليل الفيديو ومراجعة الأدلة في مساحة عمل واحدة. استعرض اكتشافات الأجسام ومساراتها وتفسيرات النماذج، وأعدّ التقارير مع الحفاظ على إمكانية الرجوع إلى الفيديو الأصلي.',
+    'Project capabilities':'إمكانات المشروع','Video analysis':'تحليل الفيديو',
+    'Review footage with an ensemble of detection models.':'راجع مقاطع الفيديو باستخدام مجموعة من نماذج الاكتشاف.',
+    'Evidence review':'مراجعة الأدلة',
+    'Explore captures, object tracks, and model explanations.':'استعرض اللقطات ومسارات الأجسام وتفسيرات النماذج.',
+    'Case context':'سياق القضية',
+    'Keep analysis history and case details close at hand.':'احتفظ بسجل التحليلات وتفاصيل القضية في متناولك.',
+    'Report exports':'تصدير التقارير',
+    'Prepare evidence summaries and downloadable reports.':'أعدّ ملخصات الأدلة والتقارير القابلة للتنزيل.',
+    'Human review stays in control':'تظل المراجعة البشرية هي الأساس',
+    'Detections, threat scores, and explanations are decision-support tools. Always verify findings against the original video.':'نتائج الاكتشاف وتقييمات التهديد والتفسيرات أدوات لدعم القرار. تحقّق دائماً من النتائج بالرجوع إلى الفيديو الأصلي.',
+    'Contact the project team':'تواصل مع فريق المشروع',
+    'Share questions, feature ideas, or bug reports through the project issue tracker. For a useful report, include the app version and steps to reproduce the issue. Do not post private videos, case details, or other sensitive evidence.':'أرسل أسئلتك واقتراحاتك أو بلاغات الأخطاء عبر متعقّب مشكلات المشروع. لتسهيل معالجة البلاغ، أرفق إصدار التطبيق وخطوات إعادة إظهار المشكلة. لا تنشر مقاطع خاصة أو تفاصيل القضايا أو أي أدلة حساسة.',
+    'Open GitHub Issues':'فتح مشكلات GitHub',
+    'Send us a message':'أرسل إلينا رسالة',
+    'Name':'الاسم','Message':'الرسالة','Send message':'إرسال الرسالة',
+    'Download Master MP4':'تنزيل الفيديو الرئيسي بصيغة MP4',
+    'Download PDF Report':'تنزيل التقرير بصيغة PDF',
+    'Track detail':'تفاصيل التتبع','Activation heatmaps':'خرائط التنشيط الحرارية',
+    'Open profile settings':'فتح إعدادات الملف الشخصي',
+    'Profile settings':'إعدادات الملف الشخصي','Update the app':'تحديث التطبيق',
+    'Open app updates':'فتح تحديثات التطبيق','Toggle theme (T)':'تبديل السمة (T)',
+    'Command palette (Ctrl+K)':'لوحة الأوامر (Ctrl+K)',
+    'Type a command or jump to a tab…':'اكتب أمراً أو انتقل إلى علامة تبويب…',
+    'Video upload progress':'تقدم تحميل الفيديو',
+    'Edit profile photo':'تعديل صورة الملف الشخصي',
+    'Cancel photo edit':'إلغاء تعديل الصورة',
+    'Drag to position the photo inside the square crop':'اسحب الصورة لضبط موضعها داخل إطار القص المربع',
+    'Photo zoom':'تكبير الصورة','Zoom out':'تصغير','Zoom photo':'تكبير الصورة',
+    'Zoom in':'تكبير','Choose a profile photo':'اختيار صورة للملف الشخصي',
+    'Settings sections':'أقسام الإعدادات',
+    'Overview':'نظرة عامة','Evidence':'الأدلة','Analysis':'التحليل',
+    'Upload video':'تحميل فيديو','Upload videos':'تحميل مقاطع الفيديو',
+    'Reset':'إعادة ضبط','← Reset':'إعادة ضبط ←',
+    'Run analysis':'بدء التحليل','⚡ Run analysis':'⚡ بدء التحليل',
+    'High accuracy':'دقة عالية',
+    'Search':'بحث','Class':'الفئة','All':'الكل',
+    'Export tracks CSV':'تصدير مسارات التتبع بصيغة CSV',
+    'Export detections CSV':'تصدير النتائج بصيغة CSV',
+    'Export detections JSON':'تصدير النتائج بصيغة JSON',
+    'Refresh history':'تحديث السجل',
+    'Clear all history':'مسح السجل بالكامل','Details':'التفاصيل',
+    'Download ZIP':'تنزيل ZIP','Remove':'إزالة','Captures and CAM evidence':'اللقطات وأدلة خرائط التنشيط',
+    'Reports and generated files':'التقارير والملفات المُنشأة',
+    'Detection records':'سجلات الاكتشاف','Complete saved detections for the selected analysis.':'كافة الاكتشافات المحفوظة للتحليل المحدد.',
+    'Object tracks':'مسارات الأجسام','Saved per-object tracking and threat analytics.':'بيانات التتبع وتحليل المخاطر المحفوظة لكل جسم.',
+    'Your analysis archive':'أرشيف التحليلات','Browse your analyzed videos in order. Open details, download an analysis ZIP, or remove an item from this computer.':'استعرض مقاطع الفيديو التي جرى تحليلها. افتح التفاصيل، أو نزّل التحليل بصيغة ZIP، أو أزل عنصراً من هذا الجهاز.',
+    'No saved analyses yet':'لا توجد تحليلات محفوظة بعد',
+    'Completed video analyses will appear here.':'ستظهر هنا تحليلات الفيديو المكتملة.',
+    'Select an analysis':'اختر تحليلاً','Analysis not found':'لم يتم العثور على التحليل',
+    'Case notes:':'ملاحظات القضية:','ZIP export failed':'تعذر تصدير ملف ZIP',
+    'ZIP ready:':'ملف ZIP جاهز:','Analysis removed':'تمت إزالة التحليل',
+    'Could not remove analysis':'تعذرت إزالة التحليل',
+    'Some generated files need cleanup':'تحتاج بعض الملفات المُنشأة إلى التنظيف',
+    'Could not clear history':'تعذر مسح السجل','History cleared':'تم مسح السجل',
+    'Account center':'مركز الحساب','ACCOUNT CENTER':'مركز الحساب',
+    'Manage your profile, sign-in, and privacy.':'أدر ملفك الشخصي وتسجيل الدخول وإعدادات الخصوصية.',
+    'Back to app':'العودة إلى التطبيق','Your name':'اسمك',
+    'Enter your name':'أدخل اسمك','Email address':'عنوان البريد الإلكتروني',
+    'Password':'كلمة المرور','Enter your password':'أدخل كلمة المرور',
+    'you@example.com':'you@example.com',
+    'Create my account':'إنشاء حسابي','Log in':'تسجيل الدخول',
+    'Already have an account? Log in':'لديك حساب بالفعل؟ سجّل الدخول',
+    'or continue with':'أو المتابعة باستخدام','Continue with Google':'المتابعة باستخدام Google',
+    'or':'أو','Continue as a guest':'المتابعة كضيف',
+    'Your work stays private.':'تبقى بيانات عملك خاصة.',
+    'Local profile':'ملف شخصي محلي','Your profile stays on this device':'يبقى ملفك الشخصي على هذا الجهاز',
+    'GUEST · LOCAL ONLY':'ضيف · محلي فقط','Account profile':'الملف الشخصي للحساب',
+    'Member since':'عضو منذ','SIGNED IN WITH GOOGLE':'تم تسجيل الدخول باستخدام Google',
+    'Save changes':'حفظ التغييرات','Save profile':'حفظ الملف الشخصي',
+    'Refresh profile':'تحديث الملف الشخصي','Change photo':'تغيير الصورة',
+    'Apply photo':'تطبيق الصورة','Sign out':'تسجيل الخروج',
+    'Continue with another account':'المتابعة بحساب آخر',
+    'Security':'الأمان','Language':'اللغة','Choose language':'اختر اللغة',
+    'Settings':'الإعدادات','Profile':'الملف الشخصي',
+    'Update center':'مركز التحديثات','APP CENTER':'مركز التطبيق',
+    'Check for the latest improvements and install updates.':'تحقق من أحدث التحسينات وثبّت التحديثات.',
+    'Check for updates':'التحقق من وجود تحديثات','Check for Updates':'التحقق من وجود تحديثات',
+    'Download update':'تنزيل التحديث','Download Update':'تنزيل التحديث',
+    'Install update':'تثبيت التحديث','Install Update':'تثبيت التحديث',
+    'Restart app':'إعادة تشغيل التطبيق','Restart App':'إعادة تشغيل التطبيق',
+    'The update is downloaded, checksum-verified, and ready to apply. Select Install Update to see the in-app installation progress.':'تم تنزيل التحديث والتحقق من سلامته وأصبح جاهزاً للتثبيت. اختر «تثبيت التحديث» لمتابعة التقدم داخل التطبيق.',
+    'Could not reach the update service. Check your internet connection and try again.':'تعذر الاتصال بخدمة التحديث. تحقق من اتصال الإنترنت وحاول مجدداً.',
+    'A smoother way to stay current.':'ابقَ على اطلاع بأحدث إصدار بسهولة.',
+    'Check for a release, review it, and update without opening a setup file. The download and each installation step show live progress in this window.':'تحقق من إصدار جديد وراجعه وثبّته دون فتح ملف إعداد. ستظهر هنا مباشرةً مراحل التنزيل والتثبيت.',
+    'Check for a release, review it, and update without opening a setup file.':'تحقق من إصدار جديد وراجعه وثبّته دون فتح ملف إعداد.',
+    'The download and each installation step show live progress in this window.':'ستظهر هنا مباشرةً مراحل التنزيل والتثبيت.',
+    'Installed version':'الإصدار المثبّت','How app updates work':'كيفية تحديث التطبيق',
+    'Check':'تحقق','Look for the latest release securely.':'ابحث بأمان عن أحدث إصدار.',
+    'Download':'تنزيل','Track download and checksum verification in the app.':'تابع التنزيل والتحقق من سلامة الملف داخل التطبيق.',
+    'Apply':'تطبيق','Watch file-by-file progress, then restart to load the update.':'تابع تقدم تحديث الملفات، ثم أعد التشغيل لتفعيل التحديث.',
+    'THE PROJECT':'عن المشروع','Learn about the workspace and how it supports evidence review.':'تعرّف على مساحة العمل وكيفية دعمها لمراجعة الأدلة.',
+    'SUPPORT':'الدعم','Get help, share feedback, or report an issue.':'احصل على المساعدة أو أرسل ملاحظاتك أو أبلغ عن مشكلة.',
+    'Video evidence analysis':'تحليل أدلة الفيديو','Videos':'مقاطع الفيديو',
+    'Weapon dets':'اكتشافات الأسلحة','Context hits':'المؤشرات السياقية',
+    'Elapsed':'الوقت المنقضي',
+    'Threat Distribution':'توزيع مستوى التهديد','Top-risk detections':'الاكتشافات الأعلى خطورة',
+    'critical':'حرج','high':'مرتفع','medium':'متوسط','low':'منخفض',
+    'Case number':'رقم القضية','Evidence ID':'معرّف الدليل',
+    'Examiner':'الفاحص','Agency':'الجهة','Case notes':'ملاحظات القضية',
+    'Export detections':'تصدير الاكتشافات','Export tracks':'تصدير المسارات',
+    'Refresh':'تحديث','Cancel':'إلغاء',
+    'Threat analysis':'تحليل التهديدات',
+    'Download report':'تنزيل التقرير','Download PDF':'تنزيل PDF',
+    'No results yet':'لا توجد نتائج بعد','Processing':'جارٍ المعالجة',
+    'Analysis completed':'اكتمل التحليل','Analysis stopped.':'تم إيقاف التحليل.',
+    'Apply the update':'تطبيق التحديث',
+    'Installing update':'جارٍ تثبيت التحديث',
+    'Signed in with Google.':'تم تسجيل الدخول باستخدام Google.',
+    'Language preferences':'تفضيلات اللغة','Choose a language':'اختر لغة',
+    'Select video files':'اختر ملفات الفيديو','Reports':'التقارير',
+    'Status':'الحالة','Date':'التاريخ','Type':'النوع','Object':'الجسم',
+    'Timestamp':'الطابع الزمني','Confidence':'مستوى الثقة','Risk':'مستوى الخطورة',
+    'Select another saved video to inspect its evidence and reports.':'اختر فيديو محفوظاً آخر لمراجعة أدلته وتقاريره.',
+    'Some files were not saved':'لم يتم حفظ بعض الملفات',
+    'analysis included.':'تحليل مُضمّن.',
+    'Analysis removed.':'تمت إزالة التحليل.','saved analysis(es) cleared.':'تم مسح التحليلات المحفوظة.',
+    'Could not start the update:':'تعذر بدء التحديث:',
+    'Applying update files…':'جارٍ تطبيق ملفات التحديث…',
+    'Update':'تحديث','installed successfully.':'تم التثبيت بنجاح.',
+    'Restarting AI Evidence Extractor…':'جارٍ إعادة تشغيل AI Evidence Extractor…',
+    'Signed-in account':'الحساب المسجّل',
+    'Guest account':'حساب ضيف',
+    'This profile is stored on this device only.':'يُحفظ هذا الملف الشخصي على هذا الجهاز فقط.',
+    'Email':'البريد الإلكتروني','Username':'اسم المستخدم',
+    'Save':'حفظ','Save profile changes':'حفظ تغييرات الملف الشخصي',
+    'Update profile':'تحديث الملف الشخصي','Change account':'تغيير الحساب',
+    'Sign in':'تسجيل الدخول','Sign up':'إنشاء حساب',
+    'New password':'كلمة مرور جديدة','Confirm password':'تأكيد كلمة المرور',
+    'Project URL':'رابط المشروع','Anonymous key':'المفتاح العام',
+    'Save connection settings':'حفظ إعدادات الاتصال',
+    'Account settings':'إعدادات الحساب',
+    'Profile photo':'صورة الملف الشخصي','Local only':'محلي فقط',
+    'Connection settings':'إعدادات الاتصال','Google sign-in':'تسجيل الدخول عبر Google',
+    'Sign in with Google':'تسجيل الدخول باستخدام Google',
+    'Don’t have an account? Create one':'ليس لديك حساب؟ أنشئ حساباً',
+    'weapon hits':'حالات اكتشاف أسلحة','avg risk':'متوسط الخطورة',
+    'click any bar to seek':'انقر على أي شريط للانتقال',
+    'blue = peak activity':'الأزرق = ذروة النشاط',
+    'Weapon Detection Timeline':'الجدول الزمني لاكتشاف الأسلحة',
+    'Detection details':'تفاصيل الاكتشاف','Threat level':'مستوى التهديد',
+    'No detections found':'لم يتم العثور على اكتشافات',
+    'Analysis complete':'اكتمل التحليل','No video selected':'لم يتم اختيار فيديو',
+    'Choose files':'اختر الملفات','Export':'تصدير',
+    'Photo':'الصورة','Apply crop':'تطبيق القص','Reset crop':'إعادة ضبط القص',
+    'Jan':'يناير','January':'يناير','Feb':'فبراير','February':'فبراير',
+    'Mar':'مارس','March':'مارس','Apr':'أبريل','April':'أبريل',
+    'May':'مايو','Jun':'يونيو','June':'يونيو','Jul':'يوليو','July':'يوليو',
+    'Aug':'أغسطس','August':'أغسطس','Sep':'سبتمبر','September':'سبتمبر',
+    'Oct':'أكتوبر','October':'أكتوبر','Nov':'نوفمبر','November':'نوفمبر',
+    'Dec':'ديسمبر','December':'ديسمبر'
+  });
+  const AEE_ARABIC_TRANSLATION_ENTRIES = Object.entries(AEE_ARABIC_TRANSLATIONS)
+    .filter(([source]) => source.includes(' ') || source.length >= 3)
+    .sort(([left], [right]) => right.length - left.length);
+  const aeeTranslatedText = new WeakMap();
+  const aeeTranslatedAttributes = new WeakMap();
+  let aeeArabicObserver;
+  function aeeTranslateValue(value, arabic){
+    if (!arabic) return value;
+    const leading = value.match(/^\s*/)[0];
+    const trailing = value.match(/\s*$/)[0];
+    const trimmed = value.trim().replace(/\s+/g, ' ');
+    const exact = AEE_ARABIC_TRANSLATIONS[trimmed];
+    if (exact) return leading + exact + trailing;
+    const brandMarker = '\uE000';
+    let translated = trimmed.split('AI Evidence Extractor').join(brandMarker);
+    AEE_ARABIC_TRANSLATION_ENTRIES.forEach(([source, target]) => {
+      if (source.includes(' ')){
+        translated = translated.split(source).join(target);
+      } else {
+        const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        translated = translated.replace(
+          new RegExp(`\\b${escaped}\\b`, 'g'), target);
+      }
+    });
+    return leading + translated.split(brandMarker).join('AI Evidence Extractor') + trailing;
+  }
+  function aeeTranslateSubtree(root, arabic){
+    if (!root) return;
+    const skipSelector = 'script,style,code,pre,textarea,[data-aee-no-translate],.aee-history-row-title';
+    const translateText = node => {
+      if (!node || !node.nodeValue || !node.nodeValue.trim() ||
+          /(?:[A-Za-z]:\\|https?:\/\/)/.test(node.nodeValue) ||
+          (node.parentElement && node.parentElement.closest(skipSelector))) return;
+      const previous = aeeTranslatedText.get(node);
+      if (previous && previous.value === node.nodeValue && previous.arabic === arabic) return;
+      const original = previous && previous.value === node.nodeValue ?
+        previous.original : node.nodeValue;
+      const translated = aeeTranslateValue(original, arabic);
+      if (translated !== node.nodeValue){
+        node.nodeValue = translated;
+      }
+      aeeTranslatedText.set(node, {value:translated, arabic, original});
+    };
+    const translateAttributes = element => {
+      if (!element || element.nodeType !== Node.ELEMENT_NODE ||
+          element.matches(skipSelector)) return;
+      const names = ['aria-label','placeholder','title','alt'];
+      let previous = aeeTranslatedAttributes.get(element);
+      if (!previous){ previous = {}; aeeTranslatedAttributes.set(element, previous); }
+      names.forEach(name => {
+        if (!element.hasAttribute(name)) return;
+        const value = element.getAttribute(name);
+        if (previous[name] && previous[name].value === value &&
+            previous[name].arabic === arabic) return;
+        const original = previous[name] && previous[name].value === value ?
+          previous[name].original : value;
+        const translated = aeeTranslateValue(original, arabic);
+        if (translated !== value){
+          element.setAttribute(name, translated);
+        }
+        previous[name] = {value:translated, arabic, original};
+      });
+    };
+    if (root.nodeType === Node.TEXT_NODE) translateText(root);
+    else if (root.nodeType === Node.ELEMENT_NODE) translateAttributes(root);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) translateText(node);
+    if (root.querySelectorAll){
+      root.querySelectorAll('*').forEach(translateAttributes);
+    }
+  }
   function applyAeeLanguage(language, persist){
     const arabic = language === 'Arabic';
     document.documentElement.lang = arabic ? 'ar' : 'en';
     document.documentElement.dir = arabic ? 'rtl' : 'ltr';
+    aeeTranslateSubtree(document.documentElement, arabic);
+    if (!aeeArabicObserver){
+      aeeArabicObserver = new MutationObserver(records => {
+        const activeArabic = document.documentElement.lang === 'ar';
+        records.forEach(record => {
+          if (record.type === 'characterData'){
+            aeeTranslateSubtree(record.target, activeArabic);
+          } else if (record.type === 'attributes'){
+            aeeTranslateSubtree(record.target, activeArabic);
+          } else {
+            record.addedNodes.forEach(node => aeeTranslateSubtree(node, activeArabic));
+          }
+        });
+      });
+      aeeArabicObserver.observe(document.documentElement, {
+        subtree:true,childList:true,characterData:true,attributes:true,
+        attributeFilter:['aria-label','placeholder','title','alt']
+      });
+    }
     if (persist){
       try { localStorage.setItem('aee-language', arabic ? 'Arabic' : 'English'); }
       catch (error) { console.warn('Could not save language preference.', error); }
