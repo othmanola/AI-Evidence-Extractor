@@ -17,6 +17,34 @@ if (-not $compiler) {
   $compiler = @("$env:LOCALAPPDATA\Programs\Inno Setup 7\ISCC.exe", "$env:ProgramFiles(x86)\Inno Setup 7\ISCC.exe", "$env:ProgramFiles\Inno Setup 7\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 }
 if (-not $compiler) { throw 'Inno Setup compiler was not found after installation.' }
+
+$prerequisiteDir = Join-Path $PSScriptRoot 'build\prerequisites'
+New-Item -ItemType Directory -Force -Path $prerequisiteDir | Out-Null
+$prerequisites = @(
+  @{
+    Name = 'vc_redist.x64.exe'
+    Uri = 'https://aka.ms/vs/17/release/vc_redist.x64.exe'
+  },
+  @{
+    Name = 'MicrosoftEdgeWebview2Setup.exe'
+    Uri = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
+  }
+)
+foreach ($prerequisite in $prerequisites) {
+  $file = Join-Path $prerequisiteDir $prerequisite.Name
+  try {
+    Invoke-WebRequest -Uri $prerequisite.Uri -OutFile $file
+  } catch {
+    throw "Could not download $($prerequisite.Name): $($_.Exception.Message)"
+  }
+  $signature = Get-AuthenticodeSignature -FilePath $file
+  if ($signature.Status -ne 'Valid' -or
+      $signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*' -or
+      (Get-Item $file).Length -lt 1MB) {
+    throw "The downloaded Microsoft prerequisite failed signature or size validation: $($prerequisite.Name)"
+  }
+}
+
 $env:PYTHONPATH = $PSScriptRoot
 & $python -m PyInstaller --noconfirm --clean (Join-Path $PSScriptRoot 'AI Evidence Extractor.spec')
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE" }

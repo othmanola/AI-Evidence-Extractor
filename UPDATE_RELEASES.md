@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.60 installs missing Microsoft Visual C++ and WebView2 runtimes
+during setup, preventing first-launch failures on new Windows PCs. The app's
+Python runtime and application dependencies remain bundled with the installer.
+
 Version 1.2.59 adds a complete Arabic interface with right-to-left layout,
 including mirrored navigation and account pages, and fixes mobile placement of
 the profile-photo actions in RTL mode.

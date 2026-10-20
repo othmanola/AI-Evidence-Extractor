@@ -4,7 +4,7 @@ This is a Windows desktop app for the existing video evidence triage project. Th
 
 ## Install and first launch
 
-For a direct launch, run `dist\AI Evidence Extractor\AI Evidence Extractor.exe`; it works independently of the current working directory and does not require a `.lnk` shortcut. To create an installer, build `AI_Evidence_Extractor_Setup.exe` with the steps below, run it, and optionally use the shortcut it creates. The app runs using its packaged Python runtime and dependencies; it does not require a separate Python installation. The first launch needs internet access to download any missing AI model weights from their original Hugging Face repositories into `%LOCALAPPDATA%\AI Evidence Extractor\models`.
+For a direct launch, run `dist\AI Evidence Extractor\AI Evidence Extractor.exe`; it works independently of the current working directory and does not require a `.lnk` shortcut. To create an installer, build `AI_Evidence_Extractor_Setup.exe` with the steps below, run it, and optionally use the shortcut it creates. The app runs using its packaged Python runtime and dependencies; it does not require a separate Python installation. The installer downloads and verifies Microsoft's signed x64 Visual C++ Runtime and WebView2 bootstrapper, then installs missing prerequisites before the app can be launched. Setup requests administrator permission to install the system runtime. A GitHub "Source code" archive is source code only and is not a runnable app package. The first launch needs internet access to download any missing AI model weights from their original Hugging Face repositories into `%LOCALAPPDATA%\AI Evidence Extractor\models`.
 
 The app runs locally on your computer and does not create a public Gradio share link. The Ensemble Configuration panel shows the actual inference device and precision. The desktop installer currently supplies CPU-only PyTorch, so it uses the CPU even if an NVIDIA GPU is installed. CUDA is selected automatically only when a separate, compatible CUDA-enabled runtime is installed as `%LOCALAPPDATA%\AI Evidence Extractor\runtimeenv_cuda2` with its `.aee_cuda_ready` marker. Installing a CUDA driver alone or changing the device setting cannot turn a CPU-only PyTorch build into a GPU build. Keep the current runtime as a fallback and validate the CUDA runtime against the exact installed NVIDIA driver and GPU before marking it ready.
 
@@ -22,7 +22,7 @@ The app requires an email/password account, Google sign-in, or an explicit guest
 
 ## Build the application and installer
 
-1. Install the project dependencies from `requirements.txt` in the build Python environment, plus PyInstaller.
+1. Install the project dependencies from `requirements.txt` in the build Python environment, plus PyInstaller. Building the installer also needs internet access to download and verify Microsoft's Visual C++ Runtime and WebView2 installers.
 2. Run `build_windows.ps1` from PowerShell. It creates the one-folder application using `AI Evidence Extractor.spec`.
 3. The standalone executable is written to `dist\AI Evidence Extractor\AI Evidence Extractor.exe`. The script also creates the installer and in-app update archive; Inno Setup 6 or 7 is required for the installer step.
 

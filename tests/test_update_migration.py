@@ -8,6 +8,26 @@ import update_client
 
 
 class UpdateMigrationTests(unittest.TestCase):
+    def test_installer_includes_and_installs_signed_microsoft_runtime_prerequisite(self):
+        root = Path(__file__).resolve().parents[1]
+        installer = (root / "installer.iss").read_text(encoding="utf-8-sig")
+        build_script = (root / "build_windows.ps1").read_text(encoding="utf-8-sig")
+
+        self.assertIn("PrivilegesRequired=admin", installer)
+        self.assertIn('DestName: "vc_redist.x64.exe"; Flags: dontcopy', installer)
+        self.assertIn("ExtractTemporaryFile('vc_redist.x64.exe')", installer)
+        self.assertIn("IsVCRedistInstalled", installer)
+        self.assertIn("RegQueryDWordValue(HKLM64", installer)
+        self.assertIn("'/install /quiet /norestart'", installer)
+        self.assertIn('DestName: "MicrosoftEdgeWebview2Setup.exe"; Flags: dontcopy', installer)
+        self.assertIn("IsWebView2RuntimeInstalled", installer)
+        self.assertIn("F3017226-FE2A-4295-8BDF-00C3A9A7E4C5", installer)
+        self.assertIn("'/silent /install'", installer)
+        self.assertIn("https://aka.ms/vs/17/release/vc_redist.x64.exe", build_script)
+        self.assertIn("https://go.microsoft.com/fwlink/p/?LinkId=2124703", build_script)
+        self.assertIn("Get-AuthenticodeSignature", build_script)
+        self.assertIn("Microsoft Corporation", build_script)
+
     def test_account_module_is_allowed_but_not_required_for_compatibility_updates(self):
         self.assertIn("account_client.py", update_client.UPDATE_FILES)
         self.assertIn("account_client.py", update_client.OPTIONAL_UPDATE_FILES)
