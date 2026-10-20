@@ -92,9 +92,8 @@ begin
 
     if (ResultCode <> 0) and (ResultCode <> 1638) and (ResultCode <> 3010) then
     begin
-      Result := Format(
-        'The Microsoft Visual C++ Runtime installation failed (error %d).',
-        [ResultCode]);
+      Result := 'The Microsoft Visual C++ Runtime installation failed (error ' +
+        IntToStr(ResultCode) + ').';
       Exit;
     end;
 
@@ -115,9 +114,8 @@ begin
 
     if (ResultCode <> 0) and (ResultCode <> 3010) then
     begin
-      Result := Format(
-        'The Microsoft Edge WebView2 Runtime installation failed (error %d).',
-        [ResultCode]);
+      Result := 'The Microsoft Edge WebView2 Runtime installation failed (error ' +
+        IntToStr(ResultCode) + ').';
       Exit;
     end;
 

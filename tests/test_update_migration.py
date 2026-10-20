@@ -12,6 +12,9 @@ class UpdateMigrationTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         installer = (root / "installer.iss").read_text(encoding="utf-8-sig")
         build_script = (root / "build_windows.ps1").read_text(encoding="utf-8-sig")
+        workflow = (root / ".github" / "workflows" / "publish-update.yml").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("PrivilegesRequired=admin", installer)
         self.assertIn('DestName: "vc_redist.x64.exe"; Flags: dontcopy', installer)
@@ -27,6 +30,9 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertIn("https://go.microsoft.com/fwlink/p/?LinkId=2124703", build_script)
         self.assertIn("Get-AuthenticodeSignature", build_script)
         self.assertIn("Microsoft Corporation", build_script)
+        self.assertIn("IntToStr(ResultCode)", installer)
+        self.assertIn("      - installer.iss", workflow)
+        self.assertIn("      - build_windows.ps1", workflow)
 
     def test_account_module_is_allowed_but_not_required_for_compatibility_updates(self):
         self.assertIn("account_client.py", update_client.UPDATE_FILES)
