@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import secrets
+import sys
 import threading
 import time
 import urllib.error
@@ -28,6 +29,12 @@ APP_DATA = Path(os.environ.get(
     str(Path.home() / "AppData" / "Local" / "AI Evidence Extractor"),
 ))
 CONFIG_FILE = APP_DATA / "account_config.json"
+if os.environ.get("AEE_SOURCE_MODE") == "1":
+    DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent / "account_defaults.json"
+else:
+    DEFAULT_CONFIG_FILE = Path(
+        getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)
+    ) / "account_defaults.json"
 SESSION_FILE = APP_DATA / "account_session.bin"
 GUEST_MODE_FILE = APP_DATA / "guest_mode"
 GUEST_PROFILE_FILE = APP_DATA / "guest_profile.json"
@@ -299,11 +306,29 @@ def _validate_config(project_url: str, anon_key: str) -> dict[str, str]:
     return {"project_url": project_url, "anon_key": anon_key}
 
 
+def _load_default_config() -> dict[str, str]:
+    try:
+        data = json.loads(DEFAULT_CONFIG_FILE.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        return {"project_url": "", "anon_key": ""}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AccountError("The bundled account connection settings could not be read.") from exc
+    if not isinstance(data, dict):
+        raise AccountError("The bundled account connection settings are invalid.")
+    project_url = data.get("project_url", "")
+    anon_key = data.get("anon_key", "")
+    if not isinstance(project_url, str) or not isinstance(anon_key, str):
+        raise AccountError("The bundled account connection settings are invalid.")
+    if not project_url and not anon_key:
+        return {"project_url": "", "anon_key": ""}
+    return _validate_config(project_url, anon_key)
+
+
 def load_config() -> dict[str, str]:
     try:
         data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {"project_url": "", "anon_key": ""}
+        return _load_default_config()
     except (OSError, json.JSONDecodeError) as exc:
         raise AccountError("The saved account connection settings could not be read.") from exc
     if not isinstance(data, dict):
@@ -313,7 +338,7 @@ def load_config() -> dict[str, str]:
     if not isinstance(project_url, str) or not isinstance(anon_key, str):
         raise AccountError("The saved account connection settings are invalid.")
     if not project_url and not anon_key:
-        return {"project_url": "", "anon_key": ""}
+        return _load_default_config()
     return _validate_config(project_url, anon_key)
 
 

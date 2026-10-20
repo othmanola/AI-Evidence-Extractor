@@ -11,9 +11,11 @@ from typing import Callable
 ALLOWED = {
     "app.py", "account_client.py", "desktop_launcher.py", "desktop_entry.py",
     "update_client.py", "update_apply.py", "version.txt", "update_config.json",
-    "assets/aee.ico",
+    "assets/aee.ico", "account_defaults.json",
 }
-REQUIRED = ALLOWED - {"account_client.py", "assets/aee.ico"}
+REQUIRED = ALLOWED - {
+    "account_client.py", "assets/aee.ico", "account_defaults.json",
+}
 
 
 def apply_staged_update(stage: Path | str, app_dir: Path | str, expected_version: str,

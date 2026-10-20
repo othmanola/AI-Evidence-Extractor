@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import os
 
 import torchvision
 from PyInstaller.utils.hooks import (
@@ -29,6 +30,12 @@ datas = [
     ("version.txt", "."),
     ("update_config.json", "."),
 ] + [(name, ".") for name in source_modules] + gradio_datas + webview_datas + safehttpx_datas + groovy_datas + collect_data_files("ultralytics")
+account_defaults_path = os.environ.get("AEE_ACCOUNT_DEFAULTS_PATH")
+if account_defaults_path:
+    account_defaults_path = Path(account_defaults_path)
+    if not account_defaults_path.is_file():
+        raise FileNotFoundError("AEE_ACCOUNT_DEFAULTS_PATH does not exist.")
+    datas.append((str(account_defaults_path), "."))
 binaries = (
     gradio_binaries + webview_binaries + safehttpx_binaries + groovy_binaries
     + collect_dynamic_libs("torchvision")

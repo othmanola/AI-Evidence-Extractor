@@ -8388,8 +8388,38 @@ def build_ui():
                       remain on this device, whether you create an account or continue as a guest.</div>''')
                     if not account_connection_ready:
                         gr.HTML('''<div class="aee-account-setup-hint">
-                          Online sign-in is not configured on this device yet. Continue as a guest,
-                          or ask your administrator to configure online accounts.</div>''')
+                          To enable online sign-in on this computer, expand Connection setup below
+                          and enter your Supabase project URL and public API key.</div>''')
+                with gr.Accordion(
+                    "Connection setup",
+                    open=False,
+                    visible=not account_connection_ready,
+                    elem_classes=["aee-settings-panel", "aee-settings-card",
+                                  "aee-account-settings", "aee-account-connection-settings"],
+                ) as account_connection_setup:
+                    gr.HTML('''<div class="aee-account-settings-copy">
+                      <strong>Connect your Supabase project</strong>
+                      <p>Copy the project URL and public publishable key (or legacy anon key)
+                      from your Supabase project API settings. Never use a service-role or secret key.
+                      Run the setup SQL below in the Supabase SQL Editor. The connection is tested
+                      before these settings are saved, and the SQL is safe to rerun.</p>
+                      <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
+                         target="_blank" rel="noopener noreferrer">View setup instructions</a>
+                    </div>''')
+                    account_project_url = gr.Textbox(
+                        label="Supabase project URL",
+                        value=account_config_initial["project_url"],
+                        placeholder="https://your-project.supabase.co")
+                    account_anon_key = gr.Textbox(
+                        label="Supabase public API key",
+                        type="password", value=account_config_initial["anon_key"],
+                        placeholder="sb_publishable_… or legacy anon key")
+                    account_save_config_btn = gr.Button(
+                        "Save and test connection", variant="primary")
+                    gr.Code(
+                        value=_ACCOUNT_SETUP_SQL, language="sql",
+                        label="Run in Supabase SQL Editor",
+                        interactive=False, lines=25)
                 with gr.Row(elem_classes=["aee-settings-layout"]):
                     with gr.Column(scale=1, min_width=180,
                                    elem_classes=["aee-settings-sidebar"]):
@@ -8481,36 +8511,6 @@ def build_ui():
                                                  and account_guest_mode_initial))
                                     account_change_account_btn = gr.Button(
                                         "Change account", variant="secondary")
-                        with gr.Accordion(
-                            "Connection setup",
-                            open=False,
-                            visible=not account_connection_ready,
-                            elem_classes=["aee-settings-panel", "aee-settings-card",
-                                          "aee-account-settings", "aee-account-connection-settings"],
-                        ) as account_connection_setup:
-                            gr.HTML('''<div class="aee-account-settings-copy">
-                              <strong>Connect your Supabase project</strong>
-                              <p>Copy the project URL and public publishable key (or legacy anon key)
-                              from your Supabase project API settings. Never use a service-role or secret key.
-                              Run the setup SQL below in the Supabase SQL Editor. The connection is tested
-                              before these settings are saved, and the SQL is safe to rerun.</p>
-                              <a href="https://github.com/othmanola/AI-Evidence-Extractor/blob/main/SUPABASE_SETUP.md"
-                                 target="_blank" rel="noopener noreferrer">View setup instructions</a>
-                            </div>''')
-                            account_project_url = gr.Textbox(
-                                label="Supabase project URL",
-                                value=account_config_initial["project_url"],
-                                placeholder="https://your-project.supabase.co")
-                            account_anon_key = gr.Textbox(
-                                label="Supabase public API key",
-                                type="password", value=account_config_initial["anon_key"],
-                                placeholder="sb_publishable_… or legacy anon key")
-                            account_save_config_btn = gr.Button(
-                                "Save and test connection", variant="primary")
-                            gr.Code(
-                                value=_ACCOUNT_SETUP_SQL, language="sql",
-                                label="Run in Supabase SQL Editor",
-                                interactive=False, lines=25)
                 account_oauth_transaction = gr.State(None)
                 account_oauth_timer = gr.Timer(value=1, active=False)
 

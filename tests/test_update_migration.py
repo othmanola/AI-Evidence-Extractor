@@ -1,8 +1,12 @@
+import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
+import zipfile
 
+import build_update_package
 import update_apply
 import update_client
 
@@ -39,6 +43,55 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertIn("account_client.py", update_client.OPTIONAL_UPDATE_FILES)
         self.assertIn("account_client.py", update_apply.ALLOWED)
         self.assertNotIn("account_client.py", update_apply.REQUIRED)
+        self.assertIn("account_defaults.json", update_client.UPDATE_FILES)
+        self.assertIn("account_defaults.json", update_client.OPTIONAL_UPDATE_FILES)
+        self.assertIn("account_defaults.json", update_apply.ALLOWED)
+        self.assertNotIn("account_defaults.json", update_apply.REQUIRED)
+
+    def test_release_workflow_requires_public_supabase_build_variables(self):
+        workflow = (
+            Path(__file__).resolve().parents[1]
+            / ".github" / "workflows" / "publish-update.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("vars.AEE_SUPABASE_URL", workflow)
+        self.assertIn("vars.AEE_SUPABASE_PUBLISHABLE_KEY", workflow)
+        self.assertIn("Configure the AEE_SUPABASE_URL", workflow)
+
+    def test_update_package_includes_bundled_connection_defaults(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            source_root = root / "source"
+            output = root / "dist"
+            defaults = root / "account_defaults.json"
+            defaults.write_text(
+                json.dumps({
+                    "project_url": "https://example.supabase.co",
+                    "anon_key": "public-test-key",
+                }),
+                encoding="utf-8",
+            )
+            for name in build_update_package.FILES:
+                source = source_root / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text(
+                    "1.2.3" if name == "version.txt" else "test",
+                    encoding="utf-8",
+                )
+            with (
+                patch.object(build_update_package, "ROOT", source_root),
+                patch.object(build_update_package, "DIST", output),
+                patch.dict(os.environ, {
+                    "AEE_ACCOUNT_DEFAULTS_PATH": str(defaults),
+                }),
+            ):
+                build_update_package.main()
+
+            with zipfile.ZipFile(output / "AI_Evidence_Extractor_Update.zip") as package:
+                bundled = json.loads(package.read("account_defaults.json"))
+
+        self.assertEqual(bundled["project_url"], "https://example.supabase.co")
+        self.assertEqual(bundled["anon_key"], "public-test-key")
 
     def test_restart_prefers_python_launcher_over_self_extracting_executable(self):
         with TemporaryDirectory() as temp:

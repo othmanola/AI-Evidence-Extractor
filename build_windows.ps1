@@ -46,11 +46,48 @@ foreach ($prerequisite in $prerequisites) {
 }
 
 $env:PYTHONPATH = $PSScriptRoot
-& $python -m PyInstaller --noconfirm --clean (Join-Path $PSScriptRoot 'AI Evidence Extractor.spec')
-if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE" }
-& $compiler (Join-Path $PSScriptRoot 'installer.iss')
-if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
-Write-Host "Installer created at $(Join-Path $PSScriptRoot 'dist\AI_Evidence_Extractor_Setup.exe')"
-& $python (Join-Path $PSScriptRoot 'build_update_package.py')
-if ($LASTEXITCODE -ne 0) { throw "In-app update package build failed with exit code $LASTEXITCODE" }
+$supabaseUrl = $env:AEE_SUPABASE_URL
+$supabaseKey = $env:AEE_SUPABASE_PUBLISHABLE_KEY
+if ([bool]$supabaseUrl -ne [bool]$supabaseKey) {
+  throw 'Set both AEE_SUPABASE_URL and AEE_SUPABASE_PUBLISHABLE_KEY, or leave both unset.'
+}
+
+$accountDefaultsPath = $null
+try {
+  if ($supabaseUrl -and $supabaseKey) {
+    $accountDefaultsDirectory = Join-Path $env:TEMP ("aee-account-defaults-" + [guid]::NewGuid().ToString())
+    New-Item -ItemType Directory -Path $accountDefaultsDirectory | Out-Null
+    $accountDefaultsPath = Join-Path $accountDefaultsDirectory 'account_defaults.json'
+    @{
+      project_url = $supabaseUrl
+      anon_key = $supabaseKey
+    } | ConvertTo-Json -Compress | Set-Content -Path $accountDefaultsPath -Encoding utf8
+    $env:AEE_ACCOUNT_DEFAULTS_PATH = $accountDefaultsPath
+  } else {
+    Write-Warning 'No default Supabase connection will be bundled. Users will need to configure Connection setup on each new PC.'
+  }
+
+  & $python -m PyInstaller --noconfirm --clean (Join-Path $PSScriptRoot 'AI Evidence Extractor.spec')
+  if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE" }
+
+  $bundledDefaultsPath = Join-Path $PSScriptRoot 'dist\AI Evidence Extractor\account_defaults.json'
+  if ($accountDefaultsPath) {
+    Copy-Item -LiteralPath $accountDefaultsPath -Destination $bundledDefaultsPath -Force
+  } elseif (Test-Path -LiteralPath $bundledDefaultsPath) {
+    Remove-Item -LiteralPath $bundledDefaultsPath -Force
+  }
+
+  & $compiler (Join-Path $PSScriptRoot 'installer.iss')
+  if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+  Write-Host "Installer created at $(Join-Path $PSScriptRoot 'dist\AI_Evidence_Extractor_Setup.exe')"
+  & $python (Join-Path $PSScriptRoot 'build_update_package.py')
+  if ($LASTEXITCODE -ne 0) { throw "In-app update package build failed with exit code $LASTEXITCODE" }
+} finally {
+  Remove-Item Env:AEE_ACCOUNT_DEFAULTS_PATH -ErrorAction SilentlyContinue
+  if ($accountDefaultsPath -and (Test-Path -LiteralPath $accountDefaultsPath)) {
+    Remove-Item -LiteralPath $accountDefaultsPath -Force
+    Remove-Item -LiteralPath (Split-Path -Parent $accountDefaultsPath) -Force
+  }
+}
+
 Write-Host "Standalone app created at $(Join-Path $PSScriptRoot 'dist\AI Evidence Extractor\AI Evidence Extractor.exe')"

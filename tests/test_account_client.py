@@ -1,4 +1,5 @@
 import base64
+import json
 import threading
 import time
 import unittest
@@ -96,6 +97,36 @@ class AccountClientTests(unittest.TestCase):
             )["project_url"],
             "https://abcd1234.supabase.co",
         )
+
+    def test_bundled_default_connection_is_used_on_a_new_device(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_file = root / "account_config.json"
+            defaults_file = root / "account_defaults.json"
+            defaults_file.write_text(json.dumps(self.config), encoding="utf-8")
+            with (
+                patch.object(account_client, "CONFIG_FILE", config_file),
+                patch.object(account_client, "DEFAULT_CONFIG_FILE", defaults_file),
+            ):
+                self.assertEqual(account_client.load_config(), self.config)
+                self.assertTrue(account_client.config_is_ready())
+
+    def test_saved_connection_overrides_bundled_defaults(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_file = root / "account_config.json"
+            defaults_file = root / "account_defaults.json"
+            defaults_file.write_text(json.dumps(self.config), encoding="utf-8")
+            saved_config = {
+                "project_url": "https://other-project.supabase.co",
+                "anon_key": "other-public-key",
+            }
+            config_file.write_text(json.dumps(saved_config), encoding="utf-8")
+            with (
+                patch.object(account_client, "CONFIG_FILE", config_file),
+                patch.object(account_client, "DEFAULT_CONFIG_FILE", defaults_file),
+            ):
+                self.assertEqual(account_client.load_config(), saved_config)
 
     def test_api_sends_public_key_and_bearer_session_to_project(self):
         class Response:

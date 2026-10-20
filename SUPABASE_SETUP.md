@@ -14,8 +14,13 @@ not uploaded or synchronized.
 
 Create a project at [supabase.com](https://supabase.com/). In **Project Settings >
 API**, copy the project URL and the public **publishable** key (or legacy `anon`
-key). Enter them in **Account > Connection setup** in the app. Never enter or
-distribute a `service_role` key or any secret key in the desktop app.
+key). For a release where users should not configure each computer, build the
+installer with `AEE_SUPABASE_URL` and `AEE_SUPABASE_PUBLISHABLE_KEY` set in the
+PowerShell session; see [README_WINDOWS.md](README_WINDOWS.md). The build
+includes these public client values as its default connection. Users of builds
+without defaults can instead expand **Connection setup** below the sign-in form
+on each computer. Never enter or distribute a `service_role` key or any secret
+key in the desktop app.
 Use the project API URL (`https://<project-ref>.supabase.co`), a project
 reference host without the scheme, or the project's Supabase dashboard URL.
 The app converts the dashboard URL to its API host and upgrades an HTTP
@@ -24,7 +29,9 @@ The app tests the supplied URL and key before saving them, so an unsuccessful
 connection check leaves the previous working settings unchanged. A successful
 check confirms the Supabase Auth endpoint is reachable; run the SQL below to
 enable profile storage and photo uploads. The verified connection is saved on
-this computer, and the connection setup panel is hidden afterward.
+this computer, and the connection setup panel is hidden afterward. A release
+built with the project defaults does not require users to enter the connection
+again on a new computer.
 
 ## 2. Create the profile table and private photo bucket
 

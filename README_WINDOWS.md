@@ -18,13 +18,23 @@ FFmpeg is installed as a Python package dependency and added to the process path
 
 The left-side menu contains **Account**, **Detailed History**, **Updates**, **About Us**, and **Contact Us**. Account opens profile details and account security. History remains a workspace tab with a simple analysis summary table. Detailed History opens in its own full-screen, scrollable archive window. Analyses appear newest-first, each with **Details**, **Download ZIP**, and **Remove** actions; Details opens its captures, reports, detection records, and object tracks below the list. Removing an analysis deletes its history record and only its generated per-video artifacts from app-managed storage; original source videos are never deleted, and shared run reports are retained while another analysis from that run remains. The archive also offers a ZIP download of all history. ZIP exports contain generated analysis artifacts and metadata, not copies of original videos. The top-right toolbar shows **Update the app** to the left of the theme control only when a newer release is available; selecting it opens the update center. Guests can save a local display name and photo or sign in with Google; signed-in users can log out and manage their profile. The app checks the HTTPS release feed on startup and from the Updates page. **Download Update** verifies and stages the update package with a visible progress bar; **Install Update** applies it internally and reports file-by-file progress in the Updates window. No setup file is opened. Restart the app when prompted to load the new version. The setup installer remains available for first installs and recovery. See [UPDATE_RELEASES.md](UPDATE_RELEASES.md) for publishing releases and connecting the update feed.
 
-The app requires an email/password account, Google sign-in, or an explicit guest-mode choice before opening the workspace. That choice is remembered between launches. Guest profile names and photos are stored only on this computer; signed-in profile data is stored in a connected Supabase project. Source videos, analysis history, reports, and results remain local. Configure accounts using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
+The app requires an email/password account, Google sign-in, or an explicit guest-mode choice before opening the workspace. That choice is remembered between launches. Builds created with the Supabase build variables below include the public project connection, so users on a new computer can choose **Continue with Google** without configuring Supabase. Builds without those defaults show **Connection setup** below the sign-in form. Guest profile names and photos are stored only on this computer; signed-in profile data is stored in a connected Supabase project. Source videos, analysis history, reports, and results remain local. Configure accounts using [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 
 ## Build the application and installer
 
 1. Install the project dependencies from `requirements.txt` in the build Python environment, plus PyInstaller. Building the installer also needs internet access to download and verify Microsoft's Visual C++ Runtime and WebView2 installers.
-2. Run `build_windows.ps1` from PowerShell. It creates the one-folder application using `AI Evidence Extractor.spec`.
-3. The standalone executable is written to `dist\AI Evidence Extractor\AI Evidence Extractor.exe`. The script also creates the installer and in-app update archive; Inno Setup 6 or 7 is required for the installer step.
+2. For a release that should support sign-in without per-computer setup, set the Supabase project URL and public publishable key in the build PowerShell session, then run the build. These are public client values, not secrets:
+
+   ```powershell
+   $env:AEE_SUPABASE_URL = 'https://your-project.supabase.co'
+   $env:AEE_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_...'
+   .\build_windows.ps1
+   ```
+
+   The build includes these values as the default connection and removes its temporary config file afterward. Never use a `service_role` or secret key. If both variables are omitted, users must configure the connection themselves on each computer. If only one is set, the build stops. Automated GitHub releases also require repository Actions variables with these same names.
+
+3. The script creates the one-folder application using `AI Evidence Extractor.spec`.
+4. The standalone executable is written to `dist\AI Evidence Extractor\AI Evidence Extractor.exe`. The script also creates the installer and in-app update archive; Inno Setup 6 or 7 is required for the installer step.
 
 The installer places the packaged application files in the selected install directory and creates shortcuts that target the executable directly. Model weights remain external mutable data and are fetched during first launch. For a controlled academic release, pin and archive the exact model revisions before distributing.
 

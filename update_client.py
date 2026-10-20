@@ -49,9 +49,11 @@ MAX_INSTALLER_BYTES = 2 * 1024 * 1024 * 1024  # compatibility with the legacy do
 UPDATE_FILES = frozenset({
     "app.py", "account_client.py", "desktop_launcher.py", "desktop_entry.py",
     "update_client.py", "update_apply.py", "version.txt", "update_config.json",
-    "assets/aee.ico",
+    "assets/aee.ico", "account_defaults.json",
 })
-OPTIONAL_UPDATE_FILES = {"account_client.py", "assets/aee.ico"}
+OPTIONAL_UPDATE_FILES = {
+    "account_client.py", "assets/aee.ico", "account_defaults.json",
+}
 
 
 class UpdateError(RuntimeError):
