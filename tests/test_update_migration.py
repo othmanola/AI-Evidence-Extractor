@@ -48,15 +48,24 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertIn("account_defaults.json", update_apply.ALLOWED)
         self.assertNotIn("account_defaults.json", update_apply.REQUIRED)
 
-    def test_release_workflow_requires_public_supabase_build_variables(self):
+    def test_release_workflow_uses_bundled_supabase_defaults(self):
+        root = Path(__file__).resolve().parents[1]
         workflow = (
-            Path(__file__).resolve().parents[1]
-            / ".github" / "workflows" / "publish-update.yml"
+            root / ".github" / "workflows" / "publish-update.yml"
         ).read_text(encoding="utf-8")
+        defaults = json.loads(
+            (root / "account_defaults.json").read_text(encoding="utf-8")
+        )
+        build_script = (root / "build_windows.ps1").read_text(
+            encoding="utf-8-sig"
+        )
 
-        self.assertIn("vars.AEE_SUPABASE_URL", workflow)
-        self.assertIn("vars.AEE_SUPABASE_PUBLISHABLE_KEY", workflow)
-        self.assertIn("Configure the AEE_SUPABASE_URL", workflow)
+        self.assertIn("account_defaults.json", workflow)
+        self.assertNotIn("vars.AEE_SUPABASE_URL", workflow)
+        self.assertNotIn("vars.AEE_SUPABASE_PUBLISHABLE_KEY", workflow)
+        self.assertIn("account_defaults.json", build_script)
+        self.assertTrue(defaults["project_url"].startswith("https://"))
+        self.assertTrue(defaults["anon_key"].startswith("sb_publishable_"))
 
     def test_update_package_includes_bundled_connection_defaults(self):
         with TemporaryDirectory() as temp:

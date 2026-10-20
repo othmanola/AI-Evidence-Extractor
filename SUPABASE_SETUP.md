@@ -15,12 +15,12 @@ not uploaded or synchronized.
 Create a project at [supabase.com](https://supabase.com/). In **Project Settings >
 API**, copy the project URL and the public **publishable** key (or legacy `anon`
 key). For a release where users should not configure each computer, build the
-installer with `AEE_SUPABASE_URL` and `AEE_SUPABASE_PUBLISHABLE_KEY` set in the
-PowerShell session; see [README_WINDOWS.md](README_WINDOWS.md). The build
-includes these public client values as its default connection. Users of builds
-without defaults can instead expand **Connection setup** below the sign-in form
-on each computer. Never enter or distribute a `service_role` key or any secret
-key in the desktop app.
+installer with the URL and key in the repository's `account_defaults.json`;
+see [README_WINDOWS.md](README_WINDOWS.md). These are public client values
+embedded in the desktop app and are not secrets. Users of builds without
+defaults can instead expand **Connection setup** below the sign-in form on each
+computer. Never enter or distribute a `service_role` key or any secret key in
+the desktop app.
 Use the project API URL (`https://<project-ref>.supabase.co`), a project
 reference host without the scheme, or the project's Supabase dashboard URL.
 The app converts the dashboard URL to its API host and upgrades an HTTP

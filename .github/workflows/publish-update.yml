@@ -8,6 +8,9 @@ on:
       - version.txt
       - installer.iss
       - build_windows.ps1
+      - account_defaults.json
+      - AI Evidence Extractor.spec
+      - .github/workflows/publish-update.yml
   workflow_dispatch:
 
 permissions:
@@ -45,12 +48,9 @@ jobs:
 
       - name: Build installer and update package
         shell: pwsh
-        env:
-          AEE_SUPABASE_URL: ${{ vars.AEE_SUPABASE_URL }}
-          AEE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.AEE_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          if (-not $env:AEE_SUPABASE_URL -or -not $env:AEE_SUPABASE_PUBLISHABLE_KEY) {
-            throw "Configure the AEE_SUPABASE_URL and AEE_SUPABASE_PUBLISHABLE_KEY repository variables before publishing."
+          if (-not (Test-Path .\account_defaults.json)) {
+            throw "The public Supabase connection defaults file is missing."
           }
           & .\build_windows.ps1
           if ($LASTEXITCODE -ne 0) { throw "Release asset build failed." }

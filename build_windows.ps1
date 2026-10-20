@@ -49,7 +49,15 @@ $env:PYTHONPATH = $PSScriptRoot
 $supabaseUrl = $env:AEE_SUPABASE_URL
 $supabaseKey = $env:AEE_SUPABASE_PUBLISHABLE_KEY
 if ([bool]$supabaseUrl -ne [bool]$supabaseKey) {
-  throw 'Set both AEE_SUPABASE_URL and AEE_SUPABASE_PUBLISHABLE_KEY, or leave both unset.'
+  throw 'Set both AEE_SUPABASE_URL and AEE_SUPABASE_PUBLISHABLE_KEY, or leave both unset to use account_defaults.json.'
+}
+if (-not $supabaseUrl) {
+  $defaultsFile = Join-Path $PSScriptRoot 'account_defaults.json'
+  if (Test-Path -LiteralPath $defaultsFile) {
+    $defaults = Get-Content -Raw -LiteralPath $defaultsFile | ConvertFrom-Json
+    $supabaseUrl = $defaults.project_url
+    $supabaseKey = $defaults.anon_key
+  }
 }
 
 $accountDefaultsPath = $null
