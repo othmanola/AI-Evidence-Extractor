@@ -18,6 +18,12 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_gradio_loading_overlays_use_accessible_motion_aware_styles(self):
+        self.assertIn(".gradio-container .wrap.generating", app.CSS)
+        self.assertIn(".wrap.generating .progress-bar-wrap", app.CSS)
+        self.assertIn("@media(prefers-reduced-motion:reduce)", app.CSS)
+        self.assertIn(".wrap.generating::before{animation:none;}", app.CSS)
+
     def test_updates_badge_uses_installed_version_over_stale_updater_version(self):
         with tempfile.TemporaryDirectory() as temp:
             (Path(temp) / "version.txt").write_text("1.2.56", encoding="utf-8")

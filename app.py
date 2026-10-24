@@ -2023,6 +2023,48 @@ html,body,.gradio-container{
 .gradio-container button:focus-visible,.gradio-container input:focus-visible,
 .gradio-container select:focus-visible,.gradio-container textarea:focus-visible{
   outline:2px solid rgba(255,110,104,.88)!important;outline-offset:2px!important;}
+.gradio-container .wrap.generating{
+  border:1px solid rgba(96,165,250,.34)!important;
+  border-radius:14px!important;
+  background:rgba(7,12,24,.78)!important;
+  backdrop-filter:blur(12px) saturate(1.2);
+  box-shadow:0 18px 50px -24px rgba(37,99,235,.52),inset 0 1px rgba(255,255,255,.08);
+  animation:aee-gradio-loading-in .18s ease-out both!important;
+}
+.gradio-container .wrap.generating::before{
+  content:'';width:34px;height:34px;flex:none;margin-bottom:12px;
+  border:3px solid rgba(148,163,184,.2);border-top-color:#60a5fa;
+  border-right-color:#a78bfa;border-radius:50%;
+  box-shadow:0 0 24px rgba(59,130,246,.22);
+  animation:aee-gradio-loading-spin .8s linear infinite;
+}
+.gradio-container .wrap.generating .loading{
+  color:var(--text)!important;font-family:inherit!important;
+  font-size:.9rem!important;font-weight:650!important;letter-spacing:.01em;
+}
+.gradio-container .wrap.generating .progress-level-inner{
+  color:var(--text-muted)!important;font-family:inherit!important;font-size:.78rem!important;
+}
+.gradio-container .wrap.generating .progress-bar-wrap{
+  height:7px!important;border:1px solid rgba(148,163,184,.2)!important;
+  border-radius:999px!important;background:rgba(148,163,184,.12)!important;
+}
+.gradio-container .wrap.generating .progress-bar{
+  border-radius:999px!important;
+  background:linear-gradient(90deg,#3b82f6,#8b5cf6,#22d3ee)!important;
+}
+html[data-theme="light"] .gradio-container .wrap.generating{
+  background:rgba(255,255,255,.88)!important;
+  border-color:rgba(59,130,246,.24)!important;
+  box-shadow:0 18px 50px -24px rgba(37,99,235,.3),inset 0 1px #fff;
+}
+@keyframes aee-gradio-loading-spin{to{transform:rotate(360deg);}}
+@keyframes aee-gradio-loading-in{from{opacity:0;transform:scale(.985);}
+  to{opacity:1;transform:scale(1);}}
+@media(prefers-reduced-motion:reduce){
+  .gradio-container .wrap.generating{animation:none!important;}
+  .gradio-container .wrap.generating::before{animation:none;}
+}
 .aee-workflow{backdrop-filter:blur(14px);box-shadow:0 14px 42px -34px rgba(0,0,0,.9);}
 .aee-settings-card,.aee-upload-shell,.aee-config-shell .aee-card{
   transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;}
