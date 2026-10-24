@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import os
 import zipfile
 from pathlib import Path
 
@@ -21,7 +20,6 @@ FILES = (
     "update_config.json",
     "assets/aee.ico",
 )
-DEFAULTS_PATH_ENV = "AEE_ACCOUNT_DEFAULTS_PATH"
 
 
 def main() -> None:
@@ -31,22 +29,12 @@ def main() -> None:
     missing = [name for name in FILES if not (ROOT / name).is_file()]
     if missing:
         raise SystemExit("Missing update files: " + ", ".join(missing))
-    defaults_path = os.environ.get(DEFAULTS_PATH_ENV)
-    if defaults_path and not Path(defaults_path).is_file():
-        raise SystemExit(f"{DEFAULTS_PATH_ENV} does not exist")
     DIST.mkdir(exist_ok=True)
     archive = DIST / "AI_Evidence_Extractor_Update.zip"
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED,
                          compresslevel=8) as package:
         for name in FILES:
             package.write(ROOT / name, arcname=name)
-        if defaults_path:
-            package.write(defaults_path, arcname="account_defaults.json")
-        else:
-            package.writestr(
-                "account_defaults.json",
-                '{"project_url":"","anon_key":""}',
-            )
     print(f"Update package created for v{version}: {archive}")
 
 

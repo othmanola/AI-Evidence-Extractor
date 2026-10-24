@@ -11,6 +11,19 @@ import update_apply
 import update_client
 
 
+LEGACY_UPDATE_FILES = {
+    "app.py",
+    "account_client.py",
+    "desktop_launcher.py",
+    "desktop_entry.py",
+    "update_client.py",
+    "update_apply.py",
+    "version.txt",
+    "update_config.json",
+    "assets/aee.ico",
+}
+
+
 class UpdateMigrationTests(unittest.TestCase):
     def test_installer_includes_and_installs_signed_microsoft_runtime_prerequisite(self):
         root = Path(__file__).resolve().parents[1]
@@ -67,7 +80,7 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertTrue(defaults["project_url"].startswith("https://"))
         self.assertTrue(defaults["anon_key"].startswith("sb_publishable_"))
 
-    def test_update_package_includes_bundled_connection_defaults(self):
+    def test_update_package_omits_file_rejected_by_older_updaters(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
             source_root = root / "source"
@@ -97,10 +110,10 @@ class UpdateMigrationTests(unittest.TestCase):
                 build_update_package.main()
 
             with zipfile.ZipFile(output / "AI_Evidence_Extractor_Update.zip") as package:
-                bundled = json.loads(package.read("account_defaults.json"))
+                members = set(package.namelist())
 
-        self.assertEqual(bundled["project_url"], "https://example.supabase.co")
-        self.assertEqual(bundled["anon_key"], "public-test-key")
+        self.assertNotIn("account_defaults.json", members)
+        self.assertEqual(members, LEGACY_UPDATE_FILES)
 
     def test_restart_prefers_python_launcher_over_self_extracting_executable(self):
         with TemporaryDirectory() as temp:
