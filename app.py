@@ -28,6 +28,11 @@ MANIFEST = MODEL_DIR / "ensemble_manifest.json"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _resolve_model_path(path):
+    model_path = Path(path).expanduser()
+    return model_path if model_path.is_absolute() else MODEL_DIR / model_path
+
+
 def _persist_download(source, filename):
     """Publish a generated artifact at a stable path for Gradio downloads."""
     if not source:
@@ -961,10 +966,13 @@ class Ensemble:
             self.device_name = str(self.device)
         if MANIFEST.exists():
             for e in json.loads(MANIFEST.read_text()):
-                if not Path(e["path"]).exists(): continue
+                model_path = _resolve_model_path(e["path"])
+                if not model_path.is_file():
+                    log.warning("model file is missing: %s", model_path)
+                    continue
                 try:
-                    m = YOLO(e["path"])
-                    size_mb = Path(e["path"]).stat().st_size / 1e6
+                    m = YOLO(str(model_path))
+                    size_mb = model_path.stat().st_size / 1e6
                     self.models.append({
                         "yolo": m, "name": e["name"],
                         "conf": e.get("conf", 0.15),

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 import zipfile
 
@@ -18,6 +19,49 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_ensemble_loads_relative_manifest_models_from_model_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            model_dir = Path(temp) / "models"
+            model_dir.mkdir()
+            model_names = [
+                "firearm_yolov8n",
+                "weapon_yolo26x",
+                "cypher_weapon",
+                "weapon_detection",
+                "weapon_yolov8",
+                "person_face",
+            ]
+            manifest = model_dir / "ensemble_manifest.json"
+            manifest.write_text(json.dumps([
+                {"path": f"{name}.pt", "name": name}
+                for name in model_names
+            ]), encoding="utf-8")
+            for name in model_names:
+                (model_dir / f"{name}.pt").write_bytes(b"model")
+
+            loaded_paths = []
+
+            def load_model(path):
+                loaded_paths.append(Path(path))
+                return SimpleNamespace(names={0: "object"})
+
+            with (
+                patch.object(app, "MODEL_DIR", model_dir),
+                patch.object(app, "MANIFEST", manifest),
+                patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
+                patch.object(app, "YOLO", side_effect=load_model),
+            ):
+                ensemble = app.Ensemble()
+
+        self.assertEqual(
+            loaded_paths,
+            [model_dir / f"{name}.pt" for name in model_names],
+        )
+        self.assertEqual(
+            [model["name"] for model in ensemble.models],
+            model_names,
+        )
+
     def test_gradio_loading_overlays_use_accessible_motion_aware_styles(self):
         self.assertIn(".gradio-container .wrap.generating", app.CSS)
         self.assertIn(".wrap.generating .progress-bar-wrap", app.CSS)
