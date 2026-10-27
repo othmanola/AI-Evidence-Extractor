@@ -19,6 +19,26 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_light_theme_uses_requested_palette_and_styles_gradio_controls(self):
+        light_theme = app.CSS.split('html[data-theme="light"]{', 1)[1].split(
+            "\n}", 1
+        )[0]
+        for color in (
+            "#FFF0CC",
+            "#796253",
+            "#A58D91",
+            "#DDA16C",
+            "#F28C32",
+            "#B58C99",
+        ):
+            with self.subTest(color=color):
+                self.assertIn(color, light_theme)
+
+        self.assertIn("--body-background-fill:#FFF0CC", light_theme)
+        self.assertIn("--button-primary-background-fill:#F28C32", light_theme)
+        self.assertIn("html[data-theme=\"light\"] .gradio-container input", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell", app.CSS)
+
     def test_home_analysis_uses_detailed_progress_without_default_loading_overlay(self):
         source = (Path(__file__).resolve().parents[1] / "app.py").read_text(
             encoding="utf-8"
