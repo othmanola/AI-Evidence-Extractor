@@ -19,6 +19,11 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_weapon_detection_model_uses_071_confidence_gate(self):
+        self.assertEqual(app._resolve_conf_gate("weapon_detection", "Weapon"), 0.71)
+        self.assertEqual(app._resolve_conf_gate("weapon_detection", "Knife"), 0.71)
+        self.assertIsNone(app._resolve_conf_gate("weapon_yolo26x", "Weapon"))
+
     def test_ensemble_loads_relative_manifest_models_from_model_directory(self):
         with tempfile.TemporaryDirectory() as temp:
             model_dir = Path(temp) / "models"

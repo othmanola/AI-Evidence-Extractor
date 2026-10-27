@@ -742,6 +742,7 @@ class CFG:
     CAM_MAX = 48
     PER_CLASS_CONF = {"Firearm": 0.59}
     PER_MODEL_CONF = {
+        "weapon_detection": 0.71,
         "weapon_yolov8":   0.75,
         "firearm_yolov8n": 0.75,
         "cypher_weapon":   {"__weapons__": 0.50},
