@@ -44,6 +44,15 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("html[data-theme=\"light\"] .gradio-container input", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-project-feature", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-upload-shell", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-account-auth-form input", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-account-auth-form button.aee-account-submit", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-workflow-step", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-card .aee-model", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] body .gradio-container .contain .table-container th", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] body .gradio-container .contain button.aee-btn-run", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] body .gradio-container .contain .aee-nav-drawer", app.CSS)
+        self.assertIn("--body-background-fill:#FFF0CC!important", app.CSS)
 
     def test_home_analysis_uses_detailed_progress_without_default_loading_overlay(self):
         source = (Path(__file__).resolve().parents[1] / "app.py").read_text(
