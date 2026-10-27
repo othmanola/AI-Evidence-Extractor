@@ -36,8 +36,14 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertIn("--body-background-fill:#FFF0CC", light_theme)
         self.assertIn("--button-primary-background-fill:#F28C32", light_theme)
+        self.assertIn("--card-top:#796253", light_theme)
+        self.assertIn("--card-glass:#A58D91", light_theme)
+        self.assertIn("--card-transition:#DDA16C", light_theme)
+        self.assertIn("--card-glow:#F28C32", light_theme)
+        self.assertIn("--card-lavender:#B58C99", light_theme)
         self.assertIn("html[data-theme=\"light\"] .gradio-container input", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell", app.CSS)
+        self.assertIn("html[data-theme=\"light\"] .aee-project-feature", app.CSS)
 
     def test_home_analysis_uses_detailed_progress_without_default_loading_overlay(self):
         source = (Path(__file__).resolve().parents[1] / "app.py").read_text(

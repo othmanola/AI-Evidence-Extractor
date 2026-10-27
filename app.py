@@ -2008,6 +2008,9 @@ html[data-theme="light"]{
   --border:rgba(121,98,83,.2);--border-strong:rgba(121,98,83,.42);
   --text:#554237;--text-muted:#796253;--text-subtle:#796253;
   --blue:#F28C32;--violet:#B58C99;--cyan:#A58D91;
+  --card-top:#796253;--card-glass:#A58D91;--card-transition:#DDA16C;
+  --card-glow:#F28C32;--card-lavender:#B58C99;
+  --card-text:#FFF0CC;--card-text-muted:rgba(255,240,204,.8);
   --shell-bg-1:#FFF8E9;--shell-bg-2:#FFF0CC;
   --hero-grad-1:#796253;--hero-grad-2:#A58D91;--hero-grad-3:#B58C99;--hero-grad-4:#DDA16C;
   --body-background-fill:#FFF0CC;
@@ -4299,6 +4302,67 @@ html[data-theme="light"] .aee-nav-toggle:hover,
 html[data-theme="light"] .aee-profile-tool:hover,
 html[data-theme="light"] .aee-tool:hover{
   border-color:rgba(242,140,50,.55)!important;
+}
+html[data-theme="light"] .aee-card,
+html[data-theme="light"] .aee-settings-card,
+html[data-theme="light"] .aee-update-card,
+html[data-theme="light"] .aee-update-dialog,
+html[data-theme="light"] .aee-about-card,
+html[data-theme="light"] .aee-contact-card{
+  color:var(--card-text);
+  border-color:rgba(121,98,83,.48)!important;
+  background:
+    radial-gradient(560px 220px at 88% 100%,rgba(242,140,50,.3),transparent 72%),
+    radial-gradient(460px 240px at 12% 0%,rgba(181,140,153,.32),transparent 70%),
+    linear-gradient(155deg,var(--card-top) 0%,rgba(121,98,83,.94) 48%,rgba(165,141,145,.74) 100%)!important;
+  box-shadow:0 24px 60px -42px rgba(121,98,83,.72),0 1px 0 rgba(255,240,204,.18) inset;
+}
+html[data-theme="light"] .aee-card-title,
+html[data-theme="light"] .aee-update-title,
+html[data-theme="light"] .aee-update-status strong,
+html[data-theme="light"] .aee-settings-card-heading h2,
+html[data-theme="light"] .aee-settings-card .aee-account-settings-copy strong,
+html[data-theme="light"] .aee-about-title,
+html[data-theme="light"] .aee-contact-title,
+html[data-theme="light"] .aee-project-page-heading h1,
+html[data-theme="light"] .aee-project-feature strong,
+html[data-theme="light"] .aee-update-step strong{
+  color:var(--card-text)!important;
+}
+html[data-theme="light"] .aee-card-sub,
+html[data-theme="light"] .aee-update-copy,
+html[data-theme="light"] .aee-update-notes,
+html[data-theme="light"] .aee-settings-card-heading p,
+html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p,
+html[data-theme="light"] .aee-about-copy,
+html[data-theme="light"] .aee-contact-copy,
+html[data-theme="light"] .aee-project-feature span,
+html[data-theme="light"] .aee-update-step span:last-child{
+  color:var(--card-text-muted)!important;
+}
+html[data-theme="light"] .aee-settings-fields label span[data-testid="block-info"],
+html[data-theme="light"] .aee-settings-fields label span:first-child{
+  color:var(--card-text-muted)!important;
+}
+html[data-theme="light"] .aee-project-feature,
+html[data-theme="light"] .aee-update-step{
+  color:var(--card-text);
+  border-color:rgba(121,98,83,.42)!important;
+  background:
+    radial-gradient(340px 140px at 88% 100%,rgba(242,140,50,.25),transparent 72%),
+    linear-gradient(155deg,var(--card-top),rgba(165,141,145,.72))!important;
+}
+html[data-theme="light"] .aee-project-feature:hover{
+  background:
+    radial-gradient(340px 140px at 88% 100%,rgba(242,140,50,.38),transparent 72%),
+    linear-gradient(155deg,var(--card-top),rgba(165,141,145,.82))!important;
+}
+html[data-theme="light"] .aee-settings-card .aee-settings-card-heading{
+  border-bottom-color:rgba(255,240,204,.22);
+}
+html[data-theme="light"] .aee-about-card:before,
+html[data-theme="light"] .aee-contact-card:before{
+  background:linear-gradient(180deg,var(--card-transition),var(--card-glow),transparent);
 }
 """
 
