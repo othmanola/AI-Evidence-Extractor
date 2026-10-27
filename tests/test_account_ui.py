@@ -19,6 +19,17 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_home_analysis_uses_detailed_progress_without_default_loading_overlay(self):
+        source = (Path(__file__).resolve().parents[1] / "app.py").read_text(
+            encoding="utf-8"
+        )
+        analysis_events = source.split(
+            "process_event = process_btn.click(", 1
+        )[1].split("account_auth_mode_btn.click(", 1)[0]
+
+        self.assertEqual(analysis_events.count('show_progress="hidden"'), 5)
+        self.assertNotIn('show_progress="full"', analysis_events)
+
     def test_weapon_detection_model_uses_071_confidence_gate(self):
         self.assertEqual(app._resolve_conf_gate("weapon_detection", "Weapon"), 0.71)
         self.assertEqual(app._resolve_conf_gate("weapon_detection", "Knife"), 0.71)

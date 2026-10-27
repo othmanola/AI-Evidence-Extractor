@@ -8713,7 +8713,7 @@ def build_ui():
 
         process_event = process_btn.click(
             fn=process_batch, inputs=[video_input, *CASE_INPUTS, high_accuracy],
-            outputs=OUT, show_progress="full", api_name="analyze")
+            outputs=OUT, show_progress="hidden", api_name="analyze")
 
         def _post(master, pdf, caps, sums, prev, capc, evc, df, ov, prog,
                   rows, caps_s, sums_s, mv, cam_h, cam_b, cam_disp, tr_rows,
@@ -8721,12 +8721,15 @@ def build_ui():
             return (master, pdf, caps, sums, sums[0] if sums else None,
                     capc, evc, df, ov, prog, rows, caps, sums, master,
                     cam_h, cam_b, cam_disp, tr_rows, tr_html, cam_html_v, tr_df)
-        process_event = process_event.then(fn=_post, inputs=OUT, outputs=OUT)
+        process_event = process_event.then(
+            fn=_post, inputs=OUT, outputs=OUT, show_progress="hidden")
 
         def _post2(sums):
             return gr.update(choices=[Path(s).stem for s in sums] if sums else [],
                              value=Path(sums[0]).stem if sums else None)
-        process_event.then(fn=_post2, inputs=[sums_state], outputs=[sum_select])
+        process_event.then(
+            fn=_post2, inputs=[sums_state], outputs=[sum_select],
+            show_progress="hidden")
         history_refresh.click(fn=_history_dataframe, inputs=[],
                                outputs=[history_table], queue=False)
         detailed_history_refresh.click(
@@ -8736,10 +8739,11 @@ def build_ui():
             fn=lambda: _history_zip_ui(),
             inputs=[], outputs=[all_history_zip, history_zip_status])
         process_event.then(
-            fn=_history_dataframe, inputs=[], outputs=[history_table])
+            fn=_history_dataframe, inputs=[], outputs=[history_table],
+            show_progress="hidden")
         process_event.then(
             fn=_history_refresh_ui, inputs=[history_refresh_state],
-            outputs=[history_refresh_state])
+            outputs=[history_refresh_state], show_progress="hidden")
         account_auth_mode_btn.click(
             fn=_account_auth_mode_ui, inputs=[account_auth_mode],
             outputs=[account_auth_mode, account_auth_intro, account_name_group,
