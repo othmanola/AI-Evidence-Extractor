@@ -53,6 +53,10 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("html[data-theme=\"light\"] body .gradio-container .contain button.aee-btn-run", app.CSS)
         self.assertIn("html[data-theme=\"light\"] body .gradio-container .contain .aee-nav-drawer", app.CSS)
         self.assertIn("--body-background-fill:#FFF0CC!important", app.CSS)
+        self.assertIn("@media(max-width:720px)", app.CSS)
+        self.assertIn(".gradio-container .main.fillable>.wrap", app._JS_HEAD)
+        self.assertIn("@media(max-width:380px)", app._JS_HEAD)
+        self.assertIn(".aee-tabs [role=\"tablist\"]", app.CSS)
 
     def test_home_analysis_uses_detailed_progress_without_default_loading_overlay(self):
         source = (Path(__file__).resolve().parents[1] / "app.py").read_text(

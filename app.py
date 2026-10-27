@@ -5119,6 +5119,70 @@ html[data-theme="light"] body .gradio-container .contain .table-container button
   color:#554237!important;border-color:rgba(121,98,83,.24)!important;
   background:#FFF0CC!important;
 }
+@media(max-width:720px){
+  .aee-hero{
+    width:100%!important;max-width:none!important;padding-right:4px;padding-left:4px;
+  }
+  .aee-brand{max-width:100%;gap:11px;}
+  .aee-brand-copy{min-width:0;}
+  .aee-brand-name{font-size:clamp(1.3rem,6vw,1.8rem);overflow-wrap:anywhere;}
+  .aee-hero-description{max-width:100%;overflow-wrap:anywhere;}
+  .aee-hero-pills{width:100%;justify-content:flex-start;gap:7px;}
+  .aee-pill{max-width:100%;font-size:.68rem;white-space:normal;}
+  .aee-workflow{width:100%;max-width:none;box-sizing:border-box;flex-wrap:wrap;}
+  .aee-workflow-step{flex:1 1 calc(50% - 8px);min-width:0;white-space:normal;}
+  .aee-workspace{width:100%!important;max-width:none;gap:14px!important;}
+  .aee-workspace>.column{box-sizing:border-box;min-width:0!important;width:100%!important;}
+  .aee-upload-shell,.aee-config-shell .aee-card{
+    box-sizing:border-box!important;width:100%!important;min-width:0!important;
+  }
+  .aee-upload-shell{padding:16px!important;overflow:hidden!important;}
+  .aee-up-head{min-width:0;flex-wrap:wrap;gap:12px;padding-bottom:15px;margin-bottom:15px;}
+  .aee-up-icon{flex:0 0 46px;width:46px;height:46px;}
+  .aee-up-text{flex:1 1 180px;min-width:0;}
+  .aee-up-title{font-size:1rem;overflow-wrap:anywhere;}
+  .aee-up-sub{overflow-wrap:anywhere;}
+  .aee-up-status{margin-left:auto;}
+  .aee-formats{max-width:100%;box-sizing:border-box;padding:11px 12px;}
+  .aee-formats-note{align-items:flex-start;overflow-wrap:anywhere;}
+  .aee-actions{flex-wrap:wrap;gap:8px!important;}
+  .aee-btn-reset{flex:0 0 auto!important;min-width:0!important;padding:11px 14px!important;}
+  .aee-btn-run{flex:1 1 180px!important;min-width:0!important;padding:12px 16px!important;}
+  .aee-tabs [role="tablist"]{
+    display:flex!important;width:100%!important;max-width:100%!important;
+    flex-wrap:nowrap!important;justify-content:flex-start!important;
+    overflow-x:auto!important;overscroll-behavior-x:contain;
+    scrollbar-width:thin;margin:16px 0 12px!important;
+  }
+  .aee-tabs [role="tab"]{flex:0 0 auto!important;min-height:40px!important;white-space:nowrap!important;}
+  .aee-history-toolbar{flex-wrap:wrap;justify-content:stretch;gap:8px;}
+  .aee-history-toolbar>.block{flex:1 1 140px!important;min-width:0;}
+  .aee-history-toolbar input,.aee-history-toolbar select{max-width:100%;}
+  .aee-history-row{align-items:flex-start!important;flex-wrap:wrap;gap:10px!important;}
+  .aee-history-row-actions{width:100%!important;flex-wrap:wrap;justify-content:flex-start!important;}
+  .aee-history-row-actions button{min-height:36px!important;font-size:.72rem!important;}
+  .aee-history-detail{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .aee-history-window .aee-history-page{padding:0 12px 28px!important;}
+  .aee-settings-fields{grid-template-columns:1fr!important;}
+  .aee-settings-nav{max-width:100%;overflow-x:auto;}
+  .aee-account-shell .column.wrap>.aee-account-auth-form{width:100%!important;}
+  .aee-update-actions{flex-wrap:wrap;}
+  .aee-update-actions button{width:100%!important;}
+  .gradio-container .contain .table-container{max-width:100%;overflow-x:auto!important;}
+}
+@media(max-width:380px){
+  .aee-toolbar{right:10px!important;}
+  .aee-brand-mark{width:40px;height:40px;flex:0 0 40px;}
+  .aee-brand{gap:9px;}
+  .aee-brand-name{font-size:1.28rem;}
+  .aee-workflow{gap:6px;padding:9px!important;}
+  .aee-workflow-step{font-size:.64rem;}
+  .aee-upload-shell{padding:13px!important;}
+  .aee-up-status{padding:6px 10px;font-size:.56rem;}
+  .aee-actions{align-items:stretch!important;}
+  .aee-btn-reset,.aee-btn-run{flex:1 1 100%!important;width:100%!important;}
+  .aee-history-detail{grid-template-columns:1fr;}
+}
 """
 
 
@@ -5706,6 +5770,21 @@ def _overview_html(results, errs, sums, master, pdf, elapsed, tracker=None):
 # body-level overlay elements from JavaScript after this script runs.
 # ============================================================
 _JS_HEAD = r"""
+<style id="aee-responsive-shell">
+@media(max-width:720px){
+  .gradio-container .main.fillable{
+    min-width:0!important;padding:16px 0!important;
+  }
+  .gradio-container .main.fillable>.wrap{
+    width:100%!important;max-width:none!important;min-width:0!important;
+  }
+  html body .gradio-container{padding:0 14px 48px!important;}
+}
+@media(max-width:380px){
+  html body .gradio-container{padding:0 10px 40px!important;}
+}
+</style>
+
 <script>
 (function(){
   try {
