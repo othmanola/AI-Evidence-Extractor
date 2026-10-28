@@ -3041,6 +3041,11 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
 .aee-about-copy,.aee-contact-copy{max-width:820px;color:var(--text-muted);font-size:1rem;line-height:1.85;}
 .aee-about-copy p{margin:0 0 14px;}
 .aee-about-copy p:last-child{margin-bottom:0;}
+.aee-about-copy h3{margin:28px 0 10px;color:var(--text);font-size:1.12rem;font-weight:800;letter-spacing:-.02em;}
+.aee-about-copy ul{display:grid;gap:12px;margin:12px 0 0;padding-left:1.35rem;}
+.aee-about-copy li{padding-left:4px;}
+.aee-about-copy li strong{color:var(--text);}
+.aee-about-tagline{margin:28px 0 0;color:var(--text);font-size:1.04rem;font-weight:750;line-height:1.6;}
 .aee-project-feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
   max-width:100%;margin:18px auto 0;}
 .aee-project-feature{padding:17px 18px;border:1px solid rgba(148,163,184,.15);border-radius:16px;
@@ -4954,6 +4959,23 @@ html[data-theme="light"] body .gradio-container .contain .aee-contact-card{
     radial-gradient(560px 220px at 88% 100%,rgba(242,140,50,.3),transparent 72%),
     radial-gradient(460px 240px at 12% 0%,rgba(181,140,153,.32),transparent 70%),
     linear-gradient(155deg,#796253 0%,rgba(121,98,83,.94) 48%,rgba(165,141,145,.74) 100%)!important;
+}
+html[data-theme="light"] body .gradio-container .contain .aee-about-card .aee-about-copy p,
+html[data-theme="light"] body .gradio-container .contain .aee-about-card .aee-about-copy li{
+  color:rgba(255,240,204,.88)!important;
+}
+html[data-theme="light"] body .gradio-container .contain .aee-about-card .aee-about-copy p.aee-about-tagline{
+  color:#FFF0CC!important;
+}
+html[data-theme="light"] body .gradio-container .contain .aee-about-card .aee-about-note{
+  color:#FFF0CC!important;border-color:rgba(255,240,204,.24)!important;
+  background:rgba(255,240,204,.1)!important;
+}
+html[data-theme="light"] body .gradio-container .contain .aee-about-card .aee-about-note strong{
+  color:#FFF0CC!important;
+}
+html[data-theme="light"] body .gradio-container .contain .aee-about-card .aee-about-note div span{
+  color:rgba(255,240,204,.88)!important;
 }
 html[data-theme="light"] body .gradio-container .contain .aee-card .aee-card-title,
 html[data-theme="light"] body .gradio-container .contain .aee-card .aee-card-sub,
@@ -9646,28 +9668,47 @@ def build_ui():
                     about_close_btn = gr.Button("Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-about-close")
                 gr.HTML('''<section class="aee-about-card">
-                  <div class="aee-about-eyebrow"><span class="aee-about-eyebrow-mark">✦</span>
-                    Built for careful review</div>
-                  <h2 class="aee-about-title">Evidence deserves a clearer picture.</h2>
                   <div class="aee-about-copy">
-                    <p>AI Evidence Extractor brings video analysis and evidence review together in one
-                    desktop workspace. Explore object detections, follow tracks, inspect model
-                    explanations, and prepare reports without losing sight of the source footage.</p>
-                  </div>
-                  <div class="aee-project-feature-grid" aria-label="Project capabilities">
-                    <div class="aee-project-feature"><span class="aee-project-feature-index">01 / ANALYZE</span>
-                      <strong>Video analysis</strong><span>Review footage with an ensemble of detection models.</span></div>
-                    <div class="aee-project-feature"><span class="aee-project-feature-index">02 / EXPLORE</span>
-                      <strong>Evidence review</strong><span>Explore captures, object tracks, and model explanations.</span></div>
-                    <div class="aee-project-feature"><span class="aee-project-feature-index">03 / ORGANIZE</span>
-                      <strong>Case context</strong><span>Keep analysis history and case details close at hand.</span></div>
-                    <div class="aee-project-feature"><span class="aee-project-feature-index">04 / EXPORT</span>
-                      <strong>Report exports</strong><span>Prepare evidence summaries and downloadable reports.</span></div>
+                    <h2 class="aee-about-title">About Us</h2>
+                    <p>AI Evidence Extractor is an AI-powered digital forensics application designed to assist
+                    law enforcement officers and criminal investigators in examining digital evidence and
+                    extracting relevant information from electronic files, documents, and system logs.</p>
+                    <p>The system leverages artificial intelligence to help automate aspects of digital
+                    evidence examination, organize extracted information, summarize findings, and provide
+                    references to original evidence sources for verification and further investigation.</p>
+
+                    <h3>Our Mission</h3>
+                    <p>Our mission is to leverage artificial intelligence to support law enforcement
+                    professionals and criminal investigators by providing intelligent tools that improve the
+                    efficiency of digital investigations and simplify the process of identifying, organizing,
+                    and reviewing digital evidence.</p>
+
+                    <h3>Our Objectives</h3>
+                    <ul>
+                      <li><strong>Digital Evidence Extraction:</strong> Identify and extract relevant
+                      information from digital files, documents, and system logs.</li>
+                      <li><strong>AI-Powered Analysis:</strong> Assist in analyzing digital data and
+                      identifying potentially relevant findings.</li>
+                      <li><strong>Automated Reporting:</strong> Generate structured summaries of findings to
+                      support investigation workflows.</li>
+                      <li><strong>Evidence Traceability:</strong> Link extracted findings to their original
+                      sources to facilitate verification and review.</li>
+                      <li><strong>Criminal Investigation Support:</strong> Help law enforcement officers and
+                      criminal investigators organize and examine digital evidence more efficiently.</li>
+                    </ul>
+
+                    <h3>Our Vision</h3>
+                    <p>To contribute to the future of digital forensics by developing intelligent solutions
+                    that support law enforcement, enhance investigative workflows, and make digital evidence
+                    analysis more efficient, transparent, and accessible.</p>
+                    <p class="aee-about-tagline">AI Evidence Extractor — Empowering Digital Investigations
+                    Through Artificial Intelligence.</p>
                   </div>
                   <div class="aee-about-note"><span class="aee-about-note-mark">✓</span>
-                    <div><strong>Human review stays in control</strong>
-                      <span>Detections, threat scores, and explanations are decision-support tools.
-                      Always verify findings against the original video.</span></div>
+                    <div><strong>Professional use and verification</strong>
+                      <span>AI Evidence Extractor is designed to assist qualified professionals. It does not
+                      replace expert judgment, established digital forensic procedures, or independent
+                      verification of findings.</span></div>
                   </div>
                 </section>''')
 

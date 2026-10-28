@@ -411,6 +411,35 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn(".aee-utility-window-shell .aee-project-page-heading p{", app.CSS)
         self.assertIn("html[data-theme=\"light\"] .aee-utility-window-shell .aee-project-page-heading h1", app.CSS)
 
+    def test_about_us_page_contains_requested_mission_objectives_vision_and_disclaimer(self):
+        about_markup = " ".join(" ".join(
+            value for value in _nested_code_constants(app.build_ui.__code__)
+            if isinstance(value, str) and "Digital Evidence Extraction:" in value
+        ).split())
+
+        for expected in (
+            "AI Evidence Extractor is an AI-powered digital forensics application designed to assist",
+            "The system leverages artificial intelligence to help automate aspects of digital",
+            "<h3>Our Mission</h3>",
+            "<h3>Our Objectives</h3>",
+            "<strong>Digital Evidence Extraction:</strong>",
+            "<strong>AI-Powered Analysis:</strong>",
+            "<strong>Automated Reporting:</strong>",
+            "<strong>Evidence Traceability:</strong>",
+            "<strong>Criminal Investigation Support:</strong>",
+            "<h3>Our Vision</h3>",
+            "Empowering Digital Investigations",
+            "It does not replace expert judgment, established digital forensic procedures, or independent",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, about_markup)
+
+        self.assertIn(
+            "html[data-theme=\"light\"] body .gradio-container .contain "
+            ".aee-about-card .aee-about-copy p",
+            app.CSS,
+        )
+
     def test_google_signed_in_profile_has_account_identity_and_provider_badge(self):
         session = {
             "auth_provider": "google",
