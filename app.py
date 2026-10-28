@@ -5783,6 +5783,10 @@ _JS_HEAD = r"""
 @media(max-width:380px){
   html body .gradio-container{padding:0 10px 40px!important;}
 }
+.aee-nav-open .aee-nav-toggle{display:none!important;}
+.aee-nav-logo{flex:0 0 42px;}
+.aee-nav-brand{min-width:0;flex:1 1 auto;}
+.aee-nav-brand strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>
 
 <script>

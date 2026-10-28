@@ -56,6 +56,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("@media(max-width:720px)", app.CSS)
         self.assertIn(".gradio-container .main.fillable>.wrap", app._JS_HEAD)
         self.assertIn("@media(max-width:380px)", app._JS_HEAD)
+        self.assertIn(".aee-nav-open .aee-nav-toggle{display:none!important;}", app._JS_HEAD)
+        self.assertIn(".aee-nav-logo{flex:0 0 42px;}", app._JS_HEAD)
         self.assertIn(".aee-tabs [role=\"tablist\"]", app.CSS)
 
     def test_home_analysis_uses_detailed_progress_without_default_loading_overlay(self):
