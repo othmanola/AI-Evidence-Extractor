@@ -9,7 +9,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
@@ -5389,11 +5392,132 @@ def _ensemble_panel_html(info):
     </div>"""
 
 
+_RESOURCE_CPU_LOCK = threading.Lock()
+_RESOURCE_CPU_PREVIOUS = None
+
+
+def _windows_resource_stats():
+    if os.name != "nt":
+        return None
+
+    import ctypes
+    from ctypes import wintypes
+
+    class _FileTime(ctypes.Structure):
+        _fields_ = [("low", wintypes.DWORD), ("high", wintypes.DWORD)]
+
+    class _MemoryStatus(ctypes.Structure):
+        _fields_ = [
+            ("length", wintypes.DWORD), ("load", wintypes.DWORD),
+            ("total_phys", ctypes.c_ulonglong), ("avail_phys", ctypes.c_ulonglong),
+            ("total_page", ctypes.c_ulonglong), ("avail_page", ctypes.c_ulonglong),
+            ("total_virtual", ctypes.c_ulonglong), ("avail_virtual", ctypes.c_ulonglong),
+            ("avail_extended_virtual", ctypes.c_ulonglong),
+        ]
+
+    class _ProcessMemoryCounters(ctypes.Structure):
+        _fields_ = [
+            ("cb", wintypes.DWORD), ("page_fault_count", wintypes.DWORD),
+            ("peak_working_set_size", ctypes.c_size_t),
+            ("working_set_size", ctypes.c_size_t),
+            ("quota_peak_paged_pool_usage", ctypes.c_size_t),
+            ("quota_paged_pool_usage", ctypes.c_size_t),
+            ("quota_peak_non_paged_pool_usage", ctypes.c_size_t),
+            ("quota_non_paged_pool_usage", ctypes.c_size_t),
+            ("pagefile_usage", ctypes.c_size_t),
+            ("peak_pagefile_usage", ctypes.c_size_t),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    idle, kernel, user = _FileTime(), _FileTime(), _FileTime()
+    if not kernel32.GetSystemTimes(
+        ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)
+    ):
+        raise OSError(ctypes.get_last_error(), "GetSystemTimes failed")
+
+    def filetime_value(value):
+        return (value.high << 32) | value.low
+
+    idle_time = filetime_value(idle)
+    total_time = filetime_value(kernel) + filetime_value(user)
+    global _RESOURCE_CPU_PREVIOUS
+    with _RESOURCE_CPU_LOCK:
+        previous = _RESOURCE_CPU_PREVIOUS
+        _RESOURCE_CPU_PREVIOUS = (idle_time, total_time)
+    if previous and total_time > previous[1]:
+        total_delta = total_time - previous[1]
+        cpu_percent = max(
+            0.0, min(100.0, 100.0 * (
+                total_delta - (idle_time - previous[0])
+            ) / total_delta)
+        )
+    else:
+        cpu_percent = 0.0
+
+    memory = _MemoryStatus()
+    memory.length = ctypes.sizeof(memory)
+    if not kernel32.GlobalMemoryStatusEx(ctypes.byref(memory)):
+        raise OSError(ctypes.get_last_error(), "GlobalMemoryStatusEx failed")
+
+    counters = _ProcessMemoryCounters()
+    counters.cb = ctypes.sizeof(counters)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    psapi.GetProcessMemoryInfo.argtypes = [
+        wintypes.HANDLE, ctypes.POINTER(_ProcessMemoryCounters), wintypes.DWORD,
+    ]
+    psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+    if not psapi.GetProcessMemoryInfo(
+        kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb
+    ):
+        raise OSError(ctypes.get_last_error(), "GetProcessMemoryInfo failed")
+
+    return {
+        "cpu_percent": cpu_percent,
+        "memory_percent": memory.load,
+        "memory_total": memory.total_phys,
+        "memory_available": memory.avail_phys,
+        "process_rss": counters.working_set_size,
+    }
+
+
 def _resource_usage_html():
-    cpu_percent = psutil.cpu_percent(interval=None)
-    memory = psutil.virtual_memory()
-    app_memory_mb = psutil.Process(os.getpid()).memory_info().rss / (1024 ** 2)
-    system_memory_used = memory.total - memory.available
+    if psutil is not None:
+        memory = psutil.virtual_memory()
+        stats = {
+            "cpu_percent": psutil.cpu_percent(interval=None),
+            "memory_percent": memory.percent,
+            "memory_total": memory.total,
+            "memory_available": memory.available,
+            "process_rss": psutil.Process(os.getpid()).memory_info().rss,
+        }
+    else:
+        try:
+            stats = _windows_resource_stats()
+        except OSError as exc:
+            log.warning("Could not read Windows resource usage: %s", exc)
+            stats = None
+        if stats is None:
+            stats = {
+                "cpu_percent": None, "memory_percent": None,
+                "memory_total": None, "memory_available": None,
+                "process_rss": None,
+            }
+
+    cpu_percent = stats["cpu_percent"]
+    memory_percent = stats["memory_percent"]
+    memory_total = stats["memory_total"]
+    memory_available = stats["memory_available"]
+    app_memory = stats["process_rss"]
+    memory_detail = (
+        f"{(memory_total - memory_available) / (1024 ** 3):.1f} / "
+        f"{memory_total / (1024 ** 3):.1f} GiB total"
+        if memory_total is not None and memory_available is not None else
+        "System memory usage unavailable"
+    )
+    app_memory_label = (
+        f"{app_memory / (1024 ** 2):,.0f} MiB"
+        if app_memory is not None else "Unavailable"
+    )
     inference_device = _html.escape(str(Ensemble.get().device_name))
 
     def meter(label, percent, detail, color):
@@ -5453,16 +5577,14 @@ def _resource_usage_html():
       <div class="aee-card-title">📊 Live system usage</div>
       <div class="aee-card-sub">Refreshes every 2 seconds</div>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
-                  margin-top:12px;">
-        {meter("System CPU", cpu_percent, "Overall processor usage", "#3b82f6")}
-        {meter("System RAM", memory.percent,
-               f"{system_memory_used / (1024 ** 3):.1f} / {memory.total / (1024 ** 3):.1f} GiB total",
-               "#f59e0b")}
+                margin-top:12px;">
+      {meter("System CPU", cpu_percent, "Overall processor usage", "#3b82f6")}
+      {meter("System RAM", memory_percent, memory_detail, "#f59e0b")}
         {meter("NVIDIA GPU", gpu_percent, gpu_detail, "#10b981")}
         {meter("GPU memory", vram_percent, vram_detail, "#8b5cf6")}
       </div>
       <div style="margin-top:8px;font-size:.7rem;color:var(--text-subtle);">
-        App RAM: {app_memory_mb:,.0f} MiB
+        App RAM: {app_memory_label}
       </div>
     </div>"""
 

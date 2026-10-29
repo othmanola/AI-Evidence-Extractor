@@ -74,6 +74,29 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("NVIDIA GPU telemetry unavailable", panel)
         self.assertIn("Install or enable NVIDIA drivers", panel)
 
+    def test_resource_monitor_uses_windows_fallback_without_psutil(self):
+        stats = {
+            "cpu_percent": 42.0,
+            "memory_percent": 50.0,
+            "memory_total": 16 * 1024 ** 3,
+            "memory_available": 8 * 1024 ** 3,
+            "process_rss": 512 * 1024 ** 2,
+        }
+        with (
+            patch.object(app, "psutil", None),
+            patch.object(app, "_windows_resource_stats", return_value=stats),
+            patch.object(app.shutil, "which", return_value=None),
+            patch.object(
+                app.Ensemble, "get",
+                return_value=SimpleNamespace(device_name="CPU"),
+            ),
+        ):
+            panel = app._resource_usage_html()
+
+        self.assertIn("42%", panel)
+        self.assertIn("8.0 / 16.0 GiB total", panel)
+        self.assertIn("App RAM: 512 MiB", panel)
+
     def test_light_theme_uses_requested_palette_and_styles_gradio_controls(self):
         light_theme = app.CSS.split('html[data-theme="light"]{', 1)[1].split(
             "\n}", 1
