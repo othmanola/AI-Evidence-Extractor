@@ -2,6 +2,7 @@ import base64
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -19,6 +20,60 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
+        memory = SimpleNamespace(
+            total=16 * 1024 ** 3, available=8 * 1024 ** 3, percent=50.0,
+        )
+        nvidia_result = SimpleNamespace(
+            stdout="NVIDIA GeForce GTX 1050 Ti, 23, 2048, 4096\n",
+        )
+        with (
+            patch.object(app.psutil, "cpu_percent", return_value=37.5),
+            patch.object(app.psutil, "virtual_memory", return_value=memory),
+            patch.object(
+                app.psutil, "Process",
+                return_value=SimpleNamespace(
+                    memory_info=lambda: SimpleNamespace(rss=512 * 1024 ** 2)
+                ),
+            ),
+            patch.object(app.shutil, "which", return_value="nvidia-smi"),
+            patch.object(app.subprocess, "run", return_value=nvidia_result),
+            patch.object(
+                app.Ensemble, "get",
+                return_value=SimpleNamespace(device_name="NVIDIA GeForce GTX 1050 Ti"),
+            ),
+        ):
+            panel = app._resource_usage_html()
+
+        self.assertIn("Live system usage", panel)
+        self.assertIn("System CPU", panel)
+        self.assertIn("System RAM", panel)
+        self.assertIn("NVIDIA GeForce GTX 1050 Ti", panel)
+        self.assertIn("2,048 / 4,096 MiB", panel)
+        self.assertIn("App RAM: 512 MiB", panel)
+
+    def test_resource_monitor_explains_when_nvidia_telemetry_is_unavailable(self):
+        memory = SimpleNamespace(total=8 * 1024 ** 3, available=4 * 1024 ** 3, percent=50)
+        with (
+            patch.object(app.psutil, "cpu_percent", return_value=12),
+            patch.object(app.psutil, "virtual_memory", return_value=memory),
+            patch.object(
+                app.psutil, "Process",
+                return_value=SimpleNamespace(
+                    memory_info=lambda: SimpleNamespace(rss=128 * 1024 ** 2)
+                ),
+            ),
+            patch.object(app.shutil, "which", return_value=None),
+            patch.object(
+                app.Ensemble, "get",
+                return_value=SimpleNamespace(device_name="CPU"),
+            ),
+        ):
+            panel = app._resource_usage_html()
+
+        self.assertIn("NVIDIA GPU telemetry unavailable", panel)
+        self.assertIn("Install or enable NVIDIA drivers", panel)
+
     def test_light_theme_uses_requested_palette_and_styles_gradio_controls(self):
         light_theme = app.CSS.split('html[data-theme="light"]{', 1)[1].split(
             "\n}", 1

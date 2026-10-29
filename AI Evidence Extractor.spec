@@ -15,6 +15,7 @@ gradio_datas, gradio_binaries, gradio_hidden = collect_all("gradio")
 webview_datas, webview_binaries, webview_hidden = collect_all("webview")
 safehttpx_datas, safehttpx_binaries, safehttpx_hidden = collect_all("safehttpx")
 groovy_datas, groovy_binaries, groovy_hidden = collect_all("groovy")
+psutil_datas, psutil_binaries, psutil_hidden = collect_all("psutil")
 
 source_modules = [
     "app.py",
@@ -29,7 +30,7 @@ datas = [
     ("assets", "assets"),
     ("version.txt", "."),
     ("update_config.json", "."),
-] + [(name, ".") for name in source_modules] + gradio_datas + webview_datas + safehttpx_datas + groovy_datas + collect_data_files("ultralytics")
+] + [(name, ".") for name in source_modules] + gradio_datas + webview_datas + safehttpx_datas + groovy_datas + psutil_datas + collect_data_files("ultralytics")
 account_defaults_path = os.environ.get("AEE_ACCOUNT_DEFAULTS_PATH")
 if account_defaults_path:
     account_defaults_path = Path(account_defaults_path)
@@ -37,14 +38,14 @@ if account_defaults_path:
         raise FileNotFoundError("AEE_ACCOUNT_DEFAULTS_PATH does not exist.")
     datas.append((str(account_defaults_path), "."))
 binaries = (
-    gradio_binaries + webview_binaries + safehttpx_binaries + groovy_binaries
+    gradio_binaries + webview_binaries + safehttpx_binaries + groovy_binaries + psutil_binaries
     + collect_dynamic_libs("torchvision")
     + [
         (str(extension), "torchvision")
         for extension in Path(torchvision.__file__).parent.glob("*.pyd")
     ]
 )
-hiddenimports = gradio_hidden + webview_hidden + safehttpx_hidden + groovy_hidden + [
+hiddenimports = gradio_hidden + webview_hidden + safehttpx_hidden + groovy_hidden + psutil_hidden + [
     "app",
     "account_client",
     "update_client",
