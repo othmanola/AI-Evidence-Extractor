@@ -9,6 +9,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+import psutil
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
@@ -5388,6 +5389,84 @@ def _ensemble_panel_html(info):
     </div>"""
 
 
+def _resource_usage_html():
+    cpu_percent = psutil.cpu_percent(interval=None)
+    memory = psutil.virtual_memory()
+    app_memory_mb = psutil.Process(os.getpid()).memory_info().rss / (1024 ** 2)
+    system_memory_used = memory.total - memory.available
+    inference_device = _html.escape(str(Ensemble.get().device_name))
+
+    def meter(label, percent, detail, color):
+        if percent is None:
+            bar = '<div style="height:5px;margin-top:8px;"></div>'
+            value = "Unavailable"
+        else:
+            percent = max(0.0, min(100.0, float(percent)))
+            bar = (f'<div style="height:5px;margin-top:8px;border-radius:4px;'
+                   f'background:var(--border);overflow:hidden;"><div style="height:100%;'
+                   f'width:{percent:.1f}%;background:{color};"></div></div>')
+            value = f"{percent:.0f}%"
+        return f"""
+        <div style="padding:12px;border:1px solid var(--border);border-radius:10px;
+                    background:var(--surface-2);min-width:0;">
+          <div style="display:flex;justify-content:space-between;gap:8px;">
+            <strong style="font-size:.8rem;">{label}</strong>
+            <span style="font-size:.8rem;font-weight:700;">{value}</span>
+          </div>
+          <div style="margin-top:4px;font-size:.7rem;color:var(--text-subtle);">{detail}</div>
+          {bar}
+        </div>"""
+
+    gpu_name = "NVIDIA GPU telemetry unavailable"
+    gpu_percent = None
+    vram_percent = None
+    vram_detail = "Install or enable NVIDIA drivers to view GPU usage"
+    nvidia_smi = shutil.which("nvidia-smi")
+    if nvidia_smi:
+        try:
+            result = subprocess.run(
+                [nvidia_smi, "--query-gpu=name,utilization.gpu,memory.used,memory.total",
+                 "--format=csv,noheader,nounits"],
+                check=True, capture_output=True, text=True, timeout=2,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            fields = [field.strip() for field in result.stdout.splitlines()[0].split(",")]
+            if len(fields) != 4:
+                raise ValueError("Unexpected nvidia-smi output")
+            gpu_name, gpu_text, used_text, total_text = fields
+            gpu_percent = None if gpu_text.upper() == "N/A" else float(gpu_text)
+            vram_used = None if used_text.upper() == "N/A" else float(used_text)
+            vram_total = None if total_text.upper() == "N/A" else float(total_text)
+            if vram_used is not None and vram_total:
+                vram_percent = vram_used / vram_total * 100
+                vram_detail = f"{vram_used:,.0f} / {vram_total:,.0f} MiB"
+            else:
+                vram_detail = "VRAM usage unavailable"
+            gpu_name = _html.escape(gpu_name)
+        except (OSError, subprocess.SubprocessError, ValueError, IndexError) as exc:
+            log.debug("NVIDIA GPU telemetry unavailable: %s", exc)
+            gpu_name = "NVIDIA GPU telemetry unavailable"
+
+    gpu_detail = f"{gpu_name} · inference: {inference_device}"
+    return f"""
+    <div class="aee-card" style="margin-top:12px;">
+      <div class="aee-card-title">📊 Live system usage</div>
+      <div class="aee-card-sub">Refreshes every 2 seconds</div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+                  margin-top:12px;">
+        {meter("System CPU", cpu_percent, "Overall processor usage", "#3b82f6")}
+        {meter("System RAM", memory.percent,
+               f"{system_memory_used / (1024 ** 3):.1f} / {memory.total / (1024 ** 3):.1f} GiB total",
+               "#f59e0b")}
+        {meter("NVIDIA GPU", gpu_percent, gpu_detail, "#10b981")}
+        {meter("GPU memory", vram_percent, vram_detail, "#8b5cf6")}
+      </div>
+      <div style="margin-top:8px;font-size:.7rem;color:var(--text-subtle);">
+        App RAM: {app_memory_mb:,.0f} MiB
+      </div>
+    </div>"""
+
+
 def _empty_html():
     return """
     <div class="aee-empty">
@@ -9224,7 +9303,10 @@ def build_ui():
 
             with gr.Column(scale=4, min_width=340, elem_classes="aee-config-shell"):
                 ensemble_panel = gr.HTML(value=_ensemble_panel_html(info))
+                resource_panel = gr.HTML(value=_resource_usage_html())
 
+        resource_timer = gr.Timer(value=2, active=True)
+        resource_timer.tick(fn=_resource_usage_html, outputs=resource_panel)
         progress_html = gr.HTML(value="", elem_id="aee-analysis-progress")
 
         with gr.Tabs(elem_classes="aee-tabs"):
