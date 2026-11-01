@@ -2319,6 +2319,19 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
   box-shadow:0 12px 32px -16px rgba(2,6,23,.85);transition:transform .2s,border-color .2s,box-shadow .2s;}
 .aee-nav-toggle:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.6);box-shadow:0 14px 35px -15px rgba(59,130,246,.5);}
 .aee-nav-toggle svg{width:21px;height:21px;}
+.aee-notification-center{position:fixed;z-index:9998;top:20px;right:20px;display:flex;align-items:center;gap:11px;
+  width:max-content;max-width:min(360px,calc(100vw - 96px));padding:11px 15px;border:1px solid var(--border-strong);
+  border-radius:15px;color:var(--text);background:linear-gradient(145deg,rgba(30,41,59,.96),rgba(10,15,28,.96));
+  box-shadow:0 12px 32px -16px rgba(2,6,23,.85);}
+.aee-notification-center svg{width:21px;height:21px;flex:none;color:#93c5fd;}
+.aee-notification-copy{min-width:0;display:grid;gap:3px;}
+.aee-notification-copy span{color:#93c5fd;font-size:.62rem;font-weight:800;letter-spacing:.13em;}
+.aee-notification-copy strong{color:var(--text);font-size:.76rem;line-height:1.4;}
+html[data-theme="light"] .aee-notification-center{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
+html[data-theme="light"] .aee-notification-copy strong{color:#1e293b;}
+html[dir="rtl"] .aee-notification-center{right:auto;left:76px;}
+@media(max-width:600px){.aee-notification-center{top:14px;right:12px;max-width:calc(100vw - 88px);padding:9px 11px;}
+  html[dir="rtl"] .aee-notification-center{right:auto;left:76px;max-width:calc(100vw - 88px);}}
 .aee-nav-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.55);backdrop-filter:blur(3px);
   opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s;}
 .aee-nav-drawer{position:fixed;inset:0 auto 0 0;z-index:10001;width:min(340px,88vw);padding:24px 18px;
@@ -6772,6 +6785,8 @@ _JS_HEAD = r"""
     'Download report':'تنزيل التقرير','Download PDF':'تنزيل PDF',
     'No results yet':'لا توجد نتائج بعد','Processing':'جارٍ المعالجة',
     'Analysis completed':'اكتمل التحليل','Analysis stopped.':'تم إيقاف التحليل.',
+    'NOTIFICATIONS':'الإشعارات','Notifications':'الإشعارات',
+    'Analysis complete. You can review the result now.':'اكتمل التحليل. يمكنك مراجعة النتيجة الآن.',
     'Apply the update':'تطبيق التحديث',
     'Installing update':'جارٍ تثبيت التحديث',
     'Signed in with Google.':'تم تسجيل الدخول باستخدام Google.',
@@ -8311,7 +8326,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
                 "Open History to review the storage warnings. "
                 + history_warnings[0][:300])
         if results:
-            _notify_analysis_complete()
+            history_status += _ANALYSIS_COMPLETE_MARKER
         yield (master_s, pdf_s, caps, sums, caps[0] if caps else None,
                gr.update(choices=classes, value="All"),
                gr.update(choices=classes, value="All"),
@@ -8403,71 +8418,34 @@ def cancel_active_analysis():
     return "Analysis stopped."
 
 
-def _send_windows_analysis_notification():
-    if os.name != "nt":
-        raise OSError("Native desktop notifications are only available on Windows")
-    script = """
-$ErrorActionPreference = 'Stop'
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-$xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>AI Evidence Extractor</text><text>Analysis complete. You can review the result now.</text></binding></visual></toast>')
-$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('AI.EvidenceExtractor.Desktop')
-$notifier.Show($toast)
-"""
-    encoded_script = base64.b64encode(script.encode("utf-16le")).decode("ascii")
-    powershell = shutil.which("powershell.exe") or "powershell.exe"
-    subprocess.run(
-        [
-            powershell, "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
-            "-EncodedCommand", encoded_script,
-        ],
-        check=True, capture_output=True, text=True, timeout=10,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+_ANALYSIS_COMPLETE_MARKER = (
+    '<span data-aee-analysis-complete="true" hidden></span>'
+)
+
+
+def _analysis_notification_html(message=""):
+    safe_message = _html.escape(str(message or "Notifications"))
+    return (
+        '<div class="aee-notification-center" role="status" '
+        'aria-live="polite" aria-label="Notifications">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>'
+        '<path d="M10 21h4"/></svg>'
+        '<div class="aee-notification-copy"><span>NOTIFICATIONS</span>'
+        f'<strong>{safe_message}</strong></div></div>'
     )
 
 
-def _notify_analysis_complete():
-    def notify():
-        if os.name == "nt":
-            try:
-                import winsound
-                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-            except (ImportError, OSError) as exc:
-                log.warning("Could not play the analysis-complete sound: %s", exc)
-
-        try:
-            import asyncio
-            from desktop_notifier import DesktopNotifier
-
-            async def send_notification():
-                notifier = DesktopNotifier(app_name="AI Evidence Extractor")
-                await notifier.send(
-                    title="AI Evidence Extractor",
-                    message="Analysis complete. You can review the result now.",
-                )
-
-            asyncio.run(send_notification())
-        except Exception:
-            if os.name != "nt":
-                log.exception("Could not send the analysis-complete notification")
-                return
-            log.warning(
-                "Desktop notifier unavailable; trying the native Windows toast",
-                exc_info=True,
-            )
-            try:
-                _send_windows_analysis_notification()
-            except (OSError, subprocess.SubprocessError):
-                log.exception("Could not send the native Windows notification")
-
-    try:
-        threading.Thread(
-            target=notify, name="aee-completion-notification", daemon=True,
-        ).start()
-    except (OSError, RuntimeError):
-        log.exception("Could not start the analysis-complete notification")
+def _analysis_notification_update(progress_html):
+    progress_html = str(progress_html or "")
+    completed = _ANALYSIS_COMPLETE_MARKER in progress_html
+    status = progress_html.replace(_ANALYSIS_COMPLETE_MARKER, "")
+    message = (
+        "Analysis complete. You can review the result now."
+        if completed else ""
+    )
+    return status, _analysis_notification_html(message)
 
 
 def _update_progress_html(fraction, description, indeterminate=False):
@@ -9457,6 +9435,10 @@ def build_ui():
     )
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
         gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
+        notification_center = gr.HTML(
+            value=_analysis_notification_html(),
+            elem_id="aee-notification-host",
+        )
         gr.HTML(_hero_html(info))
         gr.HTML(_workflow_html())
 
@@ -10073,11 +10055,14 @@ def build_ui():
         def _post(master, pdf, caps, sums, prev, capc, evc, df, ov, prog,
                   rows, caps_s, sums_s, mv, cam_h, cam_b, cam_disp, tr_rows,
                   tr_html, cam_html_v, tr_df):
-            return (master, pdf, caps, sums, sums[0] if sums else None,
-                    capc, evc, df, ov, prog, rows, caps, sums, master,
-                    cam_h, cam_b, cam_disp, tr_rows, tr_html, cam_html_v, tr_df)
+            prog, notification_html = _analysis_notification_update(prog)
+            output = (master, pdf, caps, sums, sums[0] if sums else None,
+                      capc, evc, df, ov, prog, rows, caps, sums, master,
+                      cam_h, cam_b, cam_disp, tr_rows, tr_html, cam_html_v, tr_df)
+            return (*output, notification_html)
         process_event = process_event.then(
-            fn=_post, inputs=OUT, outputs=OUT, show_progress="hidden")
+            fn=_post, inputs=OUT, outputs=[*OUT, notification_center],
+            show_progress="hidden")
 
         def _post2(sums):
             return gr.update(choices=[Path(s).stem for s in sums] if sums else [],
