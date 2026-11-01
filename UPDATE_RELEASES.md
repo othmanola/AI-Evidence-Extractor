@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.78 fixes an app freeze caused by rebuilding the notification list
+from the language initializer while the navigation mutation observer was
+running.
+
 Version 1.2.77 matches the notification bell to the theme control and adds a
 persistent in-app notification center with unread counts, read/clear actions,
 and optional completion sounds.

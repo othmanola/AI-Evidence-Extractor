@@ -6953,7 +6953,6 @@ _JS_HEAD = r"""
     document.documentElement.lang = arabic ? 'ar' : 'en';
     document.documentElement.dir = arabic ? 'rtl' : 'ltr';
     aeeTranslateSubtree(document.documentElement, arabic);
-    updateAeeNotificationCenter();
     if (!aeeArabicObserver){
       aeeArabicObserver = new MutationObserver(records => {
         const activeArabic = document.documentElement.lang === 'ar';

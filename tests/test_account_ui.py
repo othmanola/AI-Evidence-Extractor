@@ -99,6 +99,19 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("playAeeNotificationSound()", app._JS_HEAD)
         self.assertIn("toast(message, 'success', 5000)", app._JS_HEAD)
 
+    def test_language_updates_do_not_rebuild_notification_list_in_mutation_loop(self):
+        language_handler = app._JS_HEAD.split(
+            "function applyAeeLanguage(language, persist){", 1
+        )[1].split("\n  function initializeAeeLanguageSelector(){", 1)[0]
+
+        self.assertIn("aeeTranslateSubtree(document.documentElement, arabic);",
+                      language_handler)
+        self.assertNotIn("updateAeeNotificationCenter();", language_handler)
+        self.assertIn(
+            "new MutationObserver(liftAeeNavigation).observe(document.documentElement,",
+            app._JS_HEAD,
+        )
+
     def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
         memory = SimpleNamespace(
             total=16 * 1024 ** 3, available=8 * 1024 ** 3, percent=50.0,
