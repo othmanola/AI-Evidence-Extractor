@@ -8310,6 +8310,8 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
                 "Analysis completed, but some History files could not be saved. "
                 "Open History to review the storage warnings. "
                 + history_warnings[0][:300])
+        if results:
+            _notify_analysis_complete()
         yield (master_s, pdf_s, caps, sums, caps[0] if caps else None,
                gr.update(choices=classes, value="All"),
                gr.update(choices=classes, value="All"),
@@ -8399,6 +8401,40 @@ def pick_summary(name, sums):
 def cancel_active_analysis():
     _ACTIVE_CANCEL.set()
     return "Analysis stopped."
+
+
+def _notify_analysis_complete():
+    def notify():
+        if os.name == "nt":
+            try:
+                import winsound
+                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            except (ImportError, OSError) as exc:
+                log.warning("Could not play the analysis-complete sound: %s", exc)
+
+        try:
+            import asyncio
+            from desktop_notifier import DesktopNotifier
+
+            async def send_notification():
+                notifier = DesktopNotifier(app_name="AI Evidence Extractor")
+                await notifier.send(
+                    title="AI Evidence Extractor",
+                    message="Analysis complete. You can review the result now.",
+                )
+
+            asyncio.run(send_notification())
+        except ImportError as exc:
+            log.warning("Desktop notifications are unavailable: %s", exc)
+        except Exception:
+            log.exception("Could not send the analysis-complete notification")
+
+    try:
+        threading.Thread(
+            target=notify, name="aee-completion-notification", daemon=True,
+        ).start()
+    except (OSError, RuntimeError):
+        log.exception("Could not start the analysis-complete notification")
 
 
 def _update_progress_html(fraction, description, indeterminate=False):

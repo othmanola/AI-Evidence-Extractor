@@ -1,11 +1,13 @@
 import base64
 import json
 from pathlib import Path
+import sys
 import tempfile
+from types import ModuleType
 from types import SimpleNamespace
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 import zipfile
 
 import app
@@ -20,6 +22,41 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_analysis_completion_sends_desktop_notification_and_sound(self):
+        notifier = Mock()
+        notifier.send = AsyncMock()
+        desktop_notifier = ModuleType("desktop_notifier")
+        desktop_notifier.DesktopNotifier = Mock(return_value=notifier)
+        winsound = ModuleType("winsound")
+        winsound.MB_ICONEXCLAMATION = 0x30
+        winsound.MessageBeep = Mock()
+
+        class ImmediateThread:
+            def __init__(self, target, **_kwargs):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        with (
+            patch.dict(sys.modules, {
+                "desktop_notifier": desktop_notifier,
+                "winsound": winsound,
+            }),
+            patch.object(app.threading, "Thread", ImmediateThread),
+        ):
+            app._notify_analysis_complete()
+
+        desktop_notifier.DesktopNotifier.assert_called_once_with(
+            app_name="AI Evidence Extractor"
+        )
+        notifier.send.assert_awaited_once_with(
+            title="AI Evidence Extractor",
+            message="Analysis complete. You can review the result now.",
+        )
+        if app.os.name == "nt":
+            winsound.MessageBeep.assert_called_once_with(winsound.MB_ICONEXCLAMATION)
+
     def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
         memory = SimpleNamespace(
             total=16 * 1024 ** 3, available=8 * 1024 ** 3, percent=50.0,
