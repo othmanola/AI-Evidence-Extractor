@@ -22,9 +22,7 @@ def _nested_code_constants(code):
 
 class AccountUiTests(unittest.TestCase):
     def test_analysis_notification_is_rendered_in_app_with_bell_icon(self):
-        notification = app._analysis_notification_html(
-            "Analysis complete. You can review the result now."
-        )
+        notification = app._analysis_notification_html()
 
         self.assertIn('class="aee-notification-center"', notification)
         self.assertIn('role="status"', notification)
@@ -32,44 +30,58 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('data-aee-notification-toggle', notification)
         self.assertIn('aria-expanded="false"', notification)
         self.assertIn('class="aee-notification-popover"', notification)
-        self.assertIn('hidden>', notification)
-        self.assertIn('class="aee-notification-badge"', notification)
+        self.assertNotIn('hidden>', notification)
         self.assertIn("<svg", notification)
-        self.assertIn("Analysis complete. You can review the result now.", notification)
+        self.assertIn("<strong>No new notifications</strong>", notification)
+        self.assertIn("display:none", app.CSS)
+        self.assertIn(".aee-notification-center.is-open .aee-notification-popover", app.CSS)
 
     def test_analysis_notification_escapes_dynamic_message(self):
-        notification = app._analysis_notification_html("<script>alert(1)</script>")
+        notification = app._analysis_notification_state_html("<script>alert(1)</script>")
 
-        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", notification)
+        self.assertIn(
+            'data-aee-notification-message="&lt;script&gt;alert(1)&lt;/script&gt;"',
+            notification,
+        )
         self.assertNotIn("<script>", notification)
 
     def test_completed_analysis_updates_the_in_app_notification(self):
-        status, notification = app._analysis_notification_update(
+        status, notification_state = app._analysis_notification_update(
             "History warning" + app._ANALYSIS_COMPLETE_MARKER
         )
 
         self.assertEqual(status, "History warning")
-        self.assertIn("Analysis complete. You can review the result now.", notification)
+        self.assertIn('data-aee-notification-id=', notification_state)
+        self.assertIn(
+            "Analysis complete. You can review the result now.",
+            notification_state,
+        )
 
     def test_analysis_without_completion_marker_keeps_notification_idle(self):
-        status, notification = app._analysis_notification_update("")
+        status, notification_state = app._analysis_notification_update("")
 
         self.assertEqual(status, "")
-        self.assertIn("<strong>No new notifications</strong>", notification)
-        self.assertNotIn('class="aee-notification-badge"', notification)
-        self.assertNotIn("Analysis complete", notification)
+        self.assertEqual(notification_state, "")
 
-    def test_notification_bell_is_small_and_lifted_next_to_theme_toggle(self):
+    def test_notification_bell_is_unique_compact_and_next_to_theme_toggle(self):
+        hero = app._hero_html({"n_models": 0})
+
         self.assertIn(
             ".aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;",
             app.CSS,
         )
+        self.assertIn("min-height:32px!important", app.CSS)
         self.assertIn(
-            "themeToggle.insertAdjacentElement('afterend', notification)",
-            app._JS_HEAD,
+            'id="theme-toggle"',
+            hero,
         )
+        self.assertEqual(hero.count('class="aee-notification-center"'), 1)
+        self.assertLess(hero.index('id="theme-toggle"'),
+                        hero.index('class="aee-notification-center"'))
+        self.assertIn("syncAeeNotificationState();", app._JS_HEAD)
+        self.assertIn("center.classList.toggle('is-open', !open)", app._JS_HEAD)
         self.assertIn(
-            "event.target.closest('[data-aee-notification-toggle]')",
+            "state.dataset.aeeNotificationSynced === eventId",
             app._JS_HEAD,
         )
 

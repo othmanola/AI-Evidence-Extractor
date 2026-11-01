@@ -2320,21 +2320,23 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-nav-toggle:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.6);box-shadow:0 14px 35px -15px rgba(59,130,246,.5);}
 .aee-nav-toggle svg{width:21px;height:21px;}
 .aee-notification-center{position:relative;display:flex;align-items:center;flex:none;}
-.aee-notification-button{position:relative;padding:0!important;}
-.aee-notification-button svg{width:17px;height:17px;flex:none;}
+.aee-notification-button{position:relative;display:grid!important;place-items:center;padding:0!important;
+  box-sizing:border-box!important;flex:0 0 32px!important;}
+.aee-notification-button svg{display:block;width:16px!important;height:16px!important;flex:none;}
 .aee-notification-badge{position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #0b1220;
   border-radius:50%;background:#fb7185;box-shadow:0 0 0 2px rgba(251,113,133,.18);}
 .aee-notification-popover{position:absolute;top:calc(100% + 9px);right:0;z-index:10005;
-  display:grid;gap:6px;width:min(280px,calc(100vw - 28px));padding:14px 16px;
+  gap:6px;width:min(280px,calc(100vw - 28px));padding:14px 16px;
   border:1px solid var(--border-strong);border-radius:14px;color:var(--text);
   background:linear-gradient(145deg,rgba(30,41,59,.98),rgba(10,15,28,.98));
   box-shadow:0 16px 38px -16px rgba(2,6,23,.85);}
-.aee-notification-popover[hidden]{display:none!important;}
+.aee-notification-popover{display:none;}
+.aee-notification-center.is-open .aee-notification-popover{display:grid;}
 .aee-notification-popover span{color:#93c5fd;font-size:.64rem;font-weight:800;letter-spacing:.12em;}
 .aee-notification-popover strong{font-size:.78rem;line-height:1.5;}
 html[data-theme="light"] .aee-notification-popover{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
 html[dir="rtl"] .aee-notification-popover{right:auto;left:0;}
-#aee-notification-host{display:none!important;}
+#aee-notification-state{display:none!important;}
 .aee-nav-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.55);backdrop-filter:blur(3px);
   opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s;}
 .aee-nav-drawer{position:fixed;inset:0 auto 0 0;z-index:10001;width:min(340px,88vw);padding:24px 18px;
@@ -5225,9 +5227,8 @@ html[data-theme="light"] body .gradio-container .contain .table-container button
   .aee-btn-reset,.aee-btn-run{flex:1 1 100%!important;width:100%!important;}
   .aee-history-detail{grid-template-columns:1fr;}
 }
-.aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;min-width:32px!important;
-  padding:0!important;border-radius:10px!important;}
-.aee-toolbar .aee-notification-button svg{width:16px;height:16px;}
+.aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;
+  min-width:32px!important;min-height:32px!important;padding:0!important;border-radius:10px!important;}
 .aee-notification-popover{font-weight:400;}
 """
 
@@ -5249,6 +5250,7 @@ def _hero_html(info):
           <span>Update the app</span>
         </button>
         <a class="aee-tool" id="theme-toggle" title="Toggle theme (T)">&#9681;</a>
+        {_analysis_notification_html()}
         <a class="aee-tool" id="cmd-open" title="Command palette (Ctrl+K)">&#8981;</a>
         <button class="aee-tool aee-profile-tool" type="button"
           data-aee-open-settings aria-label="Open profile settings" title="Profile settings">
@@ -7010,6 +7012,29 @@ _JS_HEAD = r"""
   }
   new MutationObserver(clearAeeProfileFieldChanges).observe(document.documentElement,
     {childList:true,subtree:true});
+  function syncAeeNotificationState(){
+    const state = document.querySelector(
+      '#aee-notification-state [data-aee-notification-message]');
+    const center = document.querySelector('.aee-toolbar .aee-notification-center');
+    const button = center && center.querySelector('[data-aee-notification-toggle]');
+    const message = state && state.getAttribute('data-aee-notification-message');
+    const eventId = state && state.getAttribute('data-aee-notification-id');
+    if (!state || !message || !eventId ||
+        state.dataset.aeeNotificationSynced === eventId ||
+        !center || !button) return;
+    state.dataset.aeeNotificationSynced = eventId;
+    const label = center.querySelector('.aee-notification-popover strong');
+    if (label) label.textContent = message;
+    let badge = button.querySelector('.aee-notification-badge');
+    if (!badge){
+      badge = document.createElement('span');
+      badge.className = 'aee-notification-badge';
+      badge.setAttribute('aria-hidden', 'true');
+      button.appendChild(badge);
+    }
+    center.classList.remove('is-open');
+    button.setAttribute('aria-expanded', 'false');
+  }
   function liftAeeNavigation(){
     applyAeeAccessGate();
     initializeAeeLanguageSelector();
@@ -7018,20 +7043,12 @@ _JS_HEAD = r"""
     syncAeeTopbarLayout();
     syncAeeUpdateShortcut();
     initializeAeeProfileFieldValues();
+    syncAeeNotificationState();
     const host = document.getElementById('aee-nav-host');
     const navigation = host && host.querySelector('.aee-navigation');
     if (navigation && navigation.parentElement !== document.body){
       document.body.appendChild(navigation);
       host.style.display = 'none';
-    }
-    const notificationHost = document.getElementById('aee-notification-host');
-    const notification = notificationHost &&
-      notificationHost.querySelector('.aee-notification-center');
-    const toolbar = document.querySelector('.aee-toolbar');
-    const themeToggle = toolbar && toolbar.querySelector('#theme-toggle');
-    if (notification && themeToggle && notification.parentElement !== toolbar){
-      themeToggle.insertAdjacentElement('afterend', notification);
-      notificationHost.style.display = 'none';
     }
     const startupMarker = document.querySelector('[data-aee-account-startup]');
     if (startupMarker && startupMarker.dataset.aeeAccountStartup === 'required' &&
@@ -7043,17 +7060,17 @@ _JS_HEAD = r"""
   document.addEventListener('click', event => {
     const notificationToggle = event.target.closest('[data-aee-notification-toggle]');
     if (notificationToggle){
-      const panel = document.getElementById('aee-notification-popover');
       const open = notificationToggle.getAttribute('aria-expanded') === 'true';
+      const center = notificationToggle.closest('.aee-notification-center');
+      if (center) center.classList.toggle('is-open', !open);
       notificationToggle.setAttribute('aria-expanded', String(!open));
-      if (panel) panel.hidden = open;
       return;
     }
     if (!event.target.closest('.aee-notification-center')){
       const notificationButton = document.querySelector('[data-aee-notification-toggle]');
-      const notificationPanel = document.getElementById('aee-notification-popover');
+      const notificationCenter = document.querySelector('.aee-notification-center');
       if (notificationButton) notificationButton.setAttribute('aria-expanded', 'false');
-      if (notificationPanel) notificationPanel.hidden = true;
+      if (notificationCenter) notificationCenter.classList.remove('is-open');
     }
     if (event.target.closest('[data-aee-nav-toggle]')){
       const isOpen = document.body && document.body.classList.contains('aee-nav-open');
@@ -7101,11 +7118,11 @@ _JS_HEAD = r"""
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape'){
       const notificationButton = document.querySelector('[data-aee-notification-toggle]');
-      const notificationPanel = document.getElementById('aee-notification-popover');
       if (notificationButton &&
           notificationButton.getAttribute('aria-expanded') === 'true'){
         notificationButton.setAttribute('aria-expanded', 'false');
-        if (notificationPanel) notificationPanel.hidden = true;
+        const notificationCenter = notificationButton.closest('.aee-notification-center');
+        if (notificationCenter) notificationCenter.classList.remove('is-open');
         notificationButton.focus();
         return;
       }
@@ -7122,6 +7139,9 @@ _JS_HEAD = r"""
   liftAeeNavigation();
   new MutationObserver(liftAeeNavigation).observe(document.documentElement,
     {childList:true,subtree:true});
+  new MutationObserver(syncAeeNotificationState).observe(document.documentElement,
+    {childList:true,subtree:true,attributes:true,
+     attributeFilter:['data-aee-notification-message','data-aee-notification-id']});
 
   function toast(msg, type, ms){
     type = type || 'info'; ms = ms || 2800;
@@ -8463,13 +8483,7 @@ _ANALYSIS_COMPLETE_MARKER = (
 )
 
 
-def _analysis_notification_html(message=""):
-    message = str(message or "No new notifications")
-    safe_message = _html.escape(message)
-    badge = (
-        '<span class="aee-notification-badge" aria-hidden="true"></span>'
-        if message != "No new notifications" else ""
-    )
+def _analysis_notification_html():
     return (
         '<div class="aee-notification-center">'
         '<button class="aee-tool aee-notification-button" type="button" '
@@ -8480,11 +8494,22 @@ def _analysis_notification_html(message=""):
         'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>'
         '<path d="M10 21h4"/></svg>'
-        f'{badge}</button>'
+        '</button>'
         '<div class="aee-notification-popover" id="aee-notification-popover" '
-        'role="status" aria-live="polite" hidden>'
+        'role="status" aria-live="polite">'
         '<span>NOTIFICATIONS</span>'
-        f'<strong>{safe_message}</strong></div></div>'
+        '<strong>No new notifications</strong></div></div>'
+    )
+
+
+def _analysis_notification_state_html(message):
+    message = str(message or "")
+    if not message:
+        return ""
+    safe_message = _html.escape(message, quote=True)
+    return (
+        f'<span data-aee-notification-id="{uuid.uuid4().hex}" '
+        f'data-aee-notification-message="{safe_message}"></span>'
     )
 
 
@@ -8496,7 +8521,7 @@ def _analysis_notification_update(progress_html):
         "Analysis complete. You can review the result now."
         if completed else ""
     )
-    return status, _analysis_notification_html(message)
+    return status, _analysis_notification_state_html(message)
 
 
 def _update_progress_html(fraction, description, indeterminate=False):
@@ -9486,10 +9511,7 @@ def build_ui():
     )
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
         gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
-        notification_center = gr.HTML(
-            value=_analysis_notification_html(),
-            elem_id="aee-notification-host",
-        )
+        notification_state = gr.HTML(value="", elem_id="aee-notification-state")
         gr.HTML(_hero_html(info))
         gr.HTML(_workflow_html())
 
@@ -10106,13 +10128,13 @@ def build_ui():
         def _post(master, pdf, caps, sums, prev, capc, evc, df, ov, prog,
                   rows, caps_s, sums_s, mv, cam_h, cam_b, cam_disp, tr_rows,
                   tr_html, cam_html_v, tr_df):
-            prog, notification_html = _analysis_notification_update(prog)
+            prog, notification_state_html = _analysis_notification_update(prog)
             output = (master, pdf, caps, sums, sums[0] if sums else None,
                       capc, evc, df, ov, prog, rows, caps, sums, master,
                       cam_h, cam_b, cam_disp, tr_rows, tr_html, cam_html_v, tr_df)
-            return (*output, notification_html)
+            return (*output, notification_state_html)
         process_event = process_event.then(
-            fn=_post, inputs=OUT, outputs=[*OUT, notification_center],
+            fn=_post, inputs=OUT, outputs=[*OUT, notification_state],
             show_progress="hidden")
 
         def _post2(sums):
