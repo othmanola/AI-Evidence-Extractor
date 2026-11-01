@@ -46,6 +46,13 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(status, "History warning")
         self.assertIn("Analysis complete. You can review the result now.", notification)
 
+    def test_analysis_without_completion_marker_keeps_notification_idle(self):
+        status, notification = app._analysis_notification_update("")
+
+        self.assertEqual(status, "")
+        self.assertIn("<strong>Notifications</strong>", notification)
+        self.assertNotIn("Analysis complete", notification)
+
     def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
         memory = SimpleNamespace(
             total=16 * 1024 ** 3, available=8 * 1024 ** 3, percent=50.0,
