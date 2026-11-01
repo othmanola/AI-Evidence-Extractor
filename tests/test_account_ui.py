@@ -29,6 +29,11 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('class="aee-notification-center"', notification)
         self.assertIn('role="status"', notification)
         self.assertIn('aria-live="polite"', notification)
+        self.assertIn('data-aee-notification-toggle', notification)
+        self.assertIn('aria-expanded="false"', notification)
+        self.assertIn('class="aee-notification-popover"', notification)
+        self.assertIn('hidden>', notification)
+        self.assertIn('class="aee-notification-badge"', notification)
         self.assertIn("<svg", notification)
         self.assertIn("Analysis complete. You can review the result now.", notification)
 
@@ -50,8 +55,23 @@ class AccountUiTests(unittest.TestCase):
         status, notification = app._analysis_notification_update("")
 
         self.assertEqual(status, "")
-        self.assertIn("<strong>Notifications</strong>", notification)
+        self.assertIn("<strong>No new notifications</strong>", notification)
+        self.assertNotIn('class="aee-notification-badge"', notification)
         self.assertNotIn("Analysis complete", notification)
+
+    def test_notification_bell_is_small_and_lifted_next_to_theme_toggle(self):
+        self.assertIn(
+            ".aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;",
+            app.CSS,
+        )
+        self.assertIn(
+            "themeToggle.insertAdjacentElement('afterend', notification)",
+            app._JS_HEAD,
+        )
+        self.assertIn(
+            "event.target.closest('[data-aee-notification-toggle]')",
+            app._JS_HEAD,
+        )
 
     def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
         memory = SimpleNamespace(

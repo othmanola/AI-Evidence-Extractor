@@ -2319,19 +2319,22 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
   box-shadow:0 12px 32px -16px rgba(2,6,23,.85);transition:transform .2s,border-color .2s,box-shadow .2s;}
 .aee-nav-toggle:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.6);box-shadow:0 14px 35px -15px rgba(59,130,246,.5);}
 .aee-nav-toggle svg{width:21px;height:21px;}
-.aee-notification-center{position:fixed;z-index:9998;top:20px;right:20px;display:flex;align-items:center;gap:11px;
-  width:max-content;max-width:min(360px,calc(100vw - 96px));padding:11px 15px;border:1px solid var(--border-strong);
-  border-radius:15px;color:var(--text);background:linear-gradient(145deg,rgba(30,41,59,.96),rgba(10,15,28,.96));
-  box-shadow:0 12px 32px -16px rgba(2,6,23,.85);}
-.aee-notification-center svg{width:21px;height:21px;flex:none;color:#93c5fd;}
-.aee-notification-copy{min-width:0;display:grid;gap:3px;}
-.aee-notification-copy span{color:#93c5fd;font-size:.62rem;font-weight:800;letter-spacing:.13em;}
-.aee-notification-copy strong{color:var(--text);font-size:.76rem;line-height:1.4;}
-html[data-theme="light"] .aee-notification-center{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
-html[data-theme="light"] .aee-notification-copy strong{color:#1e293b;}
-html[dir="rtl"] .aee-notification-center{right:auto;left:76px;}
-@media(max-width:600px){.aee-notification-center{top:14px;right:12px;max-width:calc(100vw - 88px);padding:9px 11px;}
-  html[dir="rtl"] .aee-notification-center{right:auto;left:76px;max-width:calc(100vw - 88px);}}
+.aee-notification-center{position:relative;display:flex;align-items:center;flex:none;}
+.aee-notification-button{position:relative;padding:0!important;}
+.aee-notification-button svg{width:17px;height:17px;flex:none;}
+.aee-notification-badge{position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #0b1220;
+  border-radius:50%;background:#fb7185;box-shadow:0 0 0 2px rgba(251,113,133,.18);}
+.aee-notification-popover{position:absolute;top:calc(100% + 9px);right:0;z-index:10005;
+  display:grid;gap:6px;width:min(280px,calc(100vw - 28px));padding:14px 16px;
+  border:1px solid var(--border-strong);border-radius:14px;color:var(--text);
+  background:linear-gradient(145deg,rgba(30,41,59,.98),rgba(10,15,28,.98));
+  box-shadow:0 16px 38px -16px rgba(2,6,23,.85);}
+.aee-notification-popover[hidden]{display:none!important;}
+.aee-notification-popover span{color:#93c5fd;font-size:.64rem;font-weight:800;letter-spacing:.12em;}
+.aee-notification-popover strong{font-size:.78rem;line-height:1.5;}
+html[data-theme="light"] .aee-notification-popover{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
+html[dir="rtl"] .aee-notification-popover{right:auto;left:0;}
+#aee-notification-host{display:none!important;}
 .aee-nav-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.55);backdrop-filter:blur(3px);
   opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s;}
 .aee-nav-drawer{position:fixed;inset:0 auto 0 0;z-index:10001;width:min(340px,88vw);padding:24px 18px;
@@ -5222,6 +5225,10 @@ html[data-theme="light"] body .gradio-container .contain .table-container button
   .aee-btn-reset,.aee-btn-run{flex:1 1 100%!important;width:100%!important;}
   .aee-history-detail{grid-template-columns:1fr;}
 }
+.aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;min-width:32px!important;
+  padding:0!important;border-radius:10px!important;}
+.aee-toolbar .aee-notification-button svg{width:16px;height:16px;}
+.aee-notification-popover{font-weight:400;}
 """
 
 
@@ -6786,6 +6793,7 @@ _JS_HEAD = r"""
     'No results yet':'لا توجد نتائج بعد','Processing':'جارٍ المعالجة',
     'Analysis completed':'اكتمل التحليل','Analysis stopped.':'تم إيقاف التحليل.',
     'NOTIFICATIONS':'الإشعارات','Notifications':'الإشعارات',
+    'No new notifications':'لا توجد إشعارات جديدة',
     'Analysis complete. You can review the result now.':'اكتمل التحليل. يمكنك مراجعة النتيجة الآن.',
     'Apply the update':'تطبيق التحديث',
     'Installing update':'جارٍ تثبيت التحديث',
@@ -7016,6 +7024,15 @@ _JS_HEAD = r"""
       document.body.appendChild(navigation);
       host.style.display = 'none';
     }
+    const notificationHost = document.getElementById('aee-notification-host');
+    const notification = notificationHost &&
+      notificationHost.querySelector('.aee-notification-center');
+    const toolbar = document.querySelector('.aee-toolbar');
+    const themeToggle = toolbar && toolbar.querySelector('#theme-toggle');
+    if (notification && themeToggle && notification.parentElement !== toolbar){
+      themeToggle.insertAdjacentElement('afterend', notification);
+      notificationHost.style.display = 'none';
+    }
     const startupMarker = document.querySelector('[data-aee-account-startup]');
     if (startupMarker && startupMarker.dataset.aeeAccountStartup === 'required' &&
         !window.__aeeInitialAccountOpened){
@@ -7024,6 +7041,20 @@ _JS_HEAD = r"""
     }
   }
   document.addEventListener('click', event => {
+    const notificationToggle = event.target.closest('[data-aee-notification-toggle]');
+    if (notificationToggle){
+      const panel = document.getElementById('aee-notification-popover');
+      const open = notificationToggle.getAttribute('aria-expanded') === 'true';
+      notificationToggle.setAttribute('aria-expanded', String(!open));
+      if (panel) panel.hidden = open;
+      return;
+    }
+    if (!event.target.closest('.aee-notification-center')){
+      const notificationButton = document.querySelector('[data-aee-notification-toggle]');
+      const notificationPanel = document.getElementById('aee-notification-popover');
+      if (notificationButton) notificationButton.setAttribute('aria-expanded', 'false');
+      if (notificationPanel) notificationPanel.hidden = true;
+    }
     if (event.target.closest('[data-aee-nav-toggle]')){
       const isOpen = document.body && document.body.classList.contains('aee-nav-open');
       setAeeNavigation(!isOpen); return;
@@ -7069,6 +7100,15 @@ _JS_HEAD = r"""
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape'){
+      const notificationButton = document.querySelector('[data-aee-notification-toggle]');
+      const notificationPanel = document.getElementById('aee-notification-popover');
+      if (notificationButton &&
+          notificationButton.getAttribute('aria-expanded') === 'true'){
+        notificationButton.setAttribute('aria-expanded', 'false');
+        if (notificationPanel) notificationPanel.hidden = true;
+        notificationButton.focus();
+        return;
+      }
       const photoEditor = document.getElementById('aee-photo-editor-modal');
       if (photoEditor && !photoEditor.hidden){
         photoEditor.querySelector('[data-aee-photo-cancel]')?.click();
@@ -8424,15 +8464,26 @@ _ANALYSIS_COMPLETE_MARKER = (
 
 
 def _analysis_notification_html(message=""):
-    safe_message = _html.escape(str(message or "Notifications"))
+    message = str(message or "No new notifications")
+    safe_message = _html.escape(message)
+    badge = (
+        '<span class="aee-notification-badge" aria-hidden="true"></span>'
+        if message != "No new notifications" else ""
+    )
     return (
-        '<div class="aee-notification-center" role="status" '
-        'aria-live="polite" aria-label="Notifications">'
+        '<div class="aee-notification-center">'
+        '<button class="aee-tool aee-notification-button" type="button" '
+        'data-aee-notification-toggle aria-label="Notifications" title="Notifications" '
+        'aria-haspopup="true" aria-expanded="false" '
+        'aria-controls="aee-notification-popover">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
         'aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>'
         '<path d="M10 21h4"/></svg>'
-        '<div class="aee-notification-copy"><span>NOTIFICATIONS</span>'
+        f'{badge}</button>'
+        '<div class="aee-notification-popover" id="aee-notification-popover" '
+        'role="status" aria-live="polite" hidden>'
+        '<span>NOTIFICATIONS</span>'
         f'<strong>{safe_message}</strong></div></div>'
     )
 
