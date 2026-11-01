@@ -15,3 +15,4 @@ matplotlib
 imageio-ffmpeg
 pywebview
 psutil
+desktop-notifier
