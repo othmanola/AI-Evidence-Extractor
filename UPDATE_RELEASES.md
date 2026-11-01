@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.77 matches the notification bell to the theme control and adds a
+persistent in-app notification center with unread counts, read/clear actions,
+and optional completion sounds.
+
 Version 1.2.60 installs missing Microsoft Visual C++ and WebView2 runtimes
 during setup, preventing first-launch failures on new Windows PCs. The app's
 Python runtime and application dependencies remain bundled with the installer.

@@ -2321,20 +2321,42 @@ html[data-theme="light"] .aee-update-dialog{background:radial-gradient(520px 240
 .aee-nav-toggle svg{width:21px;height:21px;}
 .aee-notification-center{position:relative;display:flex;align-items:center;flex:none;}
 .aee-notification-button{position:relative;display:grid!important;place-items:center;padding:0!important;
-  box-sizing:border-box!important;flex:0 0 32px!important;}
-.aee-notification-button svg{display:block;width:16px!important;height:16px!important;flex:none;}
-.aee-notification-badge{position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #0b1220;
-  border-radius:50%;background:#fb7185;box-shadow:0 0 0 2px rgba(251,113,133,.18);}
+  box-sizing:border-box!important;flex:0 0 42px!important;}
+.aee-notification-button svg{display:block;width:18px!important;height:18px!important;flex:none;}
+.aee-notification-badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;
+  display:grid;place-items:center;padding:0 4px;border:1px solid #0b1220;
+  border-radius:999px;background:#fb7185;color:#fff;font:700 9px/1 Inter,system-ui,sans-serif;
+  box-shadow:0 0 0 2px rgba(251,113,133,.18);}
+.aee-notification-badge[hidden]{display:none!important;}
 .aee-notification-popover{position:absolute;top:calc(100% + 9px);right:0;z-index:10005;
-  gap:6px;width:min(280px,calc(100vw - 28px));padding:14px 16px;
-  border:1px solid var(--border-strong);border-radius:14px;color:var(--text);
+  gap:12px;width:min(360px,calc(100vw - 28px));max-height:min(480px,calc(100vh - 76px));
+  overflow:hidden;padding:14px;border:1px solid var(--border-strong);border-radius:14px;color:var(--text);
   background:linear-gradient(145deg,rgba(30,41,59,.98),rgba(10,15,28,.98));
   box-shadow:0 16px 38px -16px rgba(2,6,23,.85);}
 .aee-notification-popover{display:none;}
-.aee-notification-center.is-open .aee-notification-popover{display:grid;}
-.aee-notification-popover span{color:#93c5fd;font-size:.64rem;font-weight:800;letter-spacing:.12em;}
-.aee-notification-popover strong{font-size:.78rem;line-height:1.5;}
+.aee-notification-center.is-open .aee-notification-popover{display:flex;flex-direction:column;}
+.aee-notification-header{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.aee-notification-heading{display:grid;gap:3px;min-width:0;}
+.aee-notification-heading span{color:#93c5fd;font-size:.64rem;font-weight:800;letter-spacing:.12em;}
+.aee-notification-heading strong{font-size:.75rem;line-height:1.3;}
+.aee-notification-actions{display:flex;flex-wrap:wrap;gap:6px;}
+.aee-notification-action{border:1px solid var(--border);border-radius:8px;padding:5px 8px;
+  color:var(--text-muted);background:rgba(148,163,184,.08);font:600 .65rem Inter,system-ui,sans-serif;
+  cursor:pointer;white-space:nowrap;}
+.aee-notification-action:hover{color:var(--text);border-color:var(--border-strong);}
+.aee-notification-action:disabled{opacity:.45;cursor:default;}
+.aee-notification-list{display:grid;gap:8px;overflow:auto;overscroll-behavior:contain;
+  min-height:0;padding:1px 3px 1px 1px;}
+.aee-notification-item{display:grid;gap:8px;padding:11px;border:1px solid var(--border);
+  border-radius:11px;background:rgba(148,163,184,.06);}
+.aee-notification-item.is-unread{border-color:rgba(96,165,250,.38);
+  background:linear-gradient(120deg,rgba(59,130,246,.13),rgba(148,163,184,.04));}
+.aee-notification-item p{margin:0;color:var(--text);font-size:.76rem;line-height:1.5;overflow-wrap:anywhere;}
+.aee-notification-item footer{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  color:var(--text-subtle);font-size:.64rem;}
+.aee-notification-empty{margin:0;padding:18px 8px;text-align:center;color:var(--text-muted);font-size:.76rem;}
 html[data-theme="light"] .aee-notification-popover{color:#1e293b;background:linear-gradient(145deg,#fff,#eff4fb);}
+html[data-theme="light"] .aee-notification-action{background:#f8fafc;}
 html[dir="rtl"] .aee-notification-popover{right:auto;left:0;}
 #aee-notification-state{display:none!important;}
 .aee-nav-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.55);backdrop-filter:blur(3px);
@@ -5227,8 +5249,14 @@ html[data-theme="light"] body .gradio-container .contain .table-container button
   .aee-btn-reset,.aee-btn-run{flex:1 1 100%!important;width:100%!important;}
   .aee-history-detail{grid-template-columns:1fr;}
 }
-.aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;
-  min-width:32px!important;min-height:32px!important;padding:0!important;border-radius:10px!important;}
+.aee-toolbar .aee-notification-button{width:42px!important;height:42px!important;
+  min-width:42px!important;min-height:42px!important;padding:0!important;border-radius:12px!important;}
+@media(max-width:640px){
+  .aee-toolbar .aee-notification-button{width:36px!important;height:36px!important;
+    min-width:36px!important;min-height:36px!important;flex-basis:36px!important;
+    border-radius:11px!important;}
+  .aee-notification-popover{right:-2px;}
+}
 .aee-notification-popover{font-weight:400;}
 """
 
@@ -6795,6 +6823,11 @@ _JS_HEAD = r"""
     'No results yet':'لا توجد نتائج بعد','Processing':'جارٍ المعالجة',
     'Analysis completed':'اكتمل التحليل','Analysis stopped.':'تم إيقاف التحليل.',
     'NOTIFICATIONS':'الإشعارات','Notifications':'الإشعارات',
+    'Notifications, no unread items':'الإشعارات، لا توجد عناصر غير مقروءة',
+    'Notification center':'مركز الإشعارات','Recent notifications':'الإشعارات الأخيرة',
+    'Mark all read':'تحديد الكل كمقروء','Mark read':'تحديد كمقروء',
+    'Clear all':'مسح الكل','Sound on':'الصوت مفعّل','Sound off':'الصوت متوقف',
+    'No notifications yet.':'لا توجد إشعارات بعد.',
     'No new notifications':'لا توجد إشعارات جديدة',
     'Analysis complete. You can review the result now.':'اكتمل التحليل. يمكنك مراجعة النتيجة الآن.',
     'Apply the update':'تطبيق التحديث',
@@ -6920,6 +6953,7 @@ _JS_HEAD = r"""
     document.documentElement.lang = arabic ? 'ar' : 'en';
     document.documentElement.dir = arabic ? 'rtl' : 'ltr';
     aeeTranslateSubtree(document.documentElement, arabic);
+    updateAeeNotificationCenter();
     if (!aeeArabicObserver){
       aeeArabicObserver = new MutationObserver(records => {
         const activeArabic = document.documentElement.lang === 'ar';
@@ -7012,28 +7046,193 @@ _JS_HEAD = r"""
   }
   new MutationObserver(clearAeeProfileFieldChanges).observe(document.documentElement,
     {childList:true,subtree:true});
-  function syncAeeNotificationState(){
-    const state = document.querySelector(
-      '#aee-notification-state [data-aee-notification-message]');
+  const AEE_NOTIFICATION_STORAGE_KEY = 'aee-notifications-v1';
+  const AEE_NOTIFICATION_SOUND_KEY = 'aee-notification-sound-v1';
+  const AEE_NOTIFICATION_LIMIT = 50;
+  function readAeeNotificationItems(){
+    try {
+      const saved = JSON.parse(localStorage.getItem(AEE_NOTIFICATION_STORAGE_KEY) || '[]');
+      if (!Array.isArray(saved)) return [];
+      return saved.filter(item => item && typeof item.id === 'string' &&
+        typeof item.message === 'string').slice(0, AEE_NOTIFICATION_LIMIT)
+        .map(item => {
+          const createdAt = Number(item.createdAt);
+          return {id:item.id, message:item.message,
+            createdAt:Number.isFinite(createdAt) && createdAt > 0 &&
+              createdAt <= 8640000000000000 ? createdAt : Date.now(),
+            read:item.read === true};
+        });
+    } catch (error) {
+      console.warn('Could not load saved notifications.', error);
+      return [];
+    }
+  }
+  let aeeNotificationItems = readAeeNotificationItems();
+  let aeeNotificationSoundEnabled = true;
+  let aeeNotificationAudioContext = null;
+  try {
+    const savedSound = localStorage.getItem(AEE_NOTIFICATION_SOUND_KEY);
+    if (savedSound !== null) aeeNotificationSoundEnabled = savedSound === 'true';
+  } catch (error) {
+    console.warn('Could not load notification sound preference.', error);
+  }
+  function saveAeeNotificationItems(){
+    try {
+      localStorage.setItem(AEE_NOTIFICATION_STORAGE_KEY,
+        JSON.stringify(aeeNotificationItems.slice(0, AEE_NOTIFICATION_LIMIT)));
+    } catch (error) {
+      console.warn('Could not save notifications in this browser.', error);
+    }
+  }
+  function updateAeeNotificationCenter(){
     const center = document.querySelector('.aee-toolbar .aee-notification-center');
-    const button = center && center.querySelector('[data-aee-notification-toggle]');
-    const message = state && state.getAttribute('data-aee-notification-message');
-    const eventId = state && state.getAttribute('data-aee-notification-id');
-    if (!state || !message || !eventId ||
-        state.dataset.aeeNotificationSynced === eventId ||
-        !center || !button) return;
-    state.dataset.aeeNotificationSynced = eventId;
-    const label = center.querySelector('.aee-notification-popover strong');
-    if (label) label.textContent = message;
+    if (!center) return;
+    const button = center.querySelector('[data-aee-notification-toggle]');
+    const list = center.querySelector('[data-aee-notification-list]');
+    const summary = center.querySelector('[data-aee-notification-summary]');
+    const soundButton = center.querySelector('[data-aee-notification-sound]');
+    const readAllButton = center.querySelector('[data-aee-notification-read-all]');
+    const clearButton = center.querySelector('[data-aee-notification-clear]');
+    if (!button || !list || !summary || !soundButton ||
+        !readAllButton || !clearButton) return;
+    const arabic = document.documentElement.lang === 'ar';
+    const unread = aeeNotificationItems.reduce((count, item) =>
+      count + (item.read ? 0 : 1), 0);
+    button.setAttribute('aria-label', unread
+      ? arabic ? `الإشعارات، غير المقروء: ${unread}` :
+        `Notifications, ${unread} unread`
+      : arabic ? 'الإشعارات، لا توجد عناصر غير مقروءة' :
+        'Notifications, no unread items');
     let badge = button.querySelector('.aee-notification-badge');
-    if (!badge){
+    if (unread && !badge){
       badge = document.createElement('span');
       badge.className = 'aee-notification-badge';
       badge.setAttribute('aria-hidden', 'true');
       button.appendChild(badge);
     }
-    center.classList.remove('is-open');
-    button.setAttribute('aria-expanded', 'false');
+    if (badge){
+      badge.textContent = unread > 99 ? '99+' : String(unread);
+      badge.hidden = unread === 0;
+    }
+    summary.textContent = unread
+      ? arabic
+        ? `غير المقروء: ${unread} · الإجمالي: ${aeeNotificationItems.length}`
+        : `${unread} unread · ${aeeNotificationItems.length} total`
+      : aeeNotificationItems.length
+        ? arabic ? `عدد الإشعارات: ${aeeNotificationItems.length}`
+          : `${aeeNotificationItems.length} notification${aeeNotificationItems.length === 1 ? '' : 's'}`
+        : 'No new notifications';
+    soundButton.textContent = aeeNotificationSoundEnabled ? 'Sound on' : 'Sound off';
+    soundButton.setAttribute('aria-pressed', String(aeeNotificationSoundEnabled));
+    readAllButton.disabled = unread === 0;
+    clearButton.disabled = aeeNotificationItems.length === 0;
+    list.replaceChildren();
+    if (!aeeNotificationItems.length){
+      const empty = document.createElement('p');
+      empty.className = 'aee-notification-empty';
+      empty.textContent = 'No notifications yet.';
+      list.appendChild(empty);
+      return;
+    }
+    aeeNotificationItems.forEach(item => {
+      const row = document.createElement('article');
+      row.className = `aee-notification-item${item.read ? '' : ' is-unread'}`;
+      row.setAttribute('role', 'listitem');
+      const message = document.createElement('p');
+      message.textContent = item.message;
+      const footer = document.createElement('footer');
+      const date = document.createElement('time');
+      date.dateTime = new Date(item.createdAt).toISOString();
+      date.textContent = new Date(item.createdAt).toLocaleString();
+      footer.appendChild(date);
+      if (!item.read){
+        const readButton = document.createElement('button');
+        readButton.type = 'button';
+        readButton.className = 'aee-notification-action';
+        readButton.dataset.aeeNotificationMarkRead = item.id;
+        readButton.textContent = 'Mark read';
+        footer.appendChild(readButton);
+      }
+      row.append(message, footer);
+      list.appendChild(row);
+    });
+  }
+  function initializeAeeNotificationCenter(){
+    const center = document.querySelector('.aee-toolbar .aee-notification-center');
+    if (center && center.dataset.aeeNotificationsReady !== 'true'){
+      center.dataset.aeeNotificationsReady = 'true';
+      updateAeeNotificationCenter();
+    }
+  }
+  function createAeeNotificationAudio(){
+    if (aeeNotificationAudioContext) return aeeNotificationAudioContext;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext){
+      console.warn('Notification sounds are not supported by this browser.');
+      return null;
+    }
+    try {
+      aeeNotificationAudioContext = new AudioContext();
+      return aeeNotificationAudioContext;
+    } catch (error) {
+      console.warn('Could not initialize notification sounds.', error);
+      return null;
+    }
+  }
+  function unlockAeeNotificationAudio(){
+    const context = createAeeNotificationAudio();
+    if (context && context.state === 'suspended'){
+      context.resume().catch(error =>
+        console.warn('Could not enable notification sounds.', error));
+    }
+  }
+  function playAeeNotificationSound(){
+    if (!aeeNotificationSoundEnabled) return;
+    const context = createAeeNotificationAudio();
+    if (!context) return;
+    const play = () => {
+      const start = context.currentTime;
+      [{frequency:784, delay:0}, {frequency:988, delay:.14}].forEach(note => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const onset = start + note.delay;
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(note.frequency, onset);
+        gain.gain.setValueAtTime(.0001, onset);
+        gain.gain.exponentialRampToValueAtTime(.055, onset + .025);
+        gain.gain.exponentialRampToValueAtTime(.0001, onset + .24);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(onset);
+        oscillator.stop(onset + .25);
+      });
+    };
+    if (context.state === 'running') play();
+    else context.resume().then(play).catch(error =>
+      console.warn('Could not play the notification sound.', error));
+  }
+  document.addEventListener('pointerdown', unlockAeeNotificationAudio,
+    {once:true, passive:true});
+  document.addEventListener('keydown', unlockAeeNotificationAudio, {once:true});
+  function addAeeNotification(id, message){
+    if (aeeNotificationItems.some(item => item.id === id)) return;
+    aeeNotificationItems.unshift({id, message, createdAt:Date.now(), read:false});
+    aeeNotificationItems = aeeNotificationItems.slice(0, AEE_NOTIFICATION_LIMIT);
+    saveAeeNotificationItems();
+    updateAeeNotificationCenter();
+    playAeeNotificationSound();
+    toast(message, 'success', 5000);
+  }
+  function syncAeeNotificationState(){
+    initializeAeeNotificationCenter();
+    const state = document.querySelector(
+      '#aee-notification-state [data-aee-notification-message]');
+    const message = state && state.getAttribute('data-aee-notification-message');
+    const eventId = state && state.getAttribute('data-aee-notification-id');
+    if (!state || !message || !eventId ||
+        state.dataset.aeeNotificationSynced === eventId) return;
+    state.dataset.aeeNotificationSynced = eventId;
+    addAeeNotification(eventId, message);
   }
   function liftAeeNavigation(){
     applyAeeAccessGate();
@@ -7058,6 +7257,44 @@ _JS_HEAD = r"""
     }
   }
   document.addEventListener('click', event => {
+    const markAllRead = event.target.closest('[data-aee-notification-read-all]');
+    if (markAllRead){
+      aeeNotificationItems.forEach(item => { item.read = true; });
+      saveAeeNotificationItems();
+      updateAeeNotificationCenter();
+      return;
+    }
+    const markRead = event.target.closest('[data-aee-notification-mark-read]');
+    if (markRead){
+      const item = aeeNotificationItems.find(
+        entry => entry.id === markRead.dataset.aeeNotificationMarkRead);
+      if (item){
+        item.read = true;
+        saveAeeNotificationItems();
+        updateAeeNotificationCenter();
+      }
+      return;
+    }
+    const clearNotifications = event.target.closest('[data-aee-notification-clear]');
+    if (clearNotifications){
+      aeeNotificationItems = [];
+      saveAeeNotificationItems();
+      updateAeeNotificationCenter();
+      return;
+    }
+    const soundToggle = event.target.closest('[data-aee-notification-sound]');
+    if (soundToggle){
+      aeeNotificationSoundEnabled = !aeeNotificationSoundEnabled;
+      try {
+        localStorage.setItem(AEE_NOTIFICATION_SOUND_KEY,
+          String(aeeNotificationSoundEnabled));
+      } catch (error) {
+        console.warn('Could not save notification sound preference.', error);
+      }
+      updateAeeNotificationCenter();
+      if (aeeNotificationSoundEnabled) playAeeNotificationSound();
+      return;
+    }
     const notificationToggle = event.target.closest('[data-aee-notification-toggle]');
     if (notificationToggle){
       const open = notificationToggle.getAttribute('aria-expanded') === 'true';
@@ -7142,6 +7379,15 @@ _JS_HEAD = r"""
   new MutationObserver(syncAeeNotificationState).observe(document.documentElement,
     {childList:true,subtree:true,attributes:true,
      attributeFilter:['data-aee-notification-message','data-aee-notification-id']});
+  window.addEventListener('storage', event => {
+    if (event.key === AEE_NOTIFICATION_STORAGE_KEY){
+      aeeNotificationItems = readAeeNotificationItems();
+      updateAeeNotificationCenter();
+    } else if (event.key === AEE_NOTIFICATION_SOUND_KEY){
+      aeeNotificationSoundEnabled = event.newValue !== 'false';
+      updateAeeNotificationCenter();
+    }
+  });
 
   function toast(msg, type, ms){
     type = type || 'info'; ms = ms || 2800;
@@ -8487,7 +8733,8 @@ def _analysis_notification_html():
     return (
         '<div class="aee-notification-center">'
         '<button class="aee-tool aee-notification-button" type="button" '
-        'data-aee-notification-toggle aria-label="Notifications" title="Notifications" '
+        'data-aee-notification-toggle aria-label="Notifications, no unread items" '
+        'title="Notifications" '
         'aria-haspopup="true" aria-expanded="false" '
         'aria-controls="aee-notification-popover">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -8496,9 +8743,22 @@ def _analysis_notification_html():
         '<path d="M10 21h4"/></svg>'
         '</button>'
         '<div class="aee-notification-popover" id="aee-notification-popover" '
-        'role="status" aria-live="polite">'
+        'role="dialog" aria-label="Notification center">'
+        '<div class="aee-notification-header"><div class="aee-notification-heading">'
         '<span>NOTIFICATIONS</span>'
-        '<strong>No new notifications</strong></div></div>'
+        '<strong data-aee-notification-summary>No new notifications</strong>'
+        '</div><div class="aee-notification-actions">'
+        '<button class="aee-notification-action" type="button" '
+        'data-aee-notification-read-all>Mark all read</button>'
+        '<button class="aee-notification-action" type="button" '
+        'data-aee-notification-sound aria-pressed="true">Sound on</button>'
+        '<button class="aee-notification-action" type="button" '
+        'data-aee-notification-clear>Clear all</button>'
+        '</div></div>'
+        '<div class="aee-notification-list" data-aee-notification-list '
+        'role="list" aria-label="Recent notifications" aria-live="polite">'
+        '<p class="aee-notification-empty">No notifications yet.</p>'
+        '</div></div></div>'
     )
 
 

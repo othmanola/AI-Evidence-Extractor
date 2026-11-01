@@ -32,7 +32,10 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn('class="aee-notification-popover"', notification)
         self.assertNotIn('hidden>', notification)
         self.assertIn("<svg", notification)
-        self.assertIn("<strong>No new notifications</strong>", notification)
+        self.assertIn('data-aee-notification-list', notification)
+        self.assertIn('data-aee-notification-read-all', notification)
+        self.assertIn('data-aee-notification-clear', notification)
+        self.assertIn('data-aee-notification-sound', notification)
         self.assertIn("display:none", app.CSS)
         self.assertIn(".aee-notification-center.is-open .aee-notification-popover", app.CSS)
 
@@ -63,14 +66,18 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(status, "")
         self.assertEqual(notification_state, "")
 
-    def test_notification_bell_is_unique_compact_and_next_to_theme_toggle(self):
+    def test_notification_bell_matches_theme_toggle_size_and_is_adjacent(self):
         hero = app._hero_html({"n_models": 0})
 
         self.assertIn(
-            ".aee-toolbar .aee-notification-button{width:32px!important;height:32px!important;",
+            ".aee-toolbar .aee-notification-button{width:42px!important;height:42px!important;",
             app.CSS,
         )
-        self.assertIn("min-height:32px!important", app.CSS)
+        self.assertIn("min-height:42px!important", app.CSS)
+        self.assertIn(
+            ".aee-toolbar .aee-notification-button{width:36px!important;height:36px!important;",
+            app.CSS,
+        )
         self.assertIn(
             'id="theme-toggle"',
             hero,
@@ -80,10 +87,17 @@ class AccountUiTests(unittest.TestCase):
                         hero.index('class="aee-notification-center"'))
         self.assertIn("syncAeeNotificationState();", app._JS_HEAD)
         self.assertIn("center.classList.toggle('is-open', !open)", app._JS_HEAD)
-        self.assertIn(
-            "state.dataset.aeeNotificationSynced === eventId",
-            app._JS_HEAD,
-        )
+        self.assertIn("state.dataset.aeeNotificationSynced === eventId", app._JS_HEAD)
+
+    def test_notification_center_persists_history_and_supports_sound_and_read_actions(self):
+        self.assertIn("aee-notifications-v1", app._JS_HEAD)
+        self.assertIn("AEE_NOTIFICATION_LIMIT = 50", app._JS_HEAD)
+        self.assertIn("data-aee-notification-mark-read", app._JS_HEAD)
+        self.assertIn("data-aee-notification-read-all", app._JS_HEAD)
+        self.assertIn("data-aee-notification-clear", app._JS_HEAD)
+        self.assertIn("aee-notification-sound-v1", app._JS_HEAD)
+        self.assertIn("playAeeNotificationSound()", app._JS_HEAD)
+        self.assertIn("toast(message, 'success', 5000)", app._JS_HEAD)
 
     def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
         memory = SimpleNamespace(
