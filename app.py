@@ -8403,6 +8403,31 @@ def cancel_active_analysis():
     return "Analysis stopped."
 
 
+def _send_windows_analysis_notification():
+    if os.name != "nt":
+        raise OSError("Native desktop notifications are only available on Windows")
+    script = """
+$ErrorActionPreference = 'Stop'
+[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+$xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>AI Evidence Extractor</text><text>Analysis complete. You can review the result now.</text></binding></visual></toast>')
+$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
+$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('AI.EvidenceExtractor.Desktop')
+$notifier.Show($toast)
+"""
+    encoded_script = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    powershell = shutil.which("powershell.exe") or "powershell.exe"
+    subprocess.run(
+        [
+            powershell, "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
+            "-EncodedCommand", encoded_script,
+        ],
+        check=True, capture_output=True, text=True, timeout=10,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+
+
 def _notify_analysis_complete():
     def notify():
         if os.name == "nt":
@@ -8424,10 +8449,18 @@ def _notify_analysis_complete():
                 )
 
             asyncio.run(send_notification())
-        except ImportError as exc:
-            log.warning("Desktop notifications are unavailable: %s", exc)
         except Exception:
-            log.exception("Could not send the analysis-complete notification")
+            if os.name != "nt":
+                log.exception("Could not send the analysis-complete notification")
+                return
+            log.warning(
+                "Desktop notifier unavailable; trying the native Windows toast",
+                exc_info=True,
+            )
+            try:
+                _send_windows_analysis_notification()
+            except (OSError, subprocess.SubprocessError):
+                log.exception("Could not send the native Windows notification")
 
     try:
         threading.Thread(

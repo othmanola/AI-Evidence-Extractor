@@ -57,6 +57,37 @@ class AccountUiTests(unittest.TestCase):
         if app.os.name == "nt":
             winsound.MessageBeep.assert_called_once_with(winsound.MB_ICONEXCLAMATION)
 
+    def test_analysis_notification_falls_back_to_native_windows_toast(self):
+        winsound = ModuleType("winsound")
+        winsound.MB_ICONEXCLAMATION = 0x30
+        winsound.MessageBeep = Mock()
+
+        class ImmediateThread:
+            def __init__(self, target, **_kwargs):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        with (
+            patch.dict(sys.modules, {
+                "desktop_notifier": None,
+                "winsound": winsound,
+            }),
+            patch.object(app.os, "name", "nt"),
+            patch.object(app.shutil, "which", return_value="powershell.exe"),
+            patch.object(app.subprocess, "run") as run,
+            patch.object(app.threading, "Thread", ImmediateThread),
+        ):
+            app._notify_analysis_complete()
+
+        winsound.MessageBeep.assert_called_once_with(winsound.MB_ICONEXCLAMATION)
+        run.assert_called_once()
+        script = base64.b64decode(run.call_args.args[0][-1]).decode("utf-16le")
+        self.assertIn("ToastNotificationManager", script)
+        self.assertIn("AI.EvidenceExtractor.Desktop", script)
+        self.assertIn("Analysis complete. You can review the result now.", script)
+
     def test_resource_monitor_displays_cpu_memory_and_nvidia_gpu_usage(self):
         memory = SimpleNamespace(
             total=16 * 1024 ** 3, available=8 * 1024 ** 3, percent=50.0,
