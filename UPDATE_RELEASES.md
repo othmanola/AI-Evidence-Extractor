@@ -1,5 +1,10 @@
 # Publishing app updates
 
+Version 1.2.79 adds a signed-in Feedback & Support form with categorized
+messages, local-only storage, a 60-second per-account limit, and optional
+PNG/JPG/WebP screenshots capped at 5 MB. Feedback is saved under
+`%LOCALAPPDATA%\AI Evidence Extractor\feedback` and is not emailed or uploaded.
+
 Version 1.2.78 fixes an app freeze caused by rebuilding the notification list
 from the language initializer while the navigation mutation observer was
 running.

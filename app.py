@@ -28,6 +28,13 @@ HISTORY_FILE = APP_DATA / "analysis_history.json"
 HISTORY_DIR = OUTPUT_DIR / "history"
 HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
 _HISTORY_LOCK = threading.Lock()
+_FEEDBACK_LOCK = threading.Lock()
+_FEEDBACK_LAST_SENT = {}
+_FEEDBACK_CATEGORIES = (
+    "Bug report", "Improvement suggestion", "Question", "Other",
+)
+_FEEDBACK_MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+_FEEDBACK_ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 MANIFEST = MODEL_DIR / "ensemble_manifest.json"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -3127,6 +3134,15 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   background:linear-gradient(120deg,#2563eb,#4f46e5);box-shadow:0 14px 34px -19px rgba(59,130,246,.9);
   transition:transform .18s,box-shadow .18s,filter .18s;}
 .aee-contact-link:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 18px 40px -18px rgba(59,130,246,.75);}
+.aee-feedback-card{max-width:920px;margin:0 auto;padding:clamp(22px,4vw,46px);
+  border:1px solid rgba(96,165,250,.2);border-radius:24px;
+  background:linear-gradient(150deg,rgba(15,23,42,.88),rgba(8,12,23,.82));
+  box-shadow:0 24px 70px -48px rgba(37,99,235,.52);}
+.aee-feedback-card .aee-feedback-privacy{margin:0 0 20px;color:var(--text-muted);
+  font-size:.84rem;line-height:1.7;}
+html[data-theme="light"] .aee-feedback-card{
+  background:linear-gradient(150deg,rgba(255,255,255,.94),rgba(241,245,249,.9));
+  border-color:rgba(100,116,139,.2);}
 @media(max-width:900px){
   .aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
   .aee-project-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -6629,6 +6645,7 @@ _JS_HEAD = r"""
     'Project':'المشروع','Account':'الحساب','account':'الحساب',
     'Detailed History':'السجل التفصيلي',
     'Updates':'التحديثات','About Us':'من نحن','Contact Us':'اتصل بنا',
+    'Feedback & Support':'الدعم والملاحظات',
     'AI-assisted video evidence review':'مراجعة أدلة الفيديو بمساعدة الذكاء الاصطناعي',
     'Human review remains essential.':'تظل المراجعة البشرية ضرورية.',
     'Video intelligence workspace':'منصة ذكية لتحليل الفيديو',
@@ -7331,8 +7348,10 @@ _JS_HEAD = r"""
     const item = event.target.closest('[data-aee-nav-tab]');
     if (item){
       const name = item.getAttribute('data-aee-nav-tab');
-      if (['Account','Settings','Updates','About Us','Contact Us','Detailed History'].includes(name)){
+      if (['Account','Settings','Updates','About Us','Contact Us',
+           'Feedback & Support','Detailed History'].includes(name)){
         const windowName = ['Account', 'Settings'].includes(name) ? 'account' :
+          name === 'Feedback & Support' ? 'feedback-support' :
           name.toLowerCase().replace(/\s+/g, '-');
         activateAeeUtilityWindow(windowName); return;
       }
@@ -8892,6 +8911,110 @@ create policy "Users can update their own profile photos"
 """
 
 
+def _submit_feedback_ui(kind, message, attachment, session):
+    keep = gr.update()
+    if (not isinstance(session, dict) or not session.get("user_id")
+            or not session.get("refresh_token") or not session.get("email")):
+        return "Sign in with your app account before submitting feedback.", keep, keep
+
+    if kind not in _FEEDBACK_CATEGORIES:
+        return "Choose a valid message type.", keep, keep
+    if not isinstance(message, str):
+        return "Enter your feedback details before submitting.", keep, keep
+    message = message.strip()
+    if len(message) < 10:
+        return "Please add more details (at least 10 characters).", keep, keep
+    if len(message) > 3000:
+        return "Your message is too long (maximum 3000 characters).", keep, keep
+
+    source_path = None
+    attachment_bytes = None
+    original_filename = None
+    if attachment:
+        try:
+            source_path = Path(attachment)
+            extension = source_path.suffix.lower()
+            if extension not in _FEEDBACK_ALLOWED_EXTENSIONS:
+                return "Attach a PNG, JPG, or WebP screenshot under 5 MB.", keep, keep
+            if not source_path.is_file():
+                return "The selected screenshot could not be read. Please choose it again.", keep, keep
+            with source_path.open("rb") as source:
+                attachment_bytes = source.read(_FEEDBACK_MAX_ATTACHMENT_BYTES + 1)
+            if not attachment_bytes:
+                return "The selected screenshot is empty. Please choose another file.", keep, keep
+            if len(attachment_bytes) > _FEEDBACK_MAX_ATTACHMENT_BYTES:
+                return "The screenshot must be 5 MB or smaller.", keep, keep
+            valid_image = (
+                extension == ".png" and attachment_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+                or extension in {".jpg", ".jpeg"}
+                and attachment_bytes.startswith(b"\xff\xd8\xff")
+                or extension == ".webp"
+                and attachment_bytes.startswith(b"RIFF")
+                and attachment_bytes[8:12] == b"WEBP"
+            )
+            if not valid_image:
+                return "The screenshot contents do not match a supported image format.", keep, keep
+            original_filename = source_path.name
+        except (OSError, TypeError, ValueError):
+            return "The selected screenshot could not be read. Please choose it again.", keep, keep
+
+    user_id = str(session["user_id"])
+    now = time.time()
+    feedback_dir = APP_DATA / "feedback"
+    attachment_dir = feedback_dir / "attachments"
+    saved_attachment = None
+    try:
+        with _FEEDBACK_LOCK:
+            last_sent = _FEEDBACK_LAST_SENT.get(user_id, 0)
+            if now - last_sent < 60:
+                return "Please wait a moment before sending another message.", keep, keep
+
+            feedback_dir.mkdir(parents=True, exist_ok=True)
+            attachment_name = None
+            if attachment_bytes is not None:
+                attachment_dir.mkdir(parents=True, exist_ok=True)
+                attachment_name = f"{uuid.uuid4().hex}{source_path.suffix.lower()}"
+                saved_attachment = attachment_dir / attachment_name
+                temporary_attachment = saved_attachment.with_suffix(
+                    saved_attachment.suffix + ".tmp"
+                )
+                try:
+                    temporary_attachment.write_bytes(attachment_bytes)
+                    os.replace(temporary_attachment, saved_attachment)
+                except OSError:
+                    temporary_attachment.unlink(missing_ok=True)
+                    raise
+
+            record = {
+                "time": datetime.now().astimezone().isoformat(timespec="seconds"),
+                "type": kind,
+                "user_id": user_id,
+                "email": str(session["email"]),
+                "name": str(session.get("display_name") or ""),
+                "message": message,
+                "attachment": (
+                    f"attachments/{attachment_name}" if attachment_name else None
+                ),
+                "original_filename": original_filename,
+            }
+            try:
+                with (feedback_dir / "feedback.jsonl").open(
+                    "a", encoding="utf-8", newline="\n"
+                ) as log_file:
+                    log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+                    log_file.flush()
+            except OSError:
+                if saved_attachment:
+                    saved_attachment.unlink(missing_ok=True)
+                raise
+            _FEEDBACK_LAST_SENT[user_id] = now
+    except OSError:
+        log.exception("Could not save feedback locally.")
+        return "Saving failed. Your feedback was not submitted; please try again.", keep, keep
+
+    return "Thank you! Your feedback was saved on this computer.", "", None
+
+
 def _account_status_html(message, tone="neutral", profile_saved=False):
     safe_message = _html.escape(str(message))
     hidden = " hidden" if not safe_message else ""
@@ -9714,6 +9837,10 @@ def _side_navigation_html():
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg>
               <span>Contact Us</span>
             </button>
+            <button class="aee-nav-item" type="button" data-aee-nav-tab="Feedback &amp; Support">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2 1-4.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg>
+              <span>Feedback &amp; Support</span>
+            </button>
           </div>
         </div>
         <div class="aee-nav-spacer"></div>
@@ -10319,6 +10446,36 @@ def build_ui():
                     target="_blank" rel="noopener noreferrer">Open GitHub Issues <span aria-hidden="true">â†—</span></a>
                 </section>''')
 
+        with gr.Group(visible=True, elem_id="aee-feedback-support-window",
+                      elem_classes=["aee-utility-window-shell"]) as feedback_window:
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2 1-4.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg></span>
+                      <div><small>FEEDBACK &amp; SUPPORT</small><h1>Feedback &amp; Support</h1>
+                        <p>Record a report, question, or idea on this computer.</p></div>
+                    </header>''')
+                    feedback_close_btn = gr.Button("Back to app", size="sm",
+                        elem_classes=["aee-utility-window-close"], elem_id="aee-feedback-close")
+                with gr.Column(elem_classes=["aee-feedback-card"]):
+                    gr.HTML('''<p class="aee-feedback-privacy">
+                      Sign in with your app account before submitting. Feedback and optional screenshots are
+                      saved locally on this computer only; they are not emailed or uploaded. Do not include
+                      private videos, case details, or other sensitive evidence.</p>''')
+                    feedback_kind = gr.Dropdown(
+                        choices=list(_FEEDBACK_CATEGORIES), value="Bug report",
+                        label="Message type")
+                    feedback_message = gr.Textbox(
+                        lines=5, max_lines=10, max_length=3000, label="Details",
+                        placeholder="What happened? What were you doing at the time?")
+                    feedback_attachment = gr.File(
+                        label="Screenshot (optional, PNG/JPG/WebP, 5 MB maximum)",
+                        file_types=[".png", ".jpg", ".jpeg", ".webp"],
+                        type="filepath")
+                    feedback_submit_btn = gr.Button(
+                        "Save feedback", variant="primary", elem_id="aee-feedback-submit")
+                    feedback_status = gr.Markdown(elem_id="aee-feedback-status")
+
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM
             · {info.get('n_models',0)} models · Learned Fusion
@@ -10407,6 +10564,12 @@ def build_ui():
         detailed_history_refresh.click(
             fn=_history_refresh_ui, inputs=[history_refresh_state],
             outputs=[history_refresh_state], queue=False)
+        feedback_submit_btn.click(
+            fn=_submit_feedback_ui,
+            inputs=[feedback_kind, feedback_message, feedback_attachment,
+                    account_session],
+            outputs=[feedback_status, feedback_message, feedback_attachment],
+            queue=False)
         all_history_zip.click(
             fn=lambda: _history_zip_ui(),
             inputs=[], outputs=[all_history_zip, history_zip_status])
