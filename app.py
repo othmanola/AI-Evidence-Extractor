@@ -3143,6 +3143,48 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
 html[data-theme="light"] .aee-feedback-card{
   background:linear-gradient(150deg,rgba(255,255,255,.94),rgba(241,245,249,.9));
   border-color:rgba(100,116,139,.2);}
+.aee-feedback-composer{gap:0!important;padding:8px 10px 10px;
+  border:1px solid rgba(148,163,184,.24);border-radius:18px;
+  background:linear-gradient(160deg,rgba(15,23,42,.72),rgba(9,14,25,.76));
+  box-shadow:0 12px 30px -24px rgba(37,99,235,.7);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;}
+.aee-feedback-composer:focus-within{border-color:rgba(96,165,250,.62);
+  box-shadow:0 0 0 3px rgba(59,130,246,.11),0 16px 38px -25px rgba(37,99,235,.65);}
+#aee-feedback-message{border:0!important;background:transparent!important;
+  box-shadow:none!important;padding:0!important;}
+#aee-feedback-message label{padding:6px 8px 2px;color:var(--text-muted)!important;
+  font-size:.75rem!important;font-weight:700!important;}
+#aee-feedback-message textarea{min-height:132px!important;padding:10px 8px 14px!important;
+  border:0!important;border-radius:10px!important;outline:0!important;box-shadow:none!important;
+  color:var(--text)!important;background:transparent!important;font-size:.94rem!important;
+  line-height:1.65!important;resize:vertical!important;}
+#aee-feedback-message textarea::placeholder{color:var(--text-subtle)!important;opacity:.9;}
+.aee-feedback-toolbar{align-items:center!important;gap:8px!important;
+  padding-top:9px;border-top:1px solid rgba(148,163,184,.13);}
+#aee-feedback-attach button,#aee-feedback-remove button,#aee-feedback-send button{
+  min-height:36px!important;border-radius:11px!important;font-size:.77rem!important;
+  font-weight:700!important;transition:transform .16s ease,filter .16s ease,border-color .16s ease;}
+#aee-feedback-attach button{padding:0 12px!important;color:var(--text-muted)!important;
+  border:1px solid rgba(148,163,184,.2)!important;background:rgba(148,163,184,.07)!important;}
+#aee-feedback-attach button:hover,#aee-feedback-remove button:hover{transform:translateY(-1px);
+  border-color:rgba(96,165,250,.42)!important;filter:brightness(1.08);}
+#aee-feedback-file-name{min-width:0!important;border:0!important;background:transparent!important;
+  box-shadow:none!important;}
+#aee-feedback-file-name input{height:34px!important;padding:0 4px!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  color:var(--text-muted)!important;font-size:.72rem!important;text-overflow:ellipsis;}
+#aee-feedback-remove button{min-width:54px!important;width:auto!important;padding:0 8px!important;
+  color:var(--text-muted)!important;border:1px solid rgba(148,163,184,.2)!important;
+  background:rgba(148,163,184,.07)!important;}
+#aee-feedback-send button{min-width:92px!important;padding:0 15px!important;color:#fff!important;
+  border:1px solid rgba(96,165,250,.34)!important;
+  background:linear-gradient(120deg,#2563eb,#4f46e5)!important;
+  box-shadow:0 9px 22px -14px rgba(59,130,246,.95);}
+#aee-feedback-send button:hover{transform:translateY(-1px);filter:brightness(1.08);}
+html[data-theme="light"] .aee-feedback-composer{
+  border-color:rgba(100,116,139,.23);
+  background:linear-gradient(160deg,rgba(255,255,255,.94),rgba(241,245,249,.94));}
+html[data-theme="light"] .aee-feedback-toolbar{border-top-color:rgba(100,116,139,.17);}
 @media(max-width:900px){
   .aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
   .aee-project-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -3150,6 +3192,12 @@ html[data-theme="light"] .aee-feedback-card{
   .aee-project-feature{min-height:118px;}
 }
 @media(max-width:640px){
+  .aee-feedback-toolbar{flex-wrap:wrap!important;gap:5px!important;}
+  #aee-feedback-attach button{min-height:34px!important;padding:0 8px!important;}
+  #aee-feedback-file-name{min-width:40px!important;}
+  #aee-feedback-file-name input{font-size:.68rem!important;}
+  #aee-feedback-remove button{min-width:46px!important;padding:0 6px!important;}
+  #aee-feedback-send button{min-width:72px!important;padding:0 10px!important;}
   .aee-utility-window-shell .column.wrap{width:100vw!important;max-width:100vw!important;
     padding:0 16px 28px!important;}
   .aee-utility-window-header{margin:0 -16px 22px;padding:0 16px;min-height:72px;gap:10px;}
@@ -6885,7 +6933,8 @@ _JS_HEAD = r"""
     'No detections found':'لم يتم العثور على اكتشافات',
     'Analysis complete':'اكتمل التحليل','No video selected':'لم يتم اختيار فيديو',
     'Choose files':'اختر الملفات','Export':'تصدير',
-    'Photo':'الصورة','Apply crop':'تطبيق القص','Reset crop':'إعادة ضبط القص',
+    'Photo':'الصورة','Add photo':'إضافة صورة','No photo attached':'لا توجد صورة مرفقة',
+    'Send':'إرسال','Apply crop':'تطبيق القص','Reset crop':'إعادة ضبط القص',
     'Jan':'يناير','January':'يناير','Feb':'فبراير','February':'فبراير',
     'Mar':'مارس','March':'مارس','Apr':'أبريل','April':'أبريل',
     'May':'مايو','Jun':'يونيو','June':'يونيو','Jul':'يوليو','July':'يوليو',
@@ -8913,19 +8962,20 @@ create policy "Users can update their own profile photos"
 
 def _submit_feedback_ui(kind, message, attachment, session):
     keep = gr.update()
+    keep_hidden = gr.update()
     if (not isinstance(session, dict) or not session.get("user_id")
             or not session.get("refresh_token") or not session.get("email")):
-        return "Sign in with your app account before submitting feedback.", keep, keep
+        return "Sign in with your app account before submitting feedback.", keep, keep, keep, keep_hidden
 
     if kind not in _FEEDBACK_CATEGORIES:
-        return "Choose a valid message type.", keep, keep
+        return "Choose a valid message type.", keep, keep, keep, keep_hidden
     if not isinstance(message, str):
-        return "Enter your feedback details before submitting.", keep, keep
+        return "Enter your feedback details before submitting.", keep, keep, keep, keep_hidden
     message = message.strip()
     if len(message) < 10:
-        return "Please add more details (at least 10 characters).", keep, keep
+        return "Please add more details (at least 10 characters).", keep, keep, keep, keep_hidden
     if len(message) > 3000:
-        return "Your message is too long (maximum 3000 characters).", keep, keep
+        return "Your message is too long (maximum 3000 characters).", keep, keep, keep, keep_hidden
 
     source_path = None
     attachment_bytes = None
@@ -8935,15 +8985,15 @@ def _submit_feedback_ui(kind, message, attachment, session):
             source_path = Path(attachment)
             extension = source_path.suffix.lower()
             if extension not in _FEEDBACK_ALLOWED_EXTENSIONS:
-                return "Attach a PNG, JPG, or WebP screenshot under 5 MB.", keep, keep
+                return "Attach a PNG, JPG, or WebP screenshot under 5 MB.", keep, keep, keep, keep_hidden
             if not source_path.is_file():
-                return "The selected screenshot could not be read. Please choose it again.", keep, keep
+                return "The selected screenshot could not be read. Please choose it again.", keep, keep, keep, keep_hidden
             with source_path.open("rb") as source:
                 attachment_bytes = source.read(_FEEDBACK_MAX_ATTACHMENT_BYTES + 1)
             if not attachment_bytes:
-                return "The selected screenshot is empty. Please choose another file.", keep, keep
+                return "The selected screenshot is empty. Please choose another file.", keep, keep, keep, keep_hidden
             if len(attachment_bytes) > _FEEDBACK_MAX_ATTACHMENT_BYTES:
-                return "The screenshot must be 5 MB or smaller.", keep, keep
+                return "The screenshot must be 5 MB or smaller.", keep, keep, keep, keep_hidden
             valid_image = (
                 extension == ".png" and attachment_bytes.startswith(b"\x89PNG\r\n\x1a\n")
                 or extension in {".jpg", ".jpeg"}
@@ -8953,10 +9003,10 @@ def _submit_feedback_ui(kind, message, attachment, session):
                 and attachment_bytes[8:12] == b"WEBP"
             )
             if not valid_image:
-                return "The screenshot contents do not match a supported image format.", keep, keep
+                return "The screenshot contents do not match a supported image format.", keep, keep, keep, keep_hidden
             original_filename = source_path.name
         except (OSError, TypeError, ValueError):
-            return "The selected screenshot could not be read. Please choose it again.", keep, keep
+            return "The selected screenshot could not be read. Please choose it again.", keep, keep, keep, keep_hidden
 
     user_id = str(session["user_id"])
     now = time.time()
@@ -8967,7 +9017,7 @@ def _submit_feedback_ui(kind, message, attachment, session):
         with _FEEDBACK_LOCK:
             last_sent = _FEEDBACK_LAST_SENT.get(user_id, 0)
             if now - last_sent < 60:
-                return "Please wait a moment before sending another message.", keep, keep
+                return "Please wait a moment before sending another message.", keep, keep, keep, keep_hidden
 
             feedback_dir.mkdir(parents=True, exist_ok=True)
             attachment_name = None
@@ -9010,9 +9060,20 @@ def _submit_feedback_ui(kind, message, attachment, session):
             _FEEDBACK_LAST_SENT[user_id] = now
     except OSError:
         log.exception("Could not save feedback locally.")
-        return "Saving failed. Your feedback was not submitted; please try again.", keep, keep
+        return "Saving failed. Your feedback was not submitted; please try again.", keep, keep, keep, keep_hidden
 
-    return "Thank you! Your feedback was saved on this computer.", "", None
+    return ("Thank you! Your feedback was saved on this computer.", "", None,
+            "No photo attached", gr.update(visible=False))
+
+
+def _feedback_attachment_label_ui(attachment):
+    if not attachment:
+        return "No photo attached", gr.update(visible=False)
+    return Path(attachment).name, gr.update(visible=True)
+
+
+def _clear_feedback_attachment_ui():
+    return None, "No photo attached", gr.update(visible=False), ""
 
 
 def _account_status_html(message, tone="neutral", profile_saved=False):
@@ -10465,15 +10526,30 @@ def build_ui():
                     feedback_kind = gr.Dropdown(
                         choices=list(_FEEDBACK_CATEGORIES), value="Bug report",
                         label="Message type")
-                    feedback_message = gr.Textbox(
-                        lines=5, max_lines=10, max_length=3000, label="Details",
-                        placeholder="What happened? What were you doing at the time?")
-                    feedback_attachment = gr.File(
-                        label="Screenshot (optional, PNG/JPG/WebP, 5 MB maximum)",
-                        file_types=[".png", ".jpg", ".jpeg", ".webp"],
-                        type="filepath")
-                    feedback_submit_btn = gr.Button(
-                        "Save feedback", variant="primary", elem_id="aee-feedback-submit")
+                    with gr.Column(elem_classes=["aee-feedback-composer"]):
+                        feedback_message = gr.Textbox(
+                            lines=5, max_lines=10, max_length=3000, label="Details",
+                            placeholder="What happened? What were you doing at the time?",
+                            elem_id="aee-feedback-message")
+                        with gr.Row(elem_classes=["aee-feedback-toolbar"]):
+                            feedback_attachment = gr.UploadButton(
+                                "Add photo", size="sm", file_count="single",
+                                file_types=[".png", ".jpg", ".jpeg", ".webp"],
+                                type="filepath", elem_id="aee-feedback-attach",
+                                scale=0, min_width=112)
+                            feedback_attachment_name = gr.Textbox(
+                                value="No photo attached", show_label=False,
+                                interactive=False, container=False,
+                                elem_id="aee-feedback-file-name", scale=1,
+                                min_width=80)
+                            feedback_attachment_remove = gr.Button(
+                                "Remove", size="sm", variant="secondary",
+                                visible=False, elem_id="aee-feedback-remove",
+                                scale=0, min_width=34)
+                            feedback_submit_btn = gr.Button(
+                                "Send", variant="primary",
+                                elem_id="aee-feedback-send", scale=0,
+                                min_width=92)
                     feedback_status = gr.Markdown(elem_id="aee-feedback-status")
 
         gr.HTML(f"""<div class="aee-footer">
@@ -10564,11 +10640,23 @@ def build_ui():
         detailed_history_refresh.click(
             fn=_history_refresh_ui, inputs=[history_refresh_state],
             outputs=[history_refresh_state], queue=False)
+        feedback_attachment.upload(
+            fn=_feedback_attachment_label_ui,
+            inputs=[feedback_attachment],
+            outputs=[feedback_attachment_name, feedback_attachment_remove],
+            queue=False)
+        feedback_attachment_remove.click(
+            fn=_clear_feedback_attachment_ui,
+            inputs=[],
+            outputs=[feedback_attachment, feedback_attachment_name,
+                     feedback_attachment_remove, feedback_status],
+            queue=False)
         feedback_submit_btn.click(
             fn=_submit_feedback_ui,
             inputs=[feedback_kind, feedback_message, feedback_attachment,
                     account_session],
-            outputs=[feedback_status, feedback_message, feedback_attachment],
+            outputs=[feedback_status, feedback_message, feedback_attachment,
+                     feedback_attachment_name, feedback_attachment_remove],
             queue=False)
         all_history_zip.click(
             fn=lambda: _history_zip_ui(),

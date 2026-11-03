@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.80 refreshes the Feedback & Support composer with a modern message
+field, a compact photo-attachment toolbar, selected-file removal, and a
+responsive send action.
+
 Version 1.2.79 adds a signed-in Feedback & Support form with categorized
 messages, local-only storage, a 60-second per-account limit, and optional
 PNG/JPG/WebP screenshots capped at 5 MB. Feedback is saved under
