@@ -278,18 +278,6 @@ Deno.serve(async (request: Request) => {
       return jsonResponse(502, { error: "The feedback email could not be delivered." });
     }
 
-    const profileResponse = await gmailRequest("profile", tokenData.access_token);
-    if (!profileResponse.ok) {
-      console.error("Could not verify the authorized Gmail mailbox.", profileResponse.status);
-      return jsonResponse(502, { error: "The feedback email could not be delivered." });
-    }
-    const profile = await profileResponse.json();
-    if (typeof profile.emailAddress !== "string"
-        || profile.emailAddress.toLowerCase() !== FEEDBACK_TO.toLowerCase()) {
-      console.error("Authorized Gmail mailbox does not match the configured feedback recipient.");
-      return jsonResponse(503, { error: "Feedback email account configuration is invalid." });
-    }
-
     const emailResponse = await gmailRequest("messages/send", tokenData.access_token, {
       raw: base64Url(formatEmail(
         kind,

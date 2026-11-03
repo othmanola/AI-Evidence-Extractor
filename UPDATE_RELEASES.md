@@ -1,5 +1,7 @@
 # Publishing app updates
 
+Version 1.2.82 fixes Gmail delivery by using only the Gmail send scope.
+
 Version 1.2.81 routes signed-in Feedback & Support submissions to the project
 team's Gmail through a server-side Gmail API relay, with optional screenshots,
 server-side rate limiting, and clear delivery-failure reporting. Google OAuth

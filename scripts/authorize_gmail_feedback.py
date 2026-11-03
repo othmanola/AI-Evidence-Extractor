@@ -19,6 +19,7 @@ import webbrowser
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 PROFILE_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+FEEDBACK_MAILBOX = "othmanqderat200@gmail.com"
 SCOPES = (
     "openid",
     "email",
@@ -105,8 +106,8 @@ def main():
     }
     authorization_url = f"{AUTH_URL}?{urllib.parse.urlencode(parameters)}"
     print(
-        "\nOpening Google sign-in. Complete approval in the browser, then wait "
-        "for it to return to this terminal."
+        f"\nOpening Google sign-in. Sign in as {FEEDBACK_MAILBOX}, approve access, "
+        "then wait for the browser to return to this terminal."
     )
     if not webbrowser.open(authorization_url):
         print(f"If a browser did not open, visit this URL:\n{authorization_url}")
@@ -159,6 +160,11 @@ def main():
         raise SystemExit("Google did not confirm the authorized account's email address.")
     if profile.get("email_verified") is not True:
         raise SystemExit("The authorized Google account's email address is not verified.")
+    if email.casefold() != FEEDBACK_MAILBOX.casefold():
+        raise SystemExit(
+            f"Authorize {FEEDBACK_MAILBOX}; the selected account does not match "
+            "the feedback inbox."
+        )
 
     print(f"\nAuthorized Gmail account: {email}")
     print("Copy this refresh token directly into the Supabase GMAIL_REFRESH_TOKEN secret.")
