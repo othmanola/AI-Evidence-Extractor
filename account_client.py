@@ -41,6 +41,10 @@ GUEST_PROFILE_FILE = APP_DATA / "guest_profile.json"
 GUEST_AVATAR_DIR = APP_DATA / "guest_profile_photos"
 AVATAR_BUCKET = "profile-photos"
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
+MAX_FEEDBACK_ATTACHMENT_BYTES = 5 * 1024 * 1024
+FEEDBACK_CATEGORIES = frozenset({
+    "Bug report", "Improvement suggestion", "Question", "Other",
+})
 PROFILE_SETTINGS_KEYS = ("username",)
 GOOGLE_SIGN_IN_TIMEOUT = 180
 log = logging.getLogger("aee.account")
@@ -677,6 +681,71 @@ def _authenticated_api(
         session = _refresh_session(config, session)
         result = _api(config, method, path, body, session["access_token"], headers)
     return result, session
+
+
+def submit_feedback(
+    session: dict[str, Any],
+    kind: str,
+    message: str,
+    attachment_name: str | None = None,
+    attachment_bytes: bytes | None = None,
+) -> dict[str, Any]:
+    if not isinstance(kind, str) or kind not in FEEDBACK_CATEGORIES:
+        raise AccountError("Choose a valid feedback category.")
+    if not isinstance(message, str) or not 10 <= len(message.strip()) <= 3000:
+        raise AccountError("Feedback details must contain 10 to 3000 characters.")
+    if attachment_bytes is not None and (
+        not isinstance(attachment_name, str)
+        or not attachment_name
+        or not isinstance(attachment_bytes, bytes)
+        or not attachment_bytes
+        or len(attachment_bytes) > MAX_FEEDBACK_ATTACHMENT_BYTES
+    ):
+        raise AccountError("The feedback attachment is invalid or larger than 5 MB.")
+
+    extension = Path(attachment_name or "").suffix.lower()
+    media_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+    }
+    if attachment_bytes is not None and extension not in media_types:
+        raise AccountError("Attach a PNG, JPG, or WebP screenshot.")
+
+    boundary = f"----AEEFeedback{uuid.uuid4().hex}"
+    parts: list[bytes] = []
+    for field_name, value in (("kind", kind), ("message", message.strip())):
+        parts.extend((
+            f"--{boundary}\r\n".encode("ascii"),
+            f'Content-Disposition: form-data; name="{field_name}"\r\n\r\n'.encode("ascii"),
+            value.encode("utf-8"),
+            b"\r\n",
+        ))
+    if attachment_bytes is not None:
+        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", Path(attachment_name).name)
+        parts.extend((
+            f"--{boundary}\r\n".encode("ascii"),
+            (f'Content-Disposition: form-data; name="attachment"; '
+             f'filename="{safe_name}"\r\n').encode("ascii"),
+            f"Content-Type: {media_types[extension]}\r\n\r\n".encode("ascii"),
+            attachment_bytes,
+            b"\r\n",
+        ))
+    parts.append(f"--{boundary}--\r\n".encode("ascii"))
+
+    config = _require_config()
+    response, session = _authenticated_api(
+        config,
+        session,
+        "POST",
+        "/functions/v1/submit-feedback",
+        b"".join(parts),
+        {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    if not isinstance(response, dict) or response.get("sent") is not True:
+        raise AccountError("The feedback service did not confirm email delivery.")
+    return session
 
 
 def _profile_upsert(

@@ -21,6 +21,79 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_feedback_is_emailed_and_retained_locally(self):
+        session = {
+            "user_id": "user-123",
+            "email": "person@example.com",
+            "display_name": "Person",
+            "refresh_token": "refresh-token",
+        }
+        image_bytes = b"\x89PNG\r\n\x1a\nscreenshot"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_path = Path(temp_dir) / "screen.png"
+            image_path.write_bytes(image_bytes)
+            feedback_root = Path(temp_dir) / "feedback"
+            with (
+                patch.object(app, "APP_DATA", Path(temp_dir)),
+                patch.dict(app._FEEDBACK_LAST_SENT, {}, clear=True),
+                patch.object(
+                    app._account_client, "submit_feedback",
+                    return_value=session,
+                ) as submit,
+            ):
+                result = app._submit_feedback_ui(
+                    "Bug report", "The export button does not respond.",
+                    str(image_path), session,
+                )
+
+        submit.assert_called_once_with(
+            session, "Bug report", "The export button does not respond.",
+            "screen.png", image_bytes,
+        )
+        self.assertIn("emailed to the project team", result[0])
+        self.assertEqual(len(result), 6)
+        self.assertEqual(result[1], "")
+        self.assertIsNone(result[2])
+        self.assertEqual(result[5], session)
+        record = json.loads(
+            (feedback_root / "feedback.jsonl").read_text(encoding="utf-8")
+        )
+        self.assertEqual(record["email"], "person@example.com")
+        self.assertEqual(
+            (feedback_root / record["attachment"]).read_bytes(), image_bytes,
+        )
+
+    def test_feedback_email_failure_is_explicit_and_saved_locally(self):
+        session = {
+            "user_id": "user-456",
+            "email": "person@example.com",
+            "refresh_token": "refresh-token",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            feedback_root = Path(temp_dir) / "feedback"
+            with (
+                patch.object(app, "APP_DATA", Path(temp_dir)),
+                patch.dict(app._FEEDBACK_LAST_SENT, {}, clear=True),
+                patch.object(
+                    app._account_client, "submit_feedback",
+                    side_effect=account_client.AccountError(
+                        "The feedback email could not be delivered."
+                    ),
+                ),
+            ):
+                result = app._submit_feedback_ui(
+                    "Question", "How do I export an analysis?", None, session,
+                )
+
+        self.assertIn("email delivery failed", result[0].lower())
+        self.assertIn("saved on this computer", result[0].lower())
+        self.assertEqual(len(result), 6)
+        self.assertEqual(result[1], {"__type__": "update"})
+        record = json.loads(
+            (feedback_root / "feedback.jsonl").read_text(encoding="utf-8")
+        )
+        self.assertEqual(record["message"], "How do I export an analysis?")
+
     def test_analysis_notification_is_rendered_in_app_with_bell_icon(self):
         notification = app._analysis_notification_html()
 

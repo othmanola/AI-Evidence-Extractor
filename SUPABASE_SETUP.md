@@ -120,6 +120,72 @@ In the Supabase project's **Authentication > URL Configuration**, add
 uses a temporary local callback port for each sign-in and the Google button
 opens the system browser. Return to the app after Google confirms the sign-in.
 
+## 5. Configure Feedback & Support email delivery
+
+Feedback is delivered to `othmanqderat200@gmail.com` using that Gmail mailbox
+and Google's Gmail API. This does not require a website or a sender domain.
+The app sends only the category, message, signed-in account identity, and
+optional PNG/JPG/WebP screenshot; analysis videos and reports are not included.
+Feedback is also retained in the app's local feedback log. The server enforces
+a 60-second per-account rate limit and fixes the recipient in the Edge Function.
+
+### Set up Google OAuth
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), select or create
+   a project and enable the **Gmail API**.
+2. Configure the OAuth consent screen. Add the Gmail account
+   `othmanqderat200@gmail.com` as a test user while the app is in Testing.
+   The requested scope is `https://www.googleapis.com/auth/gmail.send`.
+3. Create an OAuth client ID of type **Desktop app**. Keep the downloaded
+   client ID and client secret private.
+4. From the repository root, run the local authorization helper:
+
+   ```powershell
+   python scripts\authorize_gmail_feedback.py
+   ```
+
+   Enter the OAuth client ID and secret when prompted, then sign in in the
+   opened Google browser page as `othmanqderat200@gmail.com`. The script uses a
+   loopback callback and PKCE, verifies which Gmail mailbox was authorized,
+   and prints a refresh token. Do not share that token. If the script reports
+   that Google did not return one, remove this app's access from the Google
+   Account security settings and run the helper again.
+5. To avoid test-mode refresh-token expiration after seven days, set the OAuth
+   consent screen's publishing status to **In production** and complete Google's
+   verification requirements for the Gmail send scope before relying on
+   uninterrupted delivery. While the consent screen remains in Testing,
+   reauthorize and replace the Supabase refresh-token secret when it expires.
+
+### Configure and deploy Supabase
+
+Link the CLI to the project used by the app and apply the feedback rate-limit
+migration:
+
+```powershell
+npx supabase login
+npx supabase link --project-ref kpbdbojdzwnknrfcseco
+npx supabase db push --linked
+```
+
+In the Supabase dashboard, open **Edge Functions → Secrets** and add these
+server-side secrets:
+
+- `GMAIL_CLIENT_ID` — the Google Desktop OAuth client ID.
+- `GMAIL_CLIENT_SECRET` — the OAuth client secret.
+- `GMAIL_REFRESH_TOKEN` — the token printed by the local authorization helper.
+
+Then deploy the function:
+
+```powershell
+npx supabase functions deploy submit-feedback --project-ref kpbdbojdzwnknrfcseco
+```
+
+Keep OAuth credentials and refresh tokens in Supabase secrets only—never in
+`account_defaults.json`, the desktop installer, source control, or chat. The
+Edge Function checks that the authorized Gmail mailbox matches the fixed
+feedback recipient before sending. If email delivery fails, the app reports
+the failure and retains a local copy for recovery.
+
 ## Guest mode and privacy
 
 Guest mode requires no Supabase project and keeps app usage local. The guest

@@ -440,6 +440,82 @@ class AccountClientTests(unittest.TestCase):
         self.assertEqual(avatar_url, "")
         self.assertEqual(saved_session["user_id"], "user-123")
 
+    def test_submit_feedback_sends_authenticated_multipart_request(self):
+        session = {
+            "user_id": "user-123",
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+            "expires_at": int(time.time()) + 3600,
+        }
+        with (
+            patch.object(account_client, "_require_config", return_value=self.config),
+            patch.object(
+                account_client, "_authenticated_api",
+                return_value=({"sent": True}, session),
+            ) as api,
+        ):
+            updated_session = account_client.submit_feedback(
+                session,
+                "Bug report",
+                "The export button does not respond.",
+                "screen shot.png",
+                b"\x89PNG\r\n\x1a\nimage",
+            )
+
+        self.assertEqual(updated_session, session)
+        args = api.call_args.args
+        self.assertEqual(args[:4], (
+            self.config, session, "POST", "/functions/v1/submit-feedback",
+        ))
+        body = args[4]
+        boundary = args[5]["Content-Type"].split("boundary=", 1)[1]
+        self.assertIn(b'name="kind"\r\n\r\nBug report', body)
+        self.assertIn(
+            b'name="message"\r\n\r\nThe export button does not respond.',
+            body,
+        )
+        self.assertIn(b'filename="screen_shot.png"', body)
+        self.assertIn(b"Content-Type: image/png", body)
+        self.assertIn(b"\x89PNG\r\n\x1a\nimage", body)
+        self.assertIn(f"--{boundary}--".encode("ascii"), body)
+
+    def test_submit_feedback_rejects_bad_input_before_network_access(self):
+        with (
+            patch.object(account_client, "_require_config") as require_config,
+            patch.object(account_client, "_authenticated_api") as api,
+        ):
+            for kind, message, filename, content in (
+                ("Unexpected", "A sufficiently long message", None, None),
+                ("Bug report", "short", None, None),
+                ("Bug report", "A sufficiently long message", "report.exe", b"data"),
+                ("Bug report", "A sufficiently long message", "report.png",
+                 b"x" * (account_client.MAX_FEEDBACK_ATTACHMENT_BYTES + 1)),
+            ):
+                with self.subTest(kind=kind, filename=filename):
+                    with self.assertRaises(account_client.AccountError):
+                        account_client.submit_feedback(
+                            {}, kind, message, filename, content,
+                        )
+
+        require_config.assert_not_called()
+        api.assert_not_called()
+
+    def test_submit_feedback_requires_delivery_confirmation(self):
+        session = {"refresh_token": "refresh-token"}
+        with (
+            patch.object(account_client, "_require_config", return_value=self.config),
+            patch.object(
+                account_client, "_authenticated_api",
+                return_value=({"sent": False}, session),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                account_client.AccountError, "did not confirm email delivery"
+            ):
+                account_client.submit_feedback(
+                    session, "Question", "A sufficiently long question.",
+                )
+
     def test_signed_in_profile_settings_store_metadata_and_detect_pending_email(self):
         session = {
             "user_id": "user-123",

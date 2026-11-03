@@ -1,5 +1,10 @@
 # Publishing app updates
 
+Version 1.2.81 routes signed-in Feedback & Support submissions to the project
+team's Gmail through a server-side Gmail API relay, with optional screenshots,
+server-side rate limiting, and clear delivery-failure reporting. Google OAuth
+and Supabase Edge Function setup are required; see [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
+
 Version 1.2.80 refreshes the Feedback & Support composer with a modern message
 field, a compact photo-attachment toolbar, selected-file removal, and a
 responsive send action.

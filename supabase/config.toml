@@ -1,0 +1,4 @@
+project_id = "ai-evidence-extractor"
+
+[functions.submit-feedback]
+verify_jwt = true

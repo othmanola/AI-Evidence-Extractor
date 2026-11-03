@@ -8960,22 +8960,77 @@ create policy "Users can update their own profile photos"
 """
 
 
+def _save_feedback_locally(
+    kind, message, attachment_bytes, original_filename, session,
+):
+    user_id = str(session["user_id"])
+    feedback_dir = APP_DATA / "feedback"
+    attachment_dir = feedback_dir / "attachments"
+    feedback_dir.mkdir(parents=True, exist_ok=True)
+    attachment_name = None
+    saved_attachment = None
+    if attachment_bytes is not None:
+        attachment_dir.mkdir(parents=True, exist_ok=True)
+        extension = Path(original_filename).suffix.lower()
+        attachment_name = f"{uuid.uuid4().hex}{extension}"
+        saved_attachment = attachment_dir / attachment_name
+        temporary_attachment = saved_attachment.with_suffix(
+            saved_attachment.suffix + ".tmp"
+        )
+        try:
+            temporary_attachment.write_bytes(attachment_bytes)
+            os.replace(temporary_attachment, saved_attachment)
+        except OSError:
+            temporary_attachment.unlink(missing_ok=True)
+            raise
+
+    record = {
+        "time": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "type": kind,
+        "user_id": user_id,
+        "email": str(session["email"]),
+        "name": str(session.get("display_name") or ""),
+        "message": message,
+        "attachment": (
+            f"attachments/{attachment_name}" if attachment_name else None
+        ),
+        "original_filename": original_filename,
+    }
+    try:
+        with (feedback_dir / "feedback.jsonl").open(
+            "a", encoding="utf-8", newline="\n"
+        ) as log_file:
+            log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+            log_file.flush()
+    except OSError:
+        if saved_attachment:
+            saved_attachment.unlink(missing_ok=True)
+        raise
+
+
 def _submit_feedback_ui(kind, message, attachment, session):
     keep = gr.update()
     keep_hidden = gr.update()
+    keep_session = gr.update()
+
+    def keep_form(status):
+        return status, keep, keep, keep, keep_hidden, keep_session
+
     if (not isinstance(session, dict) or not session.get("user_id")
             or not session.get("refresh_token") or not session.get("email")):
-        return "Sign in with your app account before submitting feedback.", keep, keep, keep, keep_hidden
+        return keep_form(
+            "Sign in with your app account before submitting feedback."
+        )
 
     if kind not in _FEEDBACK_CATEGORIES:
-        return "Choose a valid message type.", keep, keep, keep, keep_hidden
+        return keep_form("Choose a valid message type.")
     if not isinstance(message, str):
-        return "Enter your feedback details before submitting.", keep, keep, keep, keep_hidden
+        return keep_form("Enter your feedback details before submitting.")
     message = message.strip()
     if len(message) < 10:
-        return "Please add more details (at least 10 characters).", keep, keep, keep, keep_hidden
+        return keep_form("Please add more details (at least 10 characters).")
     if len(message) > 3000:
-        return "Your message is too long (maximum 3000 characters).", keep, keep, keep, keep_hidden
+        return keep_form("Your message is too long (maximum 3000 characters).")
 
     source_path = None
     attachment_bytes = None
@@ -8985,15 +9040,19 @@ def _submit_feedback_ui(kind, message, attachment, session):
             source_path = Path(attachment)
             extension = source_path.suffix.lower()
             if extension not in _FEEDBACK_ALLOWED_EXTENSIONS:
-                return "Attach a PNG, JPG, or WebP screenshot under 5 MB.", keep, keep, keep, keep_hidden
+                return keep_form("Attach a PNG, JPG, or WebP screenshot under 5 MB.")
             if not source_path.is_file():
-                return "The selected screenshot could not be read. Please choose it again.", keep, keep, keep, keep_hidden
+                return keep_form(
+                    "The selected screenshot could not be read. Please choose it again."
+                )
             with source_path.open("rb") as source:
                 attachment_bytes = source.read(_FEEDBACK_MAX_ATTACHMENT_BYTES + 1)
             if not attachment_bytes:
-                return "The selected screenshot is empty. Please choose another file.", keep, keep, keep, keep_hidden
+                return keep_form(
+                    "The selected screenshot is empty. Please choose another file."
+                )
             if len(attachment_bytes) > _FEEDBACK_MAX_ATTACHMENT_BYTES:
-                return "The screenshot must be 5 MB or smaller.", keep, keep, keep, keep_hidden
+                return keep_form("The screenshot must be 5 MB or smaller.")
             valid_image = (
                 extension == ".png" and attachment_bytes.startswith(b"\x89PNG\r\n\x1a\n")
                 or extension in {".jpg", ".jpeg"}
@@ -9003,67 +9062,71 @@ def _submit_feedback_ui(kind, message, attachment, session):
                 and attachment_bytes[8:12] == b"WEBP"
             )
             if not valid_image:
-                return "The screenshot contents do not match a supported image format.", keep, keep, keep, keep_hidden
+                return keep_form(
+                    "The screenshot contents do not match a supported image format."
+                )
             original_filename = source_path.name
         except (OSError, TypeError, ValueError):
-            return "The selected screenshot could not be read. Please choose it again.", keep, keep, keep, keep_hidden
+            return keep_form(
+                "The selected screenshot could not be read. Please choose it again."
+            )
 
     user_id = str(session["user_id"])
     now = time.time()
-    feedback_dir = APP_DATA / "feedback"
-    attachment_dir = feedback_dir / "attachments"
-    saved_attachment = None
+    with _FEEDBACK_LOCK:
+        last_sent = _FEEDBACK_LAST_SENT.get(user_id, 0)
+        if now - last_sent < 60:
+            return keep_form("Please wait a moment before sending another message.")
+
     try:
-        with _FEEDBACK_LOCK:
-            last_sent = _FEEDBACK_LAST_SENT.get(user_id, 0)
-            if now - last_sent < 60:
-                return "Please wait a moment before sending another message.", keep, keep, keep, keep_hidden
-
-            feedback_dir.mkdir(parents=True, exist_ok=True)
-            attachment_name = None
-            if attachment_bytes is not None:
-                attachment_dir.mkdir(parents=True, exist_ok=True)
-                attachment_name = f"{uuid.uuid4().hex}{source_path.suffix.lower()}"
-                saved_attachment = attachment_dir / attachment_name
-                temporary_attachment = saved_attachment.with_suffix(
-                    saved_attachment.suffix + ".tmp"
+        refreshed_session = _account_client.submit_feedback(
+            session, kind, message, original_filename, attachment_bytes,
+        )
+    except _account_client.AccountError as exc:
+        try:
+            with _FEEDBACK_LOCK:
+                _save_feedback_locally(
+                    kind, message, attachment_bytes, original_filename, session,
                 )
-                try:
-                    temporary_attachment.write_bytes(attachment_bytes)
-                    os.replace(temporary_attachment, saved_attachment)
-                except OSError:
-                    temporary_attachment.unlink(missing_ok=True)
-                    raise
+        except OSError:
+            log.exception("Feedback email delivery and local saving both failed.")
+            return keep_form(
+                f"Email delivery failed ({exc}), and this computer could not save "
+                "a local copy. Please try again later."
+            )
+        return keep_form(
+            f"Saved on this computer, but email delivery failed ({exc}). "
+            "Please try again later."
+        )
 
-            record = {
-                "time": datetime.now().astimezone().isoformat(timespec="seconds"),
-                "type": kind,
-                "user_id": user_id,
-                "email": str(session["email"]),
-                "name": str(session.get("display_name") or ""),
-                "message": message,
-                "attachment": (
-                    f"attachments/{attachment_name}" if attachment_name else None
-                ),
-                "original_filename": original_filename,
-            }
-            try:
-                with (feedback_dir / "feedback.jsonl").open(
-                    "a", encoding="utf-8", newline="\n"
-                ) as log_file:
-                    log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
-                    log_file.flush()
-            except OSError:
-                if saved_attachment:
-                    saved_attachment.unlink(missing_ok=True)
-                raise
-            _FEEDBACK_LAST_SENT[user_id] = now
-    except OSError:
-        log.exception("Could not save feedback locally.")
-        return "Saving failed. Your feedback was not submitted; please try again.", keep, keep, keep, keep_hidden
+    with _FEEDBACK_LOCK:
+        _FEEDBACK_LAST_SENT[user_id] = time.time()
+        try:
+            _save_feedback_locally(
+                kind, message, attachment_bytes, original_filename,
+                refreshed_session,
+            )
+        except OSError:
+            log.exception("Feedback email was sent but local saving failed.")
+            return (
+                "Your feedback was emailed to the project team, but a local "
+                "copy could not be saved.",
+                "",
+                None,
+                "No photo attached",
+                gr.update(visible=False),
+                refreshed_session,
+            )
 
-    return ("Thank you! Your feedback was saved on this computer.", "", None,
-            "No photo attached", gr.update(visible=False))
+    return (
+        "Thank you! Your feedback was emailed to the project team and saved "
+        "on this computer.",
+        "",
+        None,
+        "No photo attached",
+        gr.update(visible=False),
+        refreshed_session,
+    )
 
 
 def _feedback_attachment_label_ui(attachment):
@@ -10514,15 +10577,16 @@ def build_ui():
                     gr.HTML('''<header class="aee-project-page-heading">
                       <span class="aee-project-page-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2 1-4.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg></span>
                       <div><small>FEEDBACK &amp; SUPPORT</small><h1>Feedback &amp; Support</h1>
-                        <p>Record a report, question, or idea on this computer.</p></div>
+                        <p>Send a report, question, or idea to the project team.</p></div>
                     </header>''')
                     feedback_close_btn = gr.Button("Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-feedback-close")
                 with gr.Column(elem_classes=["aee-feedback-card"]):
                     gr.HTML('''<p class="aee-feedback-privacy">
                       Sign in with your app account before submitting. Feedback and optional screenshots are
-                      saved locally on this computer only; they are not emailed or uploaded. Do not include
-                      private videos, case details, or other sensitive evidence.</p>''')
+                      emailed to the project team and saved locally on this computer. Optional screenshots
+                      are emailed with your report. Do not include private videos, case details, or other
+                      sensitive evidence.</p>''')
                     feedback_kind = gr.Dropdown(
                         choices=list(_FEEDBACK_CATEGORIES), value="Bug report",
                         label="Message type")
@@ -10656,7 +10720,8 @@ def build_ui():
             inputs=[feedback_kind, feedback_message, feedback_attachment,
                     account_session],
             outputs=[feedback_status, feedback_message, feedback_attachment,
-                     feedback_attachment_name, feedback_attachment_remove],
+                     feedback_attachment_name, feedback_attachment_remove,
+                     account_session],
             queue=False)
         all_history_zip.click(
             fn=lambda: _history_zip_ui(),
