@@ -21,6 +21,18 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_feedback_controls_have_modern_theme_and_focus_styles(self):
+        for css in (
+            "#aee-feedback-kind .wrap,#aee-feedback-kind .input-container,",
+            "#aee-feedback-kind [role=\"listbox\"]",
+            "#aee-feedback-attach button:hover:not(:disabled)",
+            "#aee-feedback-send button:focus-visible",
+            "html[data-theme=\"light\"] #aee-feedback-send button",
+            "background:linear-gradient(120deg,#3b82f6,#2563eb 56%,#4f46e5)",
+        ):
+            with self.subTest(css=css):
+                self.assertIn(css, app.CSS)
+
     def test_feedback_is_emailed_and_retained_locally(self):
         session = {
             "user_id": "user-123",
