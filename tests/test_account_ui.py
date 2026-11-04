@@ -24,14 +24,23 @@ class AccountUiTests(unittest.TestCase):
     def test_feedback_controls_have_modern_theme_and_focus_styles(self):
         for css in (
             "#aee-feedback-kind .wrap,#aee-feedback-kind .input-container,",
-            "#aee-feedback-kind [role=\"listbox\"]",
+            "#aee-feedback-kind .options",
             "#aee-feedback-attach button:hover:not(:disabled)",
             "#aee-feedback-send button:focus-visible",
+            "display:inline-flex!important;align-items:center!important;justify-content:center!important;",
+            "#aee-feedback-send button:disabled{cursor:not-allowed!important;",
             "html[data-theme=\"light\"] #aee-feedback-send button",
             "background:linear-gradient(120deg,#3b82f6,#2563eb 56%,#4f46e5)",
         ):
             with self.subTest(css=css):
                 self.assertIn(css, app.CSS)
+        self.assertIn(
+            "menu.style.setProperty('top', `${Math.round(rect.bottom + gap)}px`, 'important');",
+            app._JS_HEAD,
+        )
+        self.assertIn("menu.style.setProperty('bottom', 'auto', 'important');", app._JS_HEAD)
+        self.assertIn("window.addEventListener('scroll', scheduleFeedbackDropdownPosition, true);",
+                      app._JS_HEAD)
 
     def test_feedback_is_emailed_and_retained_locally(self):
         session = {
