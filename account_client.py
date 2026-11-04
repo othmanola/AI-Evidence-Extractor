@@ -392,7 +392,8 @@ def _require_config() -> dict[str, str]:
     config = load_config()
     if not config["project_url"] or not config["anon_key"]:
         raise AccountError(
-            "Online sign-in is not configured on this device. Contact the app administrator."
+            "Online sign-in is not configured on this device. Expand Connection setup "
+            "below to connect it, then try Google sign-in again."
         )
     return config
 

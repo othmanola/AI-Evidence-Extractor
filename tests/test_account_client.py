@@ -191,7 +191,7 @@ class AccountClientTests(unittest.TestCase):
                 return_value={"project_url": "", "anon_key": ""},
             ),
             self.assertRaisesRegex(
-                account_client.AccountError, "Contact the app administrator"
+                account_client.AccountError, "Expand Connection setup below"
             ),
         ):
             account_client._require_config()

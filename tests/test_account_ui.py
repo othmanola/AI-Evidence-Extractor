@@ -389,6 +389,7 @@ class AccountUiTests(unittest.TestCase):
             auth_form.index("account_google_btn = gr.Button"),
             auth_form.index("account_display_name_input = gr.Textbox"),
         )
+        self.assertIn('visible=True', auth_form)
         self.assertIn("or continue with email", auth_form)
 
     def test_updates_badge_uses_installed_version_over_stale_updater_version(self):
@@ -1179,7 +1180,7 @@ class AccountUiTests(unittest.TestCase):
             )
             self.assertEqual(
                 app._account_google_sign_in_visibility_ui(),
-                {"visible": False, "__type__": "update"},
+                {"visible": True, "__type__": "update"},
             )
 
     def test_google_sign_in_updates_guest_settings_actions(self):

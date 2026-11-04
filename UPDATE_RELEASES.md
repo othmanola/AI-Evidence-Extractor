@@ -1,5 +1,8 @@
 # Publishing app updates
 
+Version 1.2.87 keeps Google sign-in visible even when local configuration is
+missing and includes the public connection defaults in in-app update packages.
+
 Version 1.2.86 moves Google sign-in to the top of the account form so it is
 visible before email and password fields on short displays.
 

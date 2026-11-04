@@ -9380,11 +9380,7 @@ def _account_connection_setup_visibility_ui():
 
 
 def _account_google_sign_in_visibility_ui():
-    try:
-        return gr.update(visible=_account_client.config_is_ready())
-    except _account_client.AccountError as exc:
-        log.warning("Google sign-in is unavailable without a valid connection: %s", exc)
-        return gr.update(visible=False)
+    return gr.update(visible=True)
 
 
 def _account_profile_settings_refresh_ui(session):
@@ -10384,7 +10380,7 @@ def build_ui():
                     account_auth_intro = gr.HTML(value=_account_auth_intro_html())
                     account_google_btn = gr.Button(
                         "Continue with Google", variant="secondary",
-                        visible=account_connection_ready,
+                        visible=True,
                         elem_classes=["aee-account-google"])
                     gr.HTML('<div class="aee-account-divider"><span>or continue with email</span></div>')
                     with gr.Group(elem_classes=["aee-account-name-field"]) as account_name_group:

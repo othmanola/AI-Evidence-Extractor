@@ -18,6 +18,7 @@ FILES = (
     "update_apply.py",
     "version.txt",
     "update_config.json",
+    "account_defaults.json",
     "assets/aee.ico",
 )
 
