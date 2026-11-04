@@ -3134,41 +3134,71 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
   background:linear-gradient(120deg,#2563eb,#4f46e5);box-shadow:0 14px 34px -19px rgba(59,130,246,.9);
   transition:transform .18s,box-shadow .18s,filter .18s;}
 .aee-contact-link:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 18px 40px -18px rgba(59,130,246,.75);}
-.aee-feedback-card{max-width:920px;margin:0 auto;padding:clamp(22px,4vw,46px);
-  border:1px solid rgba(96,165,250,.2);border-radius:24px;
-  background:linear-gradient(150deg,rgba(15,23,42,.88),rgba(8,12,23,.82));
-  box-shadow:0 24px 70px -48px rgba(37,99,235,.52);}
-.aee-feedback-card .aee-feedback-privacy{margin:0 0 20px;color:var(--text-muted);
-  font-size:.84rem;line-height:1.7;}
+.aee-feedback-card{position:relative;isolation:isolate;max-width:900px;margin:0 auto 24px;
+  padding:clamp(22px,4vw,40px);overflow:visible;
+  border:1px solid rgba(148,163,184,.17);border-radius:24px;
+  background:radial-gradient(520px 220px at 100% 0%,rgba(59,130,246,.11),transparent 72%),
+    linear-gradient(150deg,rgba(17,26,44,.96),rgba(8,13,24,.96));
+  box-shadow:0 28px 80px -52px rgba(37,99,235,.55),0 1px 0 rgba(255,255,255,.045) inset;}
+.aee-feedback-card:before{position:absolute;z-index:-1;inset:0 28px auto;height:1px;
+  content:"";background:linear-gradient(90deg,transparent,rgba(96,165,250,.55),transparent);}
+.aee-feedback-intro{margin:0 0 22px;}
+.aee-feedback-kicker{display:flex;align-items:center;gap:8px;margin:0 0 9px;
+  color:#93c5fd;font-size:.66rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;}
+.aee-feedback-kicker:before{width:7px;height:7px;border-radius:50%;content:"";
+  background:#60a5fa;box-shadow:0 0 12px rgba(96,165,250,.65);}
+.aee-feedback-intro h2{margin:0;color:var(--text);font-size:clamp(1.35rem,2.4vw,1.8rem);
+  font-weight:760;letter-spacing:-.04em;line-height:1.2;}
+.aee-feedback-intro p{max-width:600px;margin:7px 0 0;color:var(--text-muted);
+  font-size:.84rem;line-height:1.65;}
+.aee-feedback-privacy{display:flex;align-items:flex-start;gap:12px;margin:0 0 24px;
+  padding:13px 15px;border:1px solid rgba(96,165,250,.16);border-radius:14px;
+  color:var(--text-muted);background:rgba(59,130,246,.055);
+  font-size:.76rem;line-height:1.65;}
+.aee-feedback-privacy-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;
+  border:1px solid rgba(96,165,250,.2);border-radius:10px;color:#93c5fd;
+  background:rgba(59,130,246,.1);}
+.aee-feedback-privacy-icon svg{width:16px;height:16px;}
+.aee-feedback-privacy p{margin:0;}
 html[data-theme="light"] .aee-feedback-card{
-  background:linear-gradient(150deg,rgba(255,255,255,.94),rgba(241,245,249,.9));
-  border-color:rgba(100,116,139,.2);}
-#aee-feedback-kind{margin-bottom:14px!important;}
-#aee-feedback-kind label{margin-bottom:7px!important;color:var(--text-muted)!important;
-  font-size:.77rem!important;font-weight:700!important;}
+  border-color:rgba(100,116,139,.2);
+  background:radial-gradient(520px 220px at 100% 0%,rgba(59,130,246,.07),transparent 72%),
+    linear-gradient(150deg,#fff,#f6f8fc);
+  box-shadow:0 24px 60px -48px rgba(15,23,42,.28),0 1px 0 rgba(255,255,255,.9) inset;}
+html[data-theme="light"] .aee-feedback-kicker{color:#2563eb;}
+html[data-theme="light"] .aee-feedback-kicker:before{background:#3b82f6;}
+html[data-theme="light"] .aee-feedback-privacy{
+  border-color:rgba(37,99,235,.13);color:#475569;background:rgba(37,99,235,.045);}
+html[data-theme="light"] .aee-feedback-privacy-icon{
+  border-color:rgba(37,99,235,.14);color:#2563eb;background:rgba(37,99,235,.07);}
+#aee-feedback-kind{margin-bottom:17px!important;}
+#aee-feedback-kind label{margin-bottom:8px!important;color:var(--text-muted)!important;
+  font-size:.75rem!important;font-weight:700!important;}
 #aee-feedback-kind [role="combobox"],#aee-feedback-kind input{
-  box-sizing:border-box!important;min-height:46px!important;padding:0 14px!important;
-  border:1px solid rgba(148,163,184,.22)!important;border-radius:12px!important;
-  color:var(--text)!important;background:linear-gradient(155deg,rgba(30,41,59,.72),rgba(15,23,42,.7))!important;
-  box-shadow:0 8px 20px -18px rgba(37,99,235,.7)!important;
+  box-sizing:border-box!important;min-height:48px!important;padding:0 15px!important;
+  border:1px solid rgba(148,163,184,.2)!important;border-radius:13px!important;
+  color:var(--text)!important;background:rgba(5,10,20,.36)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.025) inset!important;
   transition:border-color .16s ease,box-shadow .16s ease,background .16s ease!important;}
 #aee-feedback-kind [role="combobox"]:hover,#aee-feedback-kind input:hover{
-  border-color:rgba(96,165,250,.4)!important;}
+  border-color:rgba(96,165,250,.42)!important;background:rgba(5,10,20,.48)!important;}
 #aee-feedback-kind [role="combobox"]:focus-visible,#aee-feedback-kind input:focus-visible{
-  outline:0!important;border-color:rgba(96,165,250,.7)!important;
-  box-shadow:0 0 0 3px rgba(59,130,246,.14),0 8px 20px -18px rgba(37,99,235,.7)!important;}
-#aee-feedback-kind [role="listbox"]{padding:5px!important;border:1px solid rgba(148,163,184,.2)!important;
-  border-radius:12px!important;background:#111a2b!important;
-  box-shadow:0 18px 38px -20px rgba(0,0,0,.8)!important;}
+  outline:0!important;border-color:rgba(96,165,250,.72)!important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.15)!important;}
+#aee-feedback-kind [role="listbox"]{padding:6px!important;border:1px solid rgba(148,163,184,.19)!important;
+  border-radius:14px!important;background:#111a2b!important;
+  box-shadow:0 20px 46px -22px rgba(0,0,0,.76)!important;backdrop-filter:blur(16px);}
 #aee-feedback-kind [role="option"]{min-height:38px;padding:8px 11px!important;
-  border-radius:8px!important;color:var(--text-muted)!important;transition:background .14s,color .14s;}
+  border-radius:9px!important;color:var(--text-muted)!important;transition:background .14s,color .14s;}
 #aee-feedback-kind [role="option"]:hover,
 #aee-feedback-kind [role="option"][aria-selected="true"]{
   color:var(--text)!important;background:rgba(59,130,246,.16)!important;}
 html[data-theme="light"] #aee-feedback-kind [role="combobox"],
 html[data-theme="light"] #aee-feedback-kind input{
-  border-color:rgba(100,116,139,.22)!important;color:#172033!important;
-  background:linear-gradient(155deg,#fff,#f1f5f9)!important;}
+  border-color:rgba(100,116,139,.2)!important;color:#172033!important;
+  background:#f8fafc!important;box-shadow:0 1px 0 rgba(255,255,255,.85) inset!important;}
+html[data-theme="light"] #aee-feedback-kind [role="combobox"]:hover,
+html[data-theme="light"] #aee-feedback-kind input:hover{background:#fff!important;}
 html[data-theme="light"] #aee-feedback-kind [role="listbox"]{
   border-color:rgba(100,116,139,.2)!important;background:#fff!important;
   box-shadow:0 18px 38px -20px rgba(15,23,42,.3)!important;}
@@ -3176,41 +3206,43 @@ html[data-theme="light"] #aee-feedback-kind [role="option"]{color:#475569!import
 html[data-theme="light"] #aee-feedback-kind [role="option"]:hover,
 html[data-theme="light"] #aee-feedback-kind [role="option"][aria-selected="true"]{
   color:#172033!important;background:rgba(59,130,246,.1)!important;}
-.aee-feedback-composer{gap:0!important;padding:8px 10px 10px;
-  border:1px solid rgba(148,163,184,.24);border-radius:18px;
-  background:linear-gradient(160deg,rgba(15,23,42,.72),rgba(9,14,25,.76));
-  box-shadow:0 12px 30px -24px rgba(37,99,235,.7);
+.aee-feedback-composer{gap:0!important;padding:9px 11px 11px;
+  border:1px solid rgba(148,163,184,.18);border-radius:17px;
+  background:rgba(5,10,20,.28);
+  box-shadow:0 1px 0 rgba(255,255,255,.025) inset;
   transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;}
 .aee-feedback-composer:focus-within{border-color:rgba(96,165,250,.62);
-  box-shadow:0 0 0 3px rgba(59,130,246,.11),0 16px 38px -25px rgba(37,99,235,.65);}
+  box-shadow:0 0 0 3px rgba(59,130,246,.1),0 12px 32px -24px rgba(37,99,235,.55);}
 #aee-feedback-message{border:0!important;background:transparent!important;
   box-shadow:none!important;padding:0!important;}
-#aee-feedback-message label{padding:6px 8px 2px;color:var(--text-muted)!important;
-  font-size:.75rem!important;font-weight:700!important;}
-#aee-feedback-message textarea{min-height:132px!important;padding:10px 8px 14px!important;
+#aee-feedback-message label{padding:6px 8px 4px;color:var(--text-muted)!important;
+  font-size:.74rem!important;font-weight:700!important;}
+#aee-feedback-message textarea{min-height:150px!important;padding:9px 8px 14px!important;
   border:0!important;border-radius:10px!important;outline:0!important;box-shadow:none!important;
   color:var(--text)!important;background:transparent!important;font-size:.94rem!important;
   line-height:1.65!important;resize:vertical!important;}
 #aee-feedback-message textarea::placeholder{color:var(--text-subtle)!important;opacity:.9;}
 .aee-feedback-toolbar{align-items:center!important;gap:8px!important;
-  padding-top:9px;border-top:1px solid rgba(148,163,184,.13);}
+  padding-top:11px;border-top:1px solid rgba(148,163,184,.12);}
 #aee-feedback-attach button,#aee-feedback-remove button,#aee-feedback-send button{
   min-height:42px!important;border-radius:12px!important;font-size:.8rem!important;
   font-weight:700!important;transition:transform .16s ease,filter .16s ease,border-color .16s ease;}
 #aee-feedback-attach button{padding:0 14px!important;}
 #aee-feedback-attach button:hover,#aee-feedback-remove button:hover{transform:translateY(-1px);}
-#aee-feedback-file-name{min-width:0!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;}
-#aee-feedback-file-name input{height:34px!important;padding:0 4px!important;
+#aee-feedback-file-name{min-width:0!important;border:1px solid rgba(148,163,184,.13)!important;
+  border-radius:11px!important;background:rgba(148,163,184,.045)!important;box-shadow:none!important;}
+#aee-feedback-file-name input{height:38px!important;padding:0 11px!important;
   border:0!important;background:transparent!important;box-shadow:none!important;
-  color:var(--text-muted)!important;font-size:.72rem!important;text-overflow:ellipsis;}
+  color:var(--text-muted)!important;font-size:.74rem!important;text-overflow:ellipsis;}
 #aee-feedback-remove button{min-width:54px!important;width:auto!important;padding:0 10px!important;}
-#aee-feedback-send button{min-width:100px!important;padding:0 18px!important;}
+#aee-feedback-send button{min-width:104px!important;padding:0 20px!important;}
 #aee-feedback-send button:hover{transform:translateY(-1px);filter:brightness(1.08);}
 html[data-theme="light"] .aee-feedback-composer{
-  border-color:rgba(100,116,139,.23);
-  background:linear-gradient(160deg,rgba(255,255,255,.94),rgba(241,245,249,.94));}
-html[data-theme="light"] .aee-feedback-toolbar{border-top-color:rgba(100,116,139,.17);}
+  border-color:rgba(100,116,139,.19);background:rgba(248,250,252,.72);}
+html[data-theme="light"] .aee-feedback-toolbar{border-top-color:rgba(100,116,139,.15);}
+html[data-theme="light"] #aee-feedback-file-name{
+  border-color:rgba(100,116,139,.14)!important;background:rgba(100,116,139,.045)!important;}
+html[dir="rtl"] .aee-feedback-kicker{letter-spacing:0;}
 @media(max-width:900px){
   .aee-settings-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
   .aee-project-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -3218,6 +3250,12 @@ html[data-theme="light"] .aee-feedback-toolbar{border-top-color:rgba(100,116,139
   .aee-project-feature{min-height:118px;}
 }
 @media(max-width:640px){
+  .aee-feedback-card{padding:20px 16px;border-radius:19px;}
+  .aee-feedback-intro{margin-bottom:18px;}
+  .aee-feedback-privacy{gap:9px;margin-bottom:19px;padding:11px 12px;font-size:.7rem;}
+  .aee-feedback-privacy-icon{width:27px;height:27px;border-radius:9px;}
+  #aee-feedback-kind [role="combobox"],#aee-feedback-kind input{min-height:44px!important;}
+  #aee-feedback-message textarea{min-height:126px!important;}
   .aee-feedback-toolbar{flex-wrap:wrap!important;gap:5px!important;}
   #aee-feedback-attach button{min-height:38px!important;padding:0 10px!important;}
   #aee-feedback-file-name{min-width:40px!important;}
@@ -6720,6 +6758,13 @@ _JS_HEAD = r"""
     'Detailed History':'السجل التفصيلي',
     'Updates':'التحديثات','About Us':'من نحن','Contact Us':'اتصل بنا',
     'Feedback & Support':'الدعم والملاحظات',
+    'FEEDBACK FORM':'نموذج الملاحظات',
+    'Share your feedback':'شاركنا ملاحظاتك',
+    'Tell us what happened, and our team will follow up.':'أخبرنا بما حدث، وسيتابع فريقنا الأمر.',
+    'Sign in with your app account before submitting. Feedback and optional screenshots are emailed to the project team and saved locally on this computer. Optional screenshots are emailed with your report. Do not include private videos, case details, or other sensitive evidence.':'سجّل الدخول إلى حساب التطبيق قبل الإرسال. تُرسل الملاحظات ولقطات الشاشة الاختيارية إلى فريق المشروع وتُحفظ محلياً على هذا الكمبيوتر. لا تُرفق مقاطع خاصة أو تفاصيل قضايا أو أدلة حساسة أخرى.',
+    'Choose the option that best describes your message.':'اختر الخيار الذي يصف رسالتك على أفضل وجه.',
+    'Bug report':'الإبلاغ عن خطأ','Improvement suggestion':'اقتراح تحسين',
+    'Question':'سؤال','Other':'أخرى','Message type':'نوع الرسالة',
     'AI-assisted video evidence review':'مراجعة أدلة الفيديو بمساعدة الذكاء الاصطناعي',
     'Human review remains essential.':'تظل المراجعة البشرية ضرورية.',
     'Video intelligence workspace':'منصة ذكية لتحليل الفيديو',
@@ -10608,11 +10653,24 @@ def build_ui():
                     feedback_close_btn = gr.Button("Back to app", size="sm",
                         elem_classes=["aee-utility-window-close"], elem_id="aee-feedback-close")
                 with gr.Column(elem_classes=["aee-feedback-card"]):
-                    gr.HTML('''<p class="aee-feedback-privacy">
-                      Sign in with your app account before submitting. Feedback and optional screenshots are
-                      emailed to the project team and saved locally on this computer. Optional screenshots
-                      are emailed with your report. Do not include private videos, case details, or other
-                      sensitive evidence.</p>''')
+                    gr.HTML('''<div class="aee-feedback-intro">
+                      <div class="aee-feedback-kicker">FEEDBACK FORM</div>
+                      <h2>Share your feedback</h2>
+                      <p>Tell us what happened, and our team will follow up.</p>
+                    </div>
+                    <div class="aee-feedback-privacy" role="note">
+                      <span class="aee-feedback-privacy-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 3 19 6v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3Z"/>
+                          <path d="m9 12 2 2 4-4"/>
+                        </svg>
+                      </span>
+                      <p>Sign in with your app account before submitting. Feedback and optional screenshots
+                        are emailed to the project team and saved locally on this computer. Optional screenshots
+                        are emailed with your report. Do not include private videos, case details, or other
+                        sensitive evidence.</p>
+                    </div>''')
                     feedback_kind = gr.Dropdown(
                         choices=list(_FEEDBACK_CATEGORIES), value="Bug report",
                         label="Message type",

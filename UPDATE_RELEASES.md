@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.84 refreshes the Feedback & Support form with a clearer introduction,
+a privacy notice, refined category and message fields, and a polished attachment
+toolbar. The layout adapts to light, dark, and Arabic right-to-left modes.
+
 Version 1.2.83 polishes the Feedback & Support form with a clearer, themed
 message-type dropdown and consistent, responsive action buttons. It also logs
 sanitized Gmail API rejection reasons to help diagnose delivery failures.
