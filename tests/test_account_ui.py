@@ -368,6 +368,17 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("@media(prefers-reduced-motion:reduce)", app.CSS)
         self.assertIn(".wrap.generating::before{animation:none;}", app.CSS)
 
+    def test_required_sign_in_screen_scrolls_on_short_viewports(self):
+        self.assertIn(
+            "body.aee-access-required #aee-account-window .column.wrap{display:flex!important;",
+            app.CSS,
+        )
+        self.assertIn("align-items:stretch!important;justify-content:flex-start!important;", app.CSS)
+        self.assertIn("overflow-x:hidden!important;overflow-y:auto!important;", app.CSS)
+        self.assertIn("-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;", app.CSS)
+        self.assertIn("flex:0 0 auto!important;margin:0 auto 24px!important;", app.CSS)
+        self.assertIn("padding:14px 14px max(22px,env(safe-area-inset-bottom))!important;", app.CSS)
+
     def test_updates_badge_uses_installed_version_over_stale_updater_version(self):
         with tempfile.TemporaryDirectory() as temp:
             (Path(temp) / "version.txt").write_text("1.2.56", encoding="utf-8")

@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.85 keeps every sign-in option reachable on shorter displays by
+making the required sign-in screen scroll vertically instead of clipping
+content.
+
 Version 1.2.84 refreshes the Feedback & Support form with a clearer introduction,
 a privacy notice, refined category and message fields, and a polished attachment
 toolbar. The layout adapts to light, dark, and Arabic right-to-left modes.

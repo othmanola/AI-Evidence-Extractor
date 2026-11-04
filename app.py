@@ -2543,10 +2543,13 @@ body.aee-access-required #aee-account-window{z-index:12000!important;
     radial-gradient(820px 520px at 95% 100%,rgba(17,37,72,.62),transparent 78%),
     linear-gradient(145deg,#08090b 0%,#090a0d 55%,#0e1729 100%)!important;}
 body.aee-access-required #aee-account-window .column.wrap{display:flex!important;
-  align-items:center!important;justify-content:center!important;overflow-y:auto!important;
+  align-items:stretch!important;justify-content:flex-start!important;
+  overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;scrollbar-gutter:stable;
   padding:26px 16px!important;}
 body.aee-access-required #aee-account-window .aee-utility-window-header{display:none!important;}
-body.aee-access-required #aee-account-window .column.wrap>.aee-account-auth-form{margin:0 auto!important;}
+body.aee-access-required #aee-account-window .column.wrap>.aee-account-auth-form{
+  flex:0 0 auto!important;margin:0 auto 24px!important;}
 body.aee-access-required #aee-account-window .aee-account-auth-form .aee-account-intro{margin-bottom:42px;}
 body.aee-access-required .aee-navigation{display:none!important;}
 body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
@@ -3281,7 +3284,9 @@ html[dir="rtl"] .aee-feedback-kicker{letter-spacing:0;}
     margin:14px auto 20px;padding:34px 20px 26px;border-radius:23px;}
   .aee-account-intro{margin-bottom:34px;}
   .aee-account-auth-form .aee-account-actions{margin-top:34px;}
-  body.aee-access-required #aee-account-window .column.wrap{padding:14px!important;}
+  body.aee-access-required #aee-account-window .column.wrap{
+    align-items:stretch!important;justify-content:flex-start!important;
+    padding:14px 14px max(22px,env(safe-area-inset-bottom))!important;}
   .aee-settings-layout{display:flex!important;flex-direction:column!important;gap:12px!important;}
   .aee-settings-layout>.aee-settings-sidebar{position:static;flex:0 0 auto!important;
     width:100%!important;max-width:none!important;}
