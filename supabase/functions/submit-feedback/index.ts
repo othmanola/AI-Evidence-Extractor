@@ -293,7 +293,34 @@ Deno.serve(async (request: Request) => {
       )),
     });
     if (!emailResponse.ok) {
-      console.error("Gmail API rejected the feedback message.", emailResponse.status);
+      let payload: unknown;
+      try {
+        payload = await emailResponse.json();
+      } catch {
+        payload = null;
+      }
+      const error = payload && typeof payload === "object" && "error" in payload
+        && payload.error && typeof payload.error === "object"
+        ? payload.error as Record<string, unknown>
+        : {};
+      const reasons = Array.isArray(error.errors)
+        ? error.errors.flatMap((item) => {
+          if (!item || typeof item !== "object" || !("reason" in item)) return [];
+          const reason = item.reason;
+          return typeof reason === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(reason)
+            ? [reason]
+            : [];
+        })
+        : [];
+      console.error("Gmail API rejected the feedback message.", JSON.stringify({
+        httpStatus: emailResponse.status,
+        apiCode: typeof error.code === "number" ? error.code : undefined,
+        apiStatus: typeof error.status === "string"
+          && /^[A-Za-z0-9_.-]{1,80}$/.test(error.status)
+          ? error.status
+          : undefined,
+        reasons: [...new Set(reasons)],
+      }));
       return jsonResponse(502, { error: "The feedback email could not be delivered." });
     }
   } catch (error) {

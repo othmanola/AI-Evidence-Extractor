@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.83 polishes the Feedback & Support form with a clearer, themed
+message-type dropdown and consistent, responsive action buttons. It also logs
+sanitized Gmail API rejection reasons to help diagnose delivery failures.
+
 Version 1.2.82 fixes Gmail delivery by using only the Gmail send scope.
 
 Version 1.2.81 routes signed-in Feedback & Support submissions to the project

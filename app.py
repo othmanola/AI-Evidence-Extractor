@@ -3143,6 +3143,39 @@ html[data-theme="light"] .aee-settings-card .aee-account-settings-copy p{color:#
 html[data-theme="light"] .aee-feedback-card{
   background:linear-gradient(150deg,rgba(255,255,255,.94),rgba(241,245,249,.9));
   border-color:rgba(100,116,139,.2);}
+#aee-feedback-kind{margin-bottom:14px!important;}
+#aee-feedback-kind label{margin-bottom:7px!important;color:var(--text-muted)!important;
+  font-size:.77rem!important;font-weight:700!important;}
+#aee-feedback-kind [role="combobox"],#aee-feedback-kind input{
+  box-sizing:border-box!important;min-height:46px!important;padding:0 14px!important;
+  border:1px solid rgba(148,163,184,.22)!important;border-radius:12px!important;
+  color:var(--text)!important;background:linear-gradient(155deg,rgba(30,41,59,.72),rgba(15,23,42,.7))!important;
+  box-shadow:0 8px 20px -18px rgba(37,99,235,.7)!important;
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease!important;}
+#aee-feedback-kind [role="combobox"]:hover,#aee-feedback-kind input:hover{
+  border-color:rgba(96,165,250,.4)!important;}
+#aee-feedback-kind [role="combobox"]:focus-visible,#aee-feedback-kind input:focus-visible{
+  outline:0!important;border-color:rgba(96,165,250,.7)!important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.14),0 8px 20px -18px rgba(37,99,235,.7)!important;}
+#aee-feedback-kind [role="listbox"]{padding:5px!important;border:1px solid rgba(148,163,184,.2)!important;
+  border-radius:12px!important;background:#111a2b!important;
+  box-shadow:0 18px 38px -20px rgba(0,0,0,.8)!important;}
+#aee-feedback-kind [role="option"]{min-height:38px;padding:8px 11px!important;
+  border-radius:8px!important;color:var(--text-muted)!important;transition:background .14s,color .14s;}
+#aee-feedback-kind [role="option"]:hover,
+#aee-feedback-kind [role="option"][aria-selected="true"]{
+  color:var(--text)!important;background:rgba(59,130,246,.16)!important;}
+html[data-theme="light"] #aee-feedback-kind [role="combobox"],
+html[data-theme="light"] #aee-feedback-kind input{
+  border-color:rgba(100,116,139,.22)!important;color:#172033!important;
+  background:linear-gradient(155deg,#fff,#f1f5f9)!important;}
+html[data-theme="light"] #aee-feedback-kind [role="listbox"]{
+  border-color:rgba(100,116,139,.2)!important;background:#fff!important;
+  box-shadow:0 18px 38px -20px rgba(15,23,42,.3)!important;}
+html[data-theme="light"] #aee-feedback-kind [role="option"]{color:#475569!important;}
+html[data-theme="light"] #aee-feedback-kind [role="option"]:hover,
+html[data-theme="light"] #aee-feedback-kind [role="option"][aria-selected="true"]{
+  color:#172033!important;background:rgba(59,130,246,.1)!important;}
 .aee-feedback-composer{gap:0!important;padding:8px 10px 10px;
   border:1px solid rgba(148,163,184,.24);border-radius:18px;
   background:linear-gradient(160deg,rgba(15,23,42,.72),rgba(9,14,25,.76));
@@ -3162,24 +3195,17 @@ html[data-theme="light"] .aee-feedback-card{
 .aee-feedback-toolbar{align-items:center!important;gap:8px!important;
   padding-top:9px;border-top:1px solid rgba(148,163,184,.13);}
 #aee-feedback-attach button,#aee-feedback-remove button,#aee-feedback-send button{
-  min-height:36px!important;border-radius:11px!important;font-size:.77rem!important;
+  min-height:42px!important;border-radius:12px!important;font-size:.8rem!important;
   font-weight:700!important;transition:transform .16s ease,filter .16s ease,border-color .16s ease;}
-#aee-feedback-attach button{padding:0 12px!important;color:var(--text-muted)!important;
-  border:1px solid rgba(148,163,184,.2)!important;background:rgba(148,163,184,.07)!important;}
-#aee-feedback-attach button:hover,#aee-feedback-remove button:hover{transform:translateY(-1px);
-  border-color:rgba(96,165,250,.42)!important;filter:brightness(1.08);}
+#aee-feedback-attach button{padding:0 14px!important;}
+#aee-feedback-attach button:hover,#aee-feedback-remove button:hover{transform:translateY(-1px);}
 #aee-feedback-file-name{min-width:0!important;border:0!important;background:transparent!important;
   box-shadow:none!important;}
 #aee-feedback-file-name input{height:34px!important;padding:0 4px!important;
   border:0!important;background:transparent!important;box-shadow:none!important;
   color:var(--text-muted)!important;font-size:.72rem!important;text-overflow:ellipsis;}
-#aee-feedback-remove button{min-width:54px!important;width:auto!important;padding:0 8px!important;
-  color:var(--text-muted)!important;border:1px solid rgba(148,163,184,.2)!important;
-  background:rgba(148,163,184,.07)!important;}
-#aee-feedback-send button{min-width:92px!important;padding:0 15px!important;color:#fff!important;
-  border:1px solid rgba(96,165,250,.34)!important;
-  background:linear-gradient(120deg,#2563eb,#4f46e5)!important;
-  box-shadow:0 9px 22px -14px rgba(59,130,246,.95);}
+#aee-feedback-remove button{min-width:54px!important;width:auto!important;padding:0 10px!important;}
+#aee-feedback-send button{min-width:100px!important;padding:0 18px!important;}
 #aee-feedback-send button:hover{transform:translateY(-1px);filter:brightness(1.08);}
 html[data-theme="light"] .aee-feedback-composer{
   border-color:rgba(100,116,139,.23);
@@ -3193,11 +3219,11 @@ html[data-theme="light"] .aee-feedback-toolbar{border-top-color:rgba(100,116,139
 }
 @media(max-width:640px){
   .aee-feedback-toolbar{flex-wrap:wrap!important;gap:5px!important;}
-  #aee-feedback-attach button{min-height:34px!important;padding:0 8px!important;}
+  #aee-feedback-attach button{min-height:38px!important;padding:0 10px!important;}
   #aee-feedback-file-name{min-width:40px!important;}
   #aee-feedback-file-name input{font-size:.68rem!important;}
-  #aee-feedback-remove button{min-width:46px!important;padding:0 6px!important;}
-  #aee-feedback-send button{min-width:72px!important;padding:0 10px!important;}
+  #aee-feedback-remove button{min-width:46px!important;min-height:38px!important;padding:0 8px!important;}
+  #aee-feedback-send button{min-width:84px!important;min-height:38px!important;padding:0 12px!important;}
   .aee-utility-window-shell .column.wrap{width:100vw!important;max-width:100vw!important;
     padding:0 16px 28px!important;}
   .aee-utility-window-header{margin:0 -16px 22px;padding:0 16px;min-height:72px;gap:10px;}
@@ -10589,7 +10615,9 @@ def build_ui():
                       sensitive evidence.</p>''')
                     feedback_kind = gr.Dropdown(
                         choices=list(_FEEDBACK_CATEGORIES), value="Bug report",
-                        label="Message type")
+                        label="Message type",
+                        info="Choose the option that best describes your message.",
+                        elem_id="aee-feedback-kind")
                     with gr.Column(elem_classes=["aee-feedback-composer"]):
                         feedback_message = gr.Textbox(
                             lines=5, max_lines=10, max_length=3000, label="Details",
@@ -10597,7 +10625,7 @@ def build_ui():
                             elem_id="aee-feedback-message")
                         with gr.Row(elem_classes=["aee-feedback-toolbar"]):
                             feedback_attachment = gr.UploadButton(
-                                "Add photo", size="sm", file_count="single",
+                                "Add photo", variant="secondary", size="sm", file_count="single",
                                 file_types=[".png", ".jpg", ".jpeg", ".webp"],
                                 type="filepath", elem_id="aee-feedback-attach",
                                 scale=0, min_width=112)
