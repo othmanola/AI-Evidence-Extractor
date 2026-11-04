@@ -1,5 +1,8 @@
 # Publishing app updates
 
+Version 1.2.88 keeps in-app update packages compatible with older installed
+updaters by omitting the newly introduced `account_defaults.json` file.
+
 Version 1.2.87 keeps Google sign-in visible even when local configuration is
 missing and includes the public connection defaults in in-app update packages.
 
