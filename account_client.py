@@ -30,11 +30,11 @@ APP_DATA = Path(os.environ.get(
 ))
 CONFIG_FILE = APP_DATA / "account_config.json"
 if os.environ.get("AEE_SOURCE_MODE") == "1":
-    DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent / "account_defaults.json"
+    RESOURCE_DIR = Path(__file__).resolve().parent
 else:
-    DEFAULT_CONFIG_FILE = Path(
-        getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)
-    ) / "account_defaults.json"
+    RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+DEFAULT_CONFIG_FILE = RESOURCE_DIR / "account_defaults.json"
+UPDATE_CONFIG_FILE = RESOURCE_DIR / "update_config.json"
 SESSION_FILE = APP_DATA / "account_session.bin"
 GUEST_MODE_FILE = APP_DATA / "guest_mode"
 GUEST_PROFILE_FILE = APP_DATA / "guest_profile.json"
@@ -314,13 +314,29 @@ def _load_default_config() -> dict[str, str]:
     try:
         data = json.loads(DEFAULT_CONFIG_FILE.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
+        data = None
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AccountError("The bundled account connection settings could not be read.") from exc
+    if data is not None:
+        if not isinstance(data, dict):
+            raise AccountError("The bundled account connection settings are invalid.")
+        project_url = data.get("project_url", "")
+        anon_key = data.get("anon_key", "")
+        if not isinstance(project_url, str) or not isinstance(anon_key, str):
+            raise AccountError("The bundled account connection settings are invalid.")
+        if project_url or anon_key:
+            return _validate_config(project_url, anon_key)
+
+    try:
+        update_data = json.loads(UPDATE_CONFIG_FILE.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
         return {"project_url": "", "anon_key": ""}
     except (OSError, json.JSONDecodeError) as exc:
         raise AccountError("The bundled account connection settings could not be read.") from exc
-    if not isinstance(data, dict):
+    if not isinstance(update_data, dict):
         raise AccountError("The bundled account connection settings are invalid.")
-    project_url = data.get("project_url", "")
-    anon_key = data.get("anon_key", "")
+    project_url = update_data.get("default_project_url", "")
+    anon_key = update_data.get("default_anon_key", "")
     if not isinstance(project_url, str) or not isinstance(anon_key, str):
         raise AccountError("The bundled account connection settings are invalid.")
     if not project_url and not anon_key:

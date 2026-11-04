@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import zipfile
 from pathlib import Path
@@ -22,6 +24,28 @@ FILES = (
 )
 
 
+def _update_config_for_package() -> str:
+    config_path = ROOT / "update_config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8-sig"))
+    if not isinstance(config, dict):
+        raise SystemExit("update_config.json must contain a JSON object")
+    defaults_path = Path(os.environ.get(
+        "AEE_ACCOUNT_DEFAULTS_PATH",
+        str(ROOT / "account_defaults.json"),
+    ))
+    if defaults_path.is_file():
+        defaults = json.loads(defaults_path.read_text(encoding="utf-8-sig"))
+        if not isinstance(defaults, dict):
+            raise SystemExit("The account defaults file must contain a JSON object")
+        project_url = defaults.get("project_url")
+        anon_key = defaults.get("anon_key")
+        if not isinstance(project_url, str) or not isinstance(anon_key, str):
+            raise SystemExit("The account defaults file is invalid")
+        config["default_project_url"] = project_url
+        config["default_anon_key"] = anon_key
+    return json.dumps(config, indent=2) + "\n"
+
+
 def main() -> None:
     version = (ROOT / "version.txt").read_text(encoding="utf-8").strip()
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
@@ -34,7 +58,10 @@ def main() -> None:
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED,
                          compresslevel=8) as package:
         for name in FILES:
-            package.write(ROOT / name, arcname=name)
+            if name == "update_config.json":
+                package.writestr(name, _update_config_for_package())
+            else:
+                package.write(ROOT / name, arcname=name)
     print(f"Update package created for v{version}: {archive}")
 
 

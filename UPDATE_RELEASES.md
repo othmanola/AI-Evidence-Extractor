@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.89 restores Google sign-in after an in-app update by carrying the
+public Supabase connection settings inside the already-allowlisted
+`update_config.json` file.
+
 Version 1.2.88 keeps in-app update packages compatible with older installed
 updaters by omitting the newly introduced `account_defaults.json` file.
 

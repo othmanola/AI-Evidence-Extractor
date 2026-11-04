@@ -111,6 +111,23 @@ class AccountClientTests(unittest.TestCase):
                 self.assertEqual(account_client.load_config(), self.config)
                 self.assertTrue(account_client.config_is_ready())
 
+    def test_update_package_defaults_are_used_when_installer_defaults_are_missing(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            update_config_file = root / "update_config.json"
+            update_config_file.write_text(json.dumps({
+                "manifest_url": "https://example.com/latest.json",
+                "default_project_url": self.config["project_url"],
+                "default_anon_key": self.config["anon_key"],
+            }), encoding="utf-8")
+            with (
+                patch.object(account_client, "CONFIG_FILE", root / "missing.json"),
+                patch.object(account_client, "DEFAULT_CONFIG_FILE", root / "missing_defaults.json"),
+                patch.object(account_client, "UPDATE_CONFIG_FILE", update_config_file),
+            ):
+                self.assertEqual(account_client.load_config(), self.config)
+                self.assertTrue(account_client.config_is_ready())
+
     def test_saved_connection_overrides_bundled_defaults(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

@@ -80,29 +80,49 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertTrue(defaults["project_url"].startswith("https://"))
         self.assertTrue(defaults["anon_key"].startswith("sb_publishable_"))
 
-    def test_update_package_omits_files_rejected_by_older_updaters(self):
+    def test_update_package_embeds_connection_defaults_in_compatible_config_file(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
             source_root = root / "source"
             output = root / "dist"
+            defaults_file = root / "account_defaults.json"
+            defaults_file.write_text(json.dumps({
+                "project_url": "https://example.supabase.co",
+                "anon_key": "public-test-key",
+            }), encoding="utf-8")
             for name in build_update_package.FILES:
                 source = source_root / name
                 source.parent.mkdir(parents=True, exist_ok=True)
-                source.write_text(
-                    "1.2.3" if name == "version.txt" else "test",
-                    encoding="utf-8",
-                )
+                if name == "version.txt":
+                    contents = "1.2.3"
+                elif name == "update_config.json":
+                    contents = json.dumps({
+                        "manifest_url": "https://example.com/latest.json"
+                    })
+                else:
+                    contents = "test"
+                source.write_text(contents, encoding="utf-8")
             with (
                 patch.object(build_update_package, "ROOT", source_root),
                 patch.object(build_update_package, "DIST", output),
+                patch.dict(os.environ, {
+                    "AEE_ACCOUNT_DEFAULTS_PATH": str(defaults_file),
+                }),
             ):
                 build_update_package.main()
 
             with zipfile.ZipFile(output / "AI_Evidence_Extractor_Update.zip") as package:
                 members = set(package.namelist())
+                update_config = json.loads(
+                    package.read("update_config.json").decode("utf-8")
+                )
 
         self.assertNotIn("account_defaults.json", members)
         self.assertEqual(members, LEGACY_UPDATE_FILES)
+        self.assertEqual(
+            update_config["default_project_url"], "https://example.supabase.co"
+        )
+        self.assertEqual(update_config["default_anon_key"], "public-test-key")
 
     def test_restart_prefers_python_launcher_over_self_extracting_executable(self):
         with TemporaryDirectory() as temp:
