@@ -1,5 +1,8 @@
 # Publishing app updates
 
+Version 1.2.86 moves Google sign-in to the top of the account form so it is
+visible before email and password fields on short displays.
+
 Version 1.2.85 keeps every sign-in option reachable on shorter displays by
 making the required sign-in screen scroll vertically instead of clipping
 content.

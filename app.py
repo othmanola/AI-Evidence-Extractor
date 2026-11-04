@@ -10382,6 +10382,11 @@ def build_ui():
                     elem_classes=["aee-account-auth-form"],
                 ) as account_auth_group:
                     account_auth_intro = gr.HTML(value=_account_auth_intro_html())
+                    account_google_btn = gr.Button(
+                        "Continue with Google", variant="secondary",
+                        visible=account_connection_ready,
+                        elem_classes=["aee-account-google"])
+                    gr.HTML('<div class="aee-account-divider"><span>or continue with email</span></div>')
                     with gr.Group(elem_classes=["aee-account-name-field"]) as account_name_group:
                         account_display_name_input = gr.Textbox(
                             label="Your name", placeholder="Enter your name",
@@ -10402,11 +10407,6 @@ def build_ui():
                         account_auth_mode_btn = gr.Button(
                             "Already have an account? Log in", variant="secondary",
                             elem_classes=["aee-account-mode-switch"])
-                    gr.HTML('<div class="aee-account-divider"><span>or continue with</span></div>')
-                    account_google_btn = gr.Button(
-                        "Continue with Google", variant="secondary",
-                        visible=account_connection_ready,
-                        elem_classes=["aee-account-google"])
                     gr.HTML('<div class="aee-account-divider"><span>or</span></div>')
                     account_guest_btn = gr.Button(
                         "Continue as a guest", variant="secondary",

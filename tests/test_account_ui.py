@@ -379,6 +379,18 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("flex:0 0 auto!important;margin:0 auto 24px!important;", app.CSS)
         self.assertIn("padding:14px 14px max(22px,env(safe-area-inset-bottom))!important;", app.CSS)
 
+    def test_google_sign_in_is_first_option_on_required_sign_in_screen(self):
+        source = Path(app.__file__).read_text(encoding="utf-8")
+        auth_form = source.split(
+            'elem_classes=["aee-account-auth-form"],', 1
+        )[1].split("with gr.Accordion(", 1)[0]
+
+        self.assertLess(
+            auth_form.index("account_google_btn = gr.Button"),
+            auth_form.index("account_display_name_input = gr.Textbox"),
+        )
+        self.assertIn("or continue with email", auth_form)
+
     def test_updates_badge_uses_installed_version_over_stale_updater_version(self):
         with tempfile.TemporaryDirectory() as temp:
             (Path(temp) / "version.txt").write_text("1.2.56", encoding="utf-8")
