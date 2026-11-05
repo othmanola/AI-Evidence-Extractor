@@ -26,19 +26,22 @@ class AccountUiTests(unittest.TestCase):
             "#aee-feedback-kind .wrap,#aee-feedback-kind .input-container,",
             "#aee-feedback-kind .options",
             "#aee-feedback-attach button:hover:not(:disabled)",
+            "button#aee-feedback-attach:hover:not(:disabled)",
             "#aee-feedback-send button:focus-visible",
+            "button#aee-feedback-send:focus-visible",
             "display:inline-flex!important;align-items:center!important;justify-content:center!important;",
-            "#aee-feedback-send button:disabled{cursor:not-allowed!important;",
-            "html[data-theme=\"light\"] #aee-feedback-send button",
-            "background:linear-gradient(120deg,#3b82f6,#2563eb 56%,#4f46e5)",
+            "button#aee-feedback-send:disabled",
+            "html[data-theme=\"light\"] button#aee-feedback-send",
+            "background:linear-gradient(120deg,#4b8cff,#3567f6 55%,#5b50e8)",
+            "input#aee-feedback-file-name",
         ):
             with self.subTest(css=css):
                 self.assertIn(css, app.CSS)
         self.assertIn(
-            "menu.style.setProperty('top', `${Math.round(rect.bottom + gap)}px`, 'important');",
+            "setImportantStyle('top', `${Math.round(rect.bottom + gap)}px`);",
             app._JS_HEAD,
         )
-        self.assertIn("menu.style.setProperty('bottom', 'auto', 'important');", app._JS_HEAD)
+        self.assertIn("setImportantStyle('bottom', 'auto');", app._JS_HEAD)
         self.assertIn("window.addEventListener('scroll', scheduleFeedbackDropdownPosition, true);",
                       app._JS_HEAD)
 
