@@ -984,19 +984,30 @@ def _realtime_detect_frame(frame):
         boxes_payload = []
         boxes = result.boxes
         if boxes is not None:
+            detection_rows = boxes.data[:, :6]
+            if hasattr(detection_rows, "detach"):
+                detection_rows = detection_rows.detach()
+            if hasattr(detection_rows, "cpu"):
+                detection_rows = detection_rows.cpu()
+            if hasattr(detection_rows, "numpy"):
+                detection_rows = detection_rows.numpy()
+            detection_rows = np.asarray(detection_rows)
+            if detection_rows.ndim != 2 or detection_rows.shape[1] != 6:
+                raise ValueError("The live detection model returned malformed boxes.")
             names = model.names
-            for box in boxes:
-                class_id = int(box.cls[0])
+            for x1, y1, x2, y2, score, raw_class_id in detection_rows:
+                if not np.isfinite((score, raw_class_id)).all():
+                    continue
+                class_id = int(raw_class_id)
                 raw_name = (
                     names.get(class_id, f"class {class_id}")
                     if isinstance(names, dict) else names[class_id]
                 )
                 label = norm(raw_name)
-                score = float(box.conf[0])
                 coordinates = _realtime_box_coordinates(
-                    image, box.xyxy[0].tolist()
+                    image, [x1, y1, x2, y2]
                 )
-                if coordinates is None or not math.isfinite(score):
+                if coordinates is None:
                     continue
                 color = {
                     "Firearm": "#f43f5e",
@@ -1010,7 +1021,7 @@ def _realtime_detect_frame(frame):
                 boxes_payload.append({
                     "coordinates": coordinates,
                     "label": label,
-                    "confidence": score,
+                    "confidence": float(score),
                     "color": color,
                 })
         elapsed = max(time.perf_counter() - started, 0.001)
@@ -7049,13 +7060,12 @@ _JS_HEAD = r"""
   function drawAeeRealtimeOverlay(){
     const state = realtimeOverlayState;
     if (!state.video || !state.canvas || !state.parent) return;
-    const videoRect = state.video.getBoundingClientRect();
-    const parentRect = state.parent.getBoundingClientRect();
-    const width = videoRect.width;
-    const height = videoRect.height;
+    const video = state.video;
+    const width = video.offsetWidth;
+    const height = video.offsetHeight;
     if (width <= 0 || height <= 0) return;
-    state.canvas.style.left = `${videoRect.left - parentRect.left}px`;
-    state.canvas.style.top = `${videoRect.top - parentRect.top}px`;
+    state.canvas.style.left = `${video.offsetLeft}px`;
+    state.canvas.style.top = `${video.offsetTop}px`;
     state.canvas.style.width = `${width}px`;
     state.canvas.style.height = `${height}px`;
     const deviceScale = Math.min(window.devicePixelRatio || 1, 2);
@@ -7063,7 +7073,7 @@ _JS_HEAD = r"""
     const canvasHeight = Math.max(1, Math.round(height * deviceScale));
     if (state.canvas.width !== canvasWidth) state.canvas.width = canvasWidth;
     if (state.canvas.height !== canvasHeight) state.canvas.height = canvasHeight;
-    const videoStyle = window.getComputedStyle(state.video);
+    const videoStyle = window.getComputedStyle(video);
     state.canvas.style.transform = videoStyle.transform;
     state.canvas.style.transformOrigin = videoStyle.transformOrigin;
     const context = state.canvas.getContext('2d');
@@ -7073,14 +7083,27 @@ _JS_HEAD = r"""
     const payload = state.payload;
     if (!payload || !payload.width || !payload.height ||
         !Array.isArray(payload.boxes)) return;
+    const borderLeft = parseFloat(videoStyle.borderLeftWidth) || 0;
+    const borderRight = parseFloat(videoStyle.borderRightWidth) || 0;
+    const borderTop = parseFloat(videoStyle.borderTopWidth) || 0;
+    const borderBottom = parseFloat(videoStyle.borderBottomWidth) || 0;
+    const paddingLeft = parseFloat(videoStyle.paddingLeft) || 0;
+    const paddingRight = parseFloat(videoStyle.paddingRight) || 0;
+    const paddingTop = parseFloat(videoStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(videoStyle.paddingBottom) || 0;
+    const contentLeft = borderLeft + paddingLeft;
+    const contentTop = borderTop + paddingTop;
+    const contentWidth = width - borderLeft - borderRight - paddingLeft - paddingRight;
+    const contentHeight = height - borderTop - borderBottom - paddingTop - paddingBottom;
+    if (contentWidth <= 0 || contentHeight <= 0) return;
     const sourceAspect = payload.width / payload.height;
-    const displayAspect = width / height;
+    const displayAspect = contentWidth / contentHeight;
     const renderedWidth = sourceAspect > displayAspect
-      ? width : height * sourceAspect;
+      ? contentWidth : contentHeight * sourceAspect;
     const renderedHeight = sourceAspect > displayAspect
-      ? width / sourceAspect : height;
-    const offsetX = (width - renderedWidth) / 2;
-    const offsetY = (height - renderedHeight) / 2;
+      ? contentWidth / sourceAspect : contentHeight;
+    const offsetX = contentLeft + (contentWidth - renderedWidth) / 2;
+    const offsetY = contentTop + (contentHeight - renderedHeight) / 2;
     const scaleX = renderedWidth / payload.width;
     const scaleY = renderedHeight / payload.height;
     for (const detection of payload.boxes){
@@ -7183,9 +7206,10 @@ _JS_HEAD = r"""
     if (state.dataObserver) state.dataObserver.disconnect();
     state.camera = camera;
     const dataRoot = document.getElementById('aee-realtime-overlay-data');
-    if (dataRoot){
+    const dataContainer = dataRoot && dataRoot.parentElement;
+    if (dataContainer){
       state.dataObserver = new MutationObserver(readAeeRealtimeOverlay);
-      state.dataObserver.observe(dataRoot, {
+      state.dataObserver.observe(dataContainer, {
         childList:true, subtree:true, attributes:true
       });
     }

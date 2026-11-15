@@ -84,12 +84,12 @@ class AccountUiTests(unittest.TestCase):
     def test_realtime_detector_returns_box_metadata_without_replacing_camera_frame(self):
         frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
         frame[0, 0] = [11, 22, 33]
-        box = SimpleNamespace(
-            cls=[0], conf=[0.91], xyxy=[app.np.array([2, 3, 25, 27])]
+        boxes = SimpleNamespace(
+            data=app.np.array([[2, 3, 25, 27, 0.91, 0]], dtype=app.np.float32)
         )
         model = SimpleNamespace(
             names={0: "Blunt_Weapon"},
-            predict=Mock(return_value=[SimpleNamespace(boxes=[box])]),
+            predict=Mock(return_value=[SimpleNamespace(boxes=boxes)]),
         )
         with (
             patch.object(app, "_load_realtime_model", return_value=model),
@@ -116,6 +116,10 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(inference["conf"], app._REALTIME_BALANCED_CONFIDENCE)
         self.assertEqual(inference["imgsz"], app._REALTIME_IMAGE_SIZE)
         self.assertEqual(inference["iou"], 0.5)
+        self.assertIn("offsetWidth", app._JS_HEAD)
+        self.assertIn("offsetLeft", app._JS_HEAD)
+        self.assertIn("dataContainer", app._JS_HEAD)
+        self.assertIn("contentWidth", app._JS_HEAD)
 
     def test_realtime_detector_rejects_unsupported_camera_frame(self):
         frame = app.np.zeros((32, 32), dtype=app.np.uint8)

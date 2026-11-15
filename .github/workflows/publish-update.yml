@@ -85,8 +85,9 @@ jobs:
             $utf8NoBom
           )
           @"
-          Keeps the webcam preview independent from model responses and draws detections
-          on a browser overlay, preventing inference updates from pausing live video.
+          Aligns live detection boxes to the webcam's transformed and letterboxed video
+          layout, and batches detector-output transfer to reduce inference overhead
+          without changing the balanced confidence threshold or input resolution.
           Samples the latest frame every 0.1 seconds; box refresh speed depends on the
           camera and local inference hardware.
           The supplied model is included in new installers and released as a separately
