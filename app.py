@@ -827,7 +827,7 @@ _REALTIME_MODEL_URL = (
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
 _REALTIME_BALANCED_CONFIDENCE = 0.25
 _REALTIME_IMAGE_SIZE = 640
-_REALTIME_STREAM_INTERVAL = 0.1
+_REALTIME_STREAM_INTERVAL = 0.05
 _REALTIME_MODEL_LOCK = threading.RLock()
 _REALTIME_MODEL = None
 _REALTIME_MODEL_ERROR = None
@@ -11590,7 +11590,6 @@ def build_ui():
                                 sources=["webcam"], image_mode="RGB",
                                 streaming=True, type="numpy",
                                 height=520,
-                                stream_every=_REALTIME_STREAM_INTERVAL,
                                 elem_id="aee-realtime-camera",
                                 elem_classes=["aee-realtime-camera"])
                             realtime_status = gr.Markdown(

@@ -45,6 +45,12 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("outputs=[realtime_camera, realtime_status]", source)
         self.assertIn("inputs=[realtime_camera]", source)
         self.assertIn("_REALTIME_STREAM_INTERVAL", source)
+        self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.05)
+        application_source = Path(app.__file__).read_text(encoding="utf-8")
+        image_config = application_source.split(
+            "realtime_camera = gr.Image(", 1
+        )[1].split(")", 1)[0]
+        self.assertNotIn("stream_every=", image_config)
         self.assertIn("Analysis speed", source)
         self.assertIn("Fast · 0.5 samples/sec", source)
         self.assertIn("aee-analysis-options", source)
