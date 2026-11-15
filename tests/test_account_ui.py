@@ -33,6 +33,8 @@ class AccountUiTests(unittest.TestCase):
         )
         self.assertEqual(source.count('data-aee-detection-mode="'), 2)
         self.assertIn("aee-realtime-detection-window", source)
+        self.assertIn("AI detection overlay", source)
+        self.assertIn("Bounding-box colors", source)
         self.assertIn("Back to Detection Modes", source)
         self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
         self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
@@ -69,6 +71,20 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("1 detection", status)
         self.assertIn("Blunt", status)
         self.assertEqual(frame_count, 5)
+        self.assertTrue(app.np.any(app.np.all(
+            annotated == [234, 179, 8], axis=2
+        )))
+        self.assertFalse(app.np.any(frame))
+
+    def test_realtime_box_clips_coordinates_and_skips_degenerate_boxes(self):
+        frame = app.np.zeros((40, 48, 3), dtype=app.np.uint8)
+        self.assertTrue(app._draw_realtime_detection_box(
+            frame, [-20, -8, 60, 55], "Firearm", 0.92
+        ))
+        self.assertTrue(app.np.array_equal(frame[0, 20], [244, 63, 94]))
+        self.assertFalse(app._draw_realtime_detection_box(
+            frame, [8, 8, 9, 20], "Firearm", 0.92
+        ))
 
     def test_feedback_controls_have_modern_theme_and_focus_styles(self):
         for css in (

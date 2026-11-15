@@ -85,7 +85,8 @@ jobs:
             $utf8NoBom
           )
           @"
-          Adds a post-sign-in detection-mode selector and live webcam detection.
+          Improves live webcam detection with clearer controls, live status,
+          and visible color-coded bounding boxes with class labels and confidence scores.
           The supplied model is included in new installers and released as a separately
           checksum-verified download for existing installations. Its embedded metadata
           identifies the model license as AGPL-3.0; see MODEL_LICENSES.md in the source.
