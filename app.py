@@ -827,6 +827,7 @@ _REALTIME_MODEL_URL = (
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
 _REALTIME_BALANCED_CONFIDENCE = 0.25
 _REALTIME_IMAGE_SIZE = 640
+_REALTIME_FAST_IMAGE_SIZE = 512
 _REALTIME_STREAM_INTERVAL = 0.1
 _REALTIME_MODEL_LOCK = threading.RLock()
 _REALTIME_MODEL = None
@@ -956,7 +957,15 @@ def _realtime_overlay_html(width, height, boxes):
     )
 
 
-def _realtime_detect_frame(frame):
+def _realtime_image_size(speed_mode):
+    if speed_mode == "balanced":
+        return _REALTIME_IMAGE_SIZE
+    if speed_mode == "fast":
+        return _REALTIME_FAST_IMAGE_SIZE
+    raise ValueError("Live detection speed must be either 'balanced' or 'fast'.")
+
+
+def _realtime_detect_frame(frame, speed_mode="balanced"):
     if frame is None:
         return (
             "Enable the camera to begin live detection.",
@@ -971,6 +980,7 @@ def _realtime_detect_frame(frame):
         if image.dtype != np.uint8:
             image = np.clip(image, 0, 255).astype(np.uint8)
         height, width = image.shape[:2]
+        image_size = _realtime_image_size(speed_mode)
         model = _load_realtime_model()
         device, half = _resolve_inference_device()
         started = time.perf_counter()
@@ -978,7 +988,7 @@ def _realtime_detect_frame(frame):
         with _REALTIME_MODEL_LOCK:
             result = model.predict(
                 source=model_image, conf=_REALTIME_BALANCED_CONFIDENCE,
-                imgsz=_REALTIME_IMAGE_SIZE,
+                imgsz=image_size,
                 iou=0.5, verbose=False, device=device, half=half,
             )[0]
         boxes_payload = []
@@ -1032,8 +1042,12 @@ def _realtime_detect_frame(frame):
             f"{len(boxes_payload)} detection"
             f"{'s' if len(boxes_payload) != 1 else ''}"
         )
+        mode_label = (
+            f"Fast · {image_size} px"
+            if speed_mode == "fast" else f"Balanced · {image_size} px"
+        )
         status = (
-            f"**LIVE** · {count_label} · Classes: {classes} · "
+            f"**LIVE** · {mode_label} · {count_label} · Classes: {classes} · "
             f"{elapsed * 1000:.0f} ms"
         )
         return status, _realtime_overlay_html(width, height, boxes_payload)
@@ -2933,6 +2947,11 @@ body.aee-access-required #aee-detection-back{display:none!important;}
 .aee-realtime-enable[data-state="active"]{color:#a7f3d0;border-color:rgba(52,211,153,.3);
   background:rgba(16,185,129,.09);cursor:default;}
 .aee-realtime-enable svg{width:16px;height:16px;}
+.aee-realtime-speed-mode{margin:0 0 12px!important;padding:12px 14px!important;
+  border:1px solid rgba(148,163,184,.16)!important;border-radius:14px!important;
+  background:rgba(15,23,42,.35)!important;}
+.aee-realtime-speed-mode .label-wrap{color:#dbeafe!important;font-weight:650!important;}
+.aee-realtime-speed-mode .info{color:#94a3b8!important;font-size:.7rem!important;}
 .aee-realtime-panel .aee-realtime-status{min-height:48px;margin:12px 0 0;padding:12px 14px;
   border:1px solid rgba(52,211,153,.15);border-radius:12px;color:#cbd5e1;
   background:linear-gradient(110deg,rgba(16,185,129,.07),rgba(2,6,23,.35));
@@ -2977,6 +2996,10 @@ html[data-theme="light"] .aee-realtime-panel-heading span,
 html[data-theme="light"] .aee-realtime-legend{color:#64748b;}
 html[data-theme="light"] .aee-realtime-panel img,
 html[data-theme="light"] .aee-realtime-panel video{background:#e2e8f0!important;}
+html[data-theme="light"] .aee-realtime-speed-mode{
+  border-color:rgba(100,116,139,.18)!important;background:rgba(248,250,252,.8)!important;}
+html[data-theme="light"] .aee-realtime-speed-mode .label-wrap{color:#1e293b!important;}
+html[data-theme="light"] .aee-realtime-speed-mode .info{color:#64748b!important;}
 html[data-theme="light"] .aee-realtime-notice{color:#475569;
   border-color:rgba(37,99,235,.16);background:rgba(37,99,235,.045);}
 html[data-theme="light"] .aee-realtime-notice strong{color:#1d4ed8;}
@@ -7640,7 +7663,11 @@ _JS_HEAD = r"""
     'Fast mode analyzes half as many frames, which can miss brief events.':'يحلل الوضع السريع نصف عدد الإطارات، وقد يفوّت الأحداث القصيرة.',
     'Choose fewer sampled frames for faster review, or keep balanced coverage.':'اختر إطارات أقل لتسريع المراجعة، أو احتفظ بالتغطية المتوازنة.',
     'Live camera':'الكاميرا المباشرة',
-    'Balanced · 0.25 confidence':'متوازن · ثقة 0.25',
+    'Confidence · 0.25':'الثقة · 0.25',
+    'Live detection speed':'سرعة الاكتشاف المباشر',
+    'Balanced · 640 px':'متوازن · 640 بكسل',
+    'Fast · 512 px':'سريع · 512 بكسل',
+    'Balanced uses 640-pixel input for more detail; Fast uses 512 pixels to reduce processing time but can miss small objects.':'يستخدم الوضع المتوازن دقة 640 بكسل لتفاصيل أكثر؛ ويستخدم السريع 512 بكسل لتقليل وقت المعالجة وقد يفوّت الأجسام الصغيرة.',
     'Enable live camera':'تشغيل الكاميرا المباشرة',
     'Connecting to camera…':'جارٍ الاتصال بالكاميرا…',
     'Live camera active':'الكاميرا المباشرة نشطة',
@@ -11754,7 +11781,7 @@ def build_ui():
                                 <span>Bounding boxes are drawn directly on the video.</span>
                               </div>
                               <span class="aee-realtime-balanced-badge">
-                                Balanced · 0.25 confidence</span>
+                                Confidence · 0.25</span>
                               <button type="button" class="aee-realtime-enable"
                                 data-aee-realtime-enable data-state="ready"
                                 aria-label="Enable live camera" aria-pressed="false">
@@ -11767,6 +11794,21 @@ def build_ui():
                                 <span>Enable live camera</span>
                               </button>
                             </div>''')
+                            realtime_speed_mode = gr.Dropdown(
+                                choices=[
+                                    ("Balanced · 640 px", "balanced"),
+                                    ("Fast · 512 px", "fast"),
+                                ],
+                                value="balanced",
+                                label="Live detection speed",
+                                info=(
+                                    "Balanced uses 640-pixel input for more detail; "
+                                    "Fast uses 512 pixels to reduce processing time "
+                                    "but can miss small objects."
+                                ),
+                                elem_id="aee-realtime-speed-mode",
+                                elem_classes=["aee-realtime-speed-mode"],
+                            )
                             realtime_camera = gr.Image(
                                 label="Live camera", show_label=False,
                                 sources=["webcam"], image_mode="RGB",
@@ -11794,7 +11836,7 @@ def build_ui():
                     </p>''')
                 realtime_camera.stream(
                     fn=_realtime_detect_frame,
-                    inputs=[realtime_camera],
+                    inputs=[realtime_camera, realtime_speed_mode],
                     outputs=[realtime_status, realtime_overlay_data],
                     stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")

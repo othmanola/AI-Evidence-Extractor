@@ -36,7 +36,10 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(source.count('data-aee-detection-mode="'), 2)
         self.assertIn("aee-realtime-detection-window", source)
         self.assertIn("Live camera", source)
-        self.assertIn("Balanced · 0.25 confidence", source)
+        self.assertIn("Confidence · 0.25", source)
+        self.assertIn("Balanced · 640 px", source)
+        self.assertIn("Fast · 512 px", source)
+        self.assertIn("Live detection speed", source)
         self.assertIn("data-aee-realtime-enable", source)
         self.assertIn("Bounding-box colors", source)
         self.assertIn("watchAeeRealtimeOverlay", app._JS_HEAD)
@@ -48,7 +51,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertNotIn('data-aee-realtime-feed-badge">Output', source)
         self.assertIn("outputs=[realtime_status, realtime_overlay_data]", source)
         self.assertNotIn("outputs=[realtime_camera", source)
-        self.assertIn("inputs=[realtime_camera]", source)
+        self.assertIn("inputs=[realtime_camera, realtime_speed_mode]", source)
         self.assertIn('visible="hidden"', source)
         self.assertIn("_REALTIME_STREAM_INTERVAL", source)
         self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.1)
@@ -120,6 +123,19 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("offsetLeft", app._JS_HEAD)
         self.assertIn("dataContainer", app._JS_HEAD)
         self.assertIn("contentWidth", app._JS_HEAD)
+        with (
+            patch.object(app, "_load_realtime_model", return_value=model),
+            patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
+        ):
+            fast_status, _ = app._realtime_detect_frame(frame, "fast")
+        self.assertIn("Fast · 512 px", fast_status)
+        self.assertEqual(model.predict.call_args.kwargs["imgsz"], 512)
+
+    def test_realtime_image_size_rejects_unknown_speed_mode(self):
+        self.assertEqual(app._realtime_image_size("balanced"), 640)
+        self.assertEqual(app._realtime_image_size("fast"), 512)
+        with self.assertRaisesRegex(ValueError, "Live detection speed"):
+            app._realtime_image_size("unknown")
 
     def test_realtime_detector_rejects_unsupported_camera_frame(self):
         frame = app.np.zeros((32, 32), dtype=app.np.uint8)
