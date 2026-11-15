@@ -5,6 +5,8 @@ import os, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, 
 import queue, threading, csv, io, base64, html as _html
 import uuid
 import zipfile
+import urllib.error
+import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -785,6 +787,189 @@ THREAT_COLORS = {"critical":"#dc2626","high":"#ef4444","medium":"#f59e0b",
 def norm(r): return CMAP.get(str(r).lower().strip(), str(r).title())
 def icon_for(label): return WEAPON_ICONS.get(label, "◈")
 def color_for(label): return WEAPON_COLORS.get(label, "#8b5cf6")
+
+
+_REALTIME_MODEL_FILE = "realtime_weapons.pt"
+_REALTIME_MODEL_SHA256 = (
+    "c6d92f38686400b90c441f35d89fb855ad46296dd51a891ba0ec1cb384796576"
+)
+_REALTIME_MODEL_URL = (
+    "https://github.com/othmanola/AI-Evidence-Extractor/releases/latest/download/"
+    "AI_Evidence_Extractor_Realtime_Weapons.pt"
+)
+_REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
+_REALTIME_MODEL_LOCK = threading.RLock()
+_REALTIME_MODEL = None
+_REALTIME_MODEL_ERROR = None
+_REALTIME_MODEL_RETRY_AFTER = 0.0
+
+
+def _realtime_checkpoint_hash(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as checkpoint:
+        for chunk in iter(lambda: checkpoint.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _realtime_checkpoint_path():
+    bundled_path = Path(__file__).resolve().parent / "assets" / _REALTIME_MODEL_FILE
+    cached_path = MODEL_DIR / _REALTIME_MODEL_FILE
+    path = bundled_path if bundled_path.is_file() else cached_path
+    if path.is_file():
+        if path.stat().st_size > _REALTIME_MODEL_MAX_BYTES:
+            raise RuntimeError("The live detection checkpoint is larger than expected.")
+        if _realtime_checkpoint_hash(path) != _REALTIME_MODEL_SHA256:
+            raise RuntimeError("The live detection checkpoint failed its integrity check.")
+        return path
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    partial_path = MODEL_DIR / (
+        f".{_REALTIME_MODEL_FILE}.{uuid.uuid4().hex}.part"
+    )
+    digest = hashlib.sha256()
+    total = 0
+    request = urllib.request.Request(
+        _REALTIME_MODEL_URL,
+        headers={"User-Agent": "AI-Evidence-Extractor/Realtime-Model"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            if not response.geturl().lower().startswith("https://"):
+                raise RuntimeError("The live detection model download is not secure.")
+            content_length = response.headers.get("Content-Length")
+            if content_length and int(content_length) > _REALTIME_MODEL_MAX_BYTES:
+                raise RuntimeError("The live detection checkpoint is larger than expected.")
+            with partial_path.open("wb") as checkpoint:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > _REALTIME_MODEL_MAX_BYTES:
+                        raise RuntimeError(
+                            "The live detection checkpoint is larger than expected."
+                        )
+                    digest.update(chunk)
+                    checkpoint.write(chunk)
+        if digest.hexdigest() != _REALTIME_MODEL_SHA256:
+            raise RuntimeError("The downloaded live detection checkpoint failed verification.")
+        os.replace(partial_path, cached_path)
+        return cached_path
+    except (OSError, urllib.error.URLError, TimeoutError, ValueError) as exc:
+        partial_path.unlink(missing_ok=True)
+        log.warning("Could not download the live detection checkpoint: %s", exc)
+        raise RuntimeError(
+            "The live detection model is not installed and could not be downloaded. "
+            "Check your internet connection and try again."
+        ) from None
+    except Exception:
+        partial_path.unlink(missing_ok=True)
+        raise
+
+
+def _load_realtime_model():
+    global _REALTIME_MODEL, _REALTIME_MODEL_ERROR, _REALTIME_MODEL_RETRY_AFTER
+    with _REALTIME_MODEL_LOCK:
+        if _REALTIME_MODEL is not None:
+            return _REALTIME_MODEL
+        if _REALTIME_MODEL_ERROR and time.monotonic() < _REALTIME_MODEL_RETRY_AFTER:
+            raise RuntimeError(_REALTIME_MODEL_ERROR)
+        try:
+            checkpoint = _realtime_checkpoint_path()
+            model = YOLO(str(checkpoint))
+            names = model.names.values() if isinstance(model.names, dict) else model.names
+            expected_classes = {
+                "Blunt_Weapon", "Explosive", "Fire_Smoke", "Firearm",
+                "Melee_Weapon", "Person", "Tool",
+            }
+            if {str(name) for name in names} != expected_classes:
+                raise RuntimeError(
+                    "The installed live detection checkpoint has unexpected classes."
+                )
+        except Exception as exc:
+            _REALTIME_MODEL_ERROR = (
+                f"The live detection model could not be loaded: {exc}"
+            )
+            _REALTIME_MODEL_RETRY_AFTER = time.monotonic() + 30
+            log.exception("Could not load live detection checkpoint")
+            raise RuntimeError(_REALTIME_MODEL_ERROR) from exc
+        _REALTIME_MODEL_ERROR = None
+        _REALTIME_MODEL_RETRY_AFTER = 0.0
+        _REALTIME_MODEL = model
+        return model
+
+
+def _realtime_detect_frame(frame, confidence, frame_count):
+    frame_count = int(frame_count or 0)
+    if frame is None:
+        return None, "Start the camera preview to begin live detection.", frame_count
+    try:
+        image = np.asarray(frame)
+        if image.ndim != 3 or image.shape[2] not in (3, 4):
+            raise ValueError("The camera returned an unsupported image format.")
+        if image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+        if image.dtype != np.uint8:
+            image = np.clip(image, 0, 255).astype(np.uint8)
+        annotated = image.copy()
+        threshold = float(confidence)
+        if not math.isfinite(threshold):
+            raise ValueError("The confidence threshold is invalid.")
+        threshold = min(0.95, max(0.05, threshold))
+        model = _load_realtime_model()
+        device, half = _resolve_inference_device()
+        started = time.perf_counter()
+        with _REALTIME_MODEL_LOCK:
+            result = model.predict(
+                source=image, conf=threshold, imgsz=CFG.IMG,
+                verbose=False, device=device, half=half,
+            )[0]
+        detections = []
+        boxes = result.boxes
+        if boxes is not None:
+            names = model.names
+            for box in boxes:
+                class_id = int(box.cls[0])
+                raw_name = (
+                    names.get(class_id, f"class {class_id}")
+                    if isinstance(names, dict) else names[class_id]
+                )
+                label = norm(raw_name)
+                score = float(box.conf[0])
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                color = (239, 68, 68) if label in WEAPONS else (59, 130, 246)
+                cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+                text = f"{label} {score:.0%}"
+                (text_width, text_height), baseline = cv2.getTextSize(
+                    text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2
+                )
+                top = max(0, y1 - text_height - baseline - 8)
+                cv2.rectangle(
+                    annotated, (x1, top),
+                    (x1 + text_width + 10, y1), color, -1,
+                )
+                cv2.putText(
+                    annotated, text, (x1 + 5, max(text_height, y1 - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2,
+                    cv2.LINE_AA,
+                )
+                detections.append(label)
+        elapsed = max(time.perf_counter() - started, 0.001)
+        classes = ", ".join(sorted(set(detections))) or "none"
+        count_label = (
+            f"{len(detections)} detection"
+            f"{'s' if len(detections) != 1 else ''}"
+        )
+        status = (
+            f"Frame {frame_count + 1} · {count_label} · "
+            f"Classes: {classes} · {1 / elapsed:.1f} processing FPS"
+        )
+        return annotated, status, frame_count + 1
+    except Exception as exc:
+        if str(exc) != _REALTIME_MODEL_ERROR:
+            log.exception("Live detection frame failed")
+        return frame, f"Live detection error: {_html.escape(str(exc))}", frame_count
 
 
 def threat_score(d, tracker=None, video_name=None):
@@ -2553,6 +2738,98 @@ body.aee-access-required #aee-account-window .column.wrap>.aee-account-auth-form
 body.aee-access-required #aee-account-window .aee-account-auth-form .aee-account-intro{margin-bottom:42px;}
 body.aee-access-required .aee-navigation{display:none!important;}
 body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
+#aee-detection-back{position:fixed;z-index:12010;top:20px;left:76px;display:none;
+  min-height:44px;align-items:center;gap:9px;padding:0 15px;
+  border:1px solid rgba(148,163,184,.22);border-radius:13px;
+  color:#e2e8f0;background:rgba(15,23,42,.92);font:650 .82rem Inter,system-ui,sans-serif;
+  cursor:pointer;box-shadow:0 12px 30px -18px rgba(2,6,23,.9);
+  backdrop-filter:blur(14px);transition:transform .18s,border-color .18s,background .18s;}
+#aee-detection-back svg{width:17px;height:17px;flex:none;}
+#aee-detection-back:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.5);
+  background:rgba(30,41,59,.97);}
+body.aee-detection-route-upload #aee-detection-back,
+body.aee-detection-route-realtime #aee-detection-back{display:inline-flex;}
+body.aee-access-required #aee-detection-back{display:none!important;}
+.aee-detection-mode-page{width:min(1080px,100%);margin:clamp(34px,8vh,92px) auto 60px;
+  padding:0 18px;box-sizing:border-box;}
+.aee-detection-mode-heading{text-align:center;margin:0 auto 34px;}
+.aee-detection-mode-eyebrow{display:inline-flex;align-items:center;gap:8px;
+  margin-bottom:13px;color:#93c5fd;font-size:.68rem;font-weight:750;
+  letter-spacing:.16em;text-transform:uppercase;}
+.aee-detection-mode-eyebrow:before{content:"";width:20px;height:1px;background:#60a5fa;}
+.aee-detection-mode-heading h1{margin:0;color:#f8fafc;font-size:clamp(2rem,4.7vw,3.35rem);
+  font-weight:750;letter-spacing:-.055em;line-height:1.08;}
+.aee-detection-mode-heading p{max-width:560px;margin:14px auto 0;color:#9aa9bd;
+  font-size:clamp(.9rem,1.8vw,1.03rem);line-height:1.65;}
+.aee-detection-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+.aee-detection-card{position:relative;display:flex;width:100%;min-height:278px;
+  flex-direction:column;align-items:flex-start;overflow:hidden;padding:28px;
+  border:1px solid rgba(148,163,184,.18);border-radius:24px;color:#f8fafc;
+  text-align:left;background:linear-gradient(145deg,rgba(20,30,48,.96),rgba(12,18,30,.97));
+  box-shadow:0 22px 60px -42px rgba(0,0,0,.92);cursor:pointer;
+  transition:transform .22s,border-color .22s,box-shadow .22s;}
+.aee-detection-card:after{position:absolute;inset:auto -44px -92px auto;width:230px;height:230px;
+  border-radius:50%;content:"";background:var(--mode-glow);filter:blur(1px);opacity:.12;
+  transition:opacity .22s,transform .22s;}
+.aee-detection-card:hover{transform:translateY(-5px);border-color:var(--mode-border);
+  box-shadow:0 28px 64px -36px rgba(0,0,0,.85),0 0 0 1px var(--mode-border);}
+.aee-detection-card:hover:after{transform:scale(1.16);opacity:.2;}
+.aee-detection-card:focus-visible{outline:3px solid var(--mode-accent);outline-offset:3px;}
+.aee-detection-card[data-aee-detection-mode="realtime"]{--mode-accent:#34d399;
+  --mode-border:rgba(52,211,153,.48);--mode-glow:#10b981;}
+.aee-detection-card[data-aee-detection-mode="upload"]{--mode-accent:#60a5fa;
+  --mode-border:rgba(96,165,250,.48);--mode-glow:#3b82f6;}
+.aee-detection-card-icon{position:relative;z-index:1;width:54px;height:54px;
+  display:grid;place-items:center;margin-bottom:25px;border:1px solid var(--mode-border);
+  border-radius:17px;color:var(--mode-accent);background:rgba(148,163,184,.07);}
+.aee-detection-card-icon svg{width:25px;height:25px;}
+.aee-detection-card-copy{position:relative;z-index:1;flex:1;}
+.aee-detection-card-copy h2{margin:0 0 10px;color:#f8fafc;font-size:1.17rem;
+  font-weight:700;letter-spacing:-.025em;}
+.aee-detection-card-copy p{max-width:440px;margin:0;color:#9aa9bd;font-size:.87rem;line-height:1.68;}
+.aee-detection-card-footer{position:relative;z-index:1;display:flex;width:100%;
+  align-items:center;justify-content:space-between;margin-top:24px;color:var(--mode-accent);
+  font-size:.75rem;font-weight:700;letter-spacing:.02em;}
+.aee-detection-live-label{display:inline-flex;align-items:center;gap:8px;}
+.aee-detection-live-dot{width:7px;height:7px;border-radius:50%;background:#34d399;
+  box-shadow:0 0 0 4px rgba(52,211,153,.12);}
+.aee-detection-card-arrow{font-size:1.25rem;transition:transform .2s;}
+.aee-detection-card:hover .aee-detection-card-arrow{transform:translateX(4px);}
+.aee-realtime-content{width:min(1120px,100%);margin:0 auto 50px;padding:0 clamp(16px,4vw,48px);}
+.aee-realtime-notice{margin:0 auto 18px;padding:14px 17px;border:1px solid rgba(96,165,250,.17);
+  border-radius:13px;color:#aab8ca;background:rgba(37,99,235,.065);font-size:.77rem;line-height:1.6;}
+.aee-realtime-notice strong{color:#dbeafe;}
+.aee-realtime-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;}
+.aee-realtime-panel{min-width:0;padding:16px;border:1px solid rgba(148,163,184,.16);
+  border-radius:18px;background:rgba(15,23,42,.5);}
+.aee-realtime-panel .label-wrap{color:#dbeafe!important;font-weight:650!important;}
+.aee-realtime-panel img{border-radius:12px!important;}
+.aee-realtime-panel .aee-realtime-status{min-height:48px;margin:12px 0 0;padding:12px 14px;
+  border:1px solid rgba(148,163,184,.13);border-radius:12px;color:#cbd5e1;
+  background:rgba(2,6,23,.3);font-size:.76rem;line-height:1.55;}
+.aee-realtime-disclaimer{margin:14px 2px 0;color:#8492a7;font-size:.7rem;line-height:1.6;}
+html[data-theme="light"] .aee-detection-mode-heading h1{color:#172033;}
+html[data-theme="light"] .aee-detection-mode-heading p{color:#64748b;}
+html[data-theme="light"] .aee-detection-card{border-color:rgba(100,116,139,.18);
+  color:#172033;background:linear-gradient(145deg,#fff,#f2f6fc);
+  box-shadow:0 20px 50px -38px rgba(30,41,59,.55);}
+html[data-theme="light"] .aee-detection-card-copy h2{color:#172033;}
+html[data-theme="light"] .aee-detection-card-copy p{color:#64748b;}
+html[data-theme="light"] #aee-detection-back{color:#334155;background:rgba(255,255,255,.94);
+  border-color:rgba(100,116,139,.22);}
+html[data-theme="light"] .aee-realtime-panel{border-color:rgba(100,116,139,.18);
+  background:rgba(255,255,255,.76);}
+html[data-theme="light"] .aee-realtime-panel .label-wrap{color:#334155!important;}
+html[data-theme="light"] .aee-realtime-panel .aee-realtime-status{color:#334155;
+  border-color:rgba(100,116,139,.16);background:rgba(241,245,249,.8);}
+@media(max-width:720px){
+  #aee-detection-back{top:12px;left:64px;min-height:40px;padding:0 11px;font-size:.75rem;}
+  .aee-detection-mode-page{margin:82px auto 34px;padding:0 12px;}
+  .aee-detection-card-grid,.aee-realtime-layout{grid-template-columns:minmax(0,1fr);}
+  .aee-detection-card{min-height:240px;padding:23px;border-radius:20px;}
+  .aee-detection-card-icon{width:48px;height:48px;margin-bottom:19px;}
+  .aee-realtime-content{padding:0 14px;}
+}
 .aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
   border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
 .aee-account-status[data-kind="success"]{color:#a7f3d0;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08);}
@@ -6453,12 +6730,7 @@ _JS_HEAD = r"""
     const close = document.querySelector('#aee-account-close button');
     if (close && close.disabled !== required) close.disabled = required;
     if (wasRequired === true && !required){
-      window.setTimeout(() => {
-        const accountWindow = document.querySelector('#aee-account-window');
-        if (accountWindow && accountWindow.getAttribute('aria-modal') === 'true'){
-          closeAeeUtilityWindow(accountWindow);
-        }
-      }, 0);
+      window.setTimeout(() => navigateAeeDetection('modes'), 0);
     }
   }
   function isAeeAccountTarget(target){
@@ -6536,7 +6808,10 @@ _JS_HEAD = r"""
     const close = shell.querySelector('.aee-utility-window-close button');
     const initialFocus = name === 'account' && aeeAccessRequired()
       ? shell.querySelector('.aee-account-auth-form input:not([disabled])')
-      : close;
+      : close || (name === 'detection-modes'
+          ? shell.querySelector('[data-aee-detection-mode]')
+          : name === 'realtime-detection'
+            ? document.getElementById('aee-detection-back') : null);
     if (initialFocus) initialFocus.focus({preventScroll:true});
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:true,name}}));
   }
@@ -6567,6 +6842,52 @@ _JS_HEAD = r"""
       if (toggle) toggle.focus({preventScroll:true});
     }, 350);
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:false}}));
+  }
+  function navigateAeeDetection(route){
+    if (aeeAccessRequired()){
+      activateAeeUtilityWindow('account');
+      return;
+    }
+    if (!['modes', 'realtime', 'upload'].includes(route)) return;
+    window.__aeeDetectionRouteInitialized = true;
+    try {
+      window.sessionStorage.setItem('aee-detection-route', route);
+    } catch (error) {
+      console.warn('Could not save the selected detection mode.', error);
+    }
+    document.body.classList.remove(
+      'aee-detection-route-modes', 'aee-detection-route-realtime',
+      'aee-detection-route-upload');
+    document.body.classList.add('aee-detection-route-' + route);
+    if (route === 'modes'){
+      activateAeeUtilityWindow('detection-modes');
+    } else if (route === 'realtime'){
+      activateAeeUtilityWindow('realtime-detection');
+    } else {
+      const activeWindow = document.querySelector(
+        '.aee-utility-window-shell[aria-modal="true"]');
+      if (activeWindow) closeAeeUtilityWindow(activeWindow);
+      window.setTimeout(() => {
+        const back = document.getElementById('aee-detection-back');
+        if (back) back.focus({preventScroll:true});
+      }, 0);
+    }
+    document.dispatchEvent(new CustomEvent('aee:detection-route', {detail:{route}}));
+  }
+  function initializeAeeDetectionRoute(){
+    const hasAccessState = document.querySelector(
+      '[data-aee-access-status], [data-aee-account-startup]');
+    if (window.__aeeDetectionRouteInitialized || !hasAccessState ||
+        aeeAccessRequired()) return;
+    window.__aeeDetectionRouteInitialized = true;
+    let route = 'modes';
+    try {
+      const savedRoute = window.sessionStorage.getItem('aee-detection-route');
+      if (['modes', 'realtime', 'upload'].includes(savedRoute)) route = savedRoute;
+    } catch (error) {
+      console.warn('Could not restore the selected detection mode.', error);
+    }
+    navigateAeeDetection(route);
   }
   function markAeeProfileFieldChanges(event){
     const field = event.target.closest(
@@ -7474,6 +7795,7 @@ _JS_HEAD = r"""
       window.__aeeInitialAccountOpened = true;
       window.setTimeout(() => activateAeeUtilityWindow('account'), 0);
     }
+    initializeAeeDetectionRoute();
   }
   document.addEventListener('click', event => {
     const markAllRead = event.target.closest('[data-aee-notification-read-all]');
@@ -7538,10 +7860,21 @@ _JS_HEAD = r"""
     if (event.target.closest('[data-aee-nav-update]')){
       activateAeeUtilityWindow('updates'); return;
     }
+    if (event.target.closest('[data-aee-detection-back]')){
+      navigateAeeDetection('modes'); return;
+    }
+    const detectionCard = event.target.closest('[data-aee-detection-mode]');
+    if (detectionCard){
+      navigateAeeDetection(detectionCard.dataset.aeeDetectionMode); return;
+    }
     if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
       setAeeNavigation(false); return;
     }
     if (event.target.classList.contains('aee-utility-window-shell')){
+      if (event.target.id === 'aee-detection-modes-window') return;
+      if (event.target.id === 'aee-realtime-detection-window'){
+        navigateAeeDetection('modes'); return;
+      }
       closeAeeUtilityWindow(event.target); return;
     }
     const closeButton = event.target.closest('.aee-utility-window-close');
@@ -7590,7 +7923,10 @@ _JS_HEAD = r"""
         return;
       }
       const windowShell = document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
-      if (windowShell) closeAeeUtilityWindow(windowShell);
+      if (windowShell && windowShell.id === 'aee-detection-modes-window') return;
+      if (windowShell && windowShell.id === 'aee-realtime-detection-window')
+        navigateAeeDetection('modes');
+      else if (windowShell) closeAeeUtilityWindow(windowShell);
       else setAeeNavigation(false);
     }
   });
@@ -10222,6 +10558,13 @@ def build_ui():
     )
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
         gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
+        gr.HTML('''<button type="button" id="aee-detection-back"
+          data-aee-detection-back aria-label="Back to Detection Modes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h11"/></svg>
+          <span>Back to Detection Modes</span>
+        </button>''')
         notification_state = gr.HTML(value="", elem_id="aee-notification-state")
         gr.HTML(_hero_html(info))
         gr.HTML(_workflow_html())
@@ -10831,6 +11174,112 @@ def build_ui():
                                 elem_id="aee-feedback-send", scale=0,
                                 min_width=92)
                     feedback_status = gr.Markdown(elem_id="aee-feedback-status")
+
+        with gr.Group(visible=True, elem_id="aee-detection-modes-window",
+                      elem_classes=["aee-utility-window-shell",
+                                    "aee-detection-mode-window"]):
+            with gr.Column(elem_classes=["wrap"]):
+                gr.HTML('''<main class="aee-detection-mode-page">
+                  <header class="aee-detection-mode-heading">
+                    <div class="aee-detection-mode-eyebrow">AI Evidence Extractor</div>
+                    <h1>Choose Your Detection Mode</h1>
+                    <p>Select how you want to analyze and detect potential evidence.</p>
+                  </header>
+                  <section class="aee-detection-card-grid" aria-label="Detection modes">
+                    <button type="button" class="aee-detection-card"
+                      data-aee-detection-mode="realtime">
+                      <span class="aee-detection-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/>
+                          <path d="M12 3.5v5M20.5 12h-5M12 20.5v-5M3.5 12h5"/>
+                        </svg>
+                      </span>
+                      <span class="aee-detection-card-copy">
+                        <h2>In Real-Time Detection</h2>
+                        <p>Monitor live video streams and perform real-time AI-powered threat
+                          and evidence detection.</p>
+                      </span>
+                      <span class="aee-detection-card-footer">
+                        <span class="aee-detection-live-label">
+                          <span class="aee-detection-live-dot"></span>Live camera analysis
+                        </span><span class="aee-detection-card-arrow" aria-hidden="true">→</span>
+                      </span>
+                    </button>
+                    <button type="button" class="aee-detection-card"
+                      data-aee-detection-mode="upload">
+                      <span class="aee-detection-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="3" y="4" width="18" height="16" rx="3"/>
+                          <path d="m10 9 5 3-5 3zM12 2v5m-3-3 3-3 3 3"/>
+                        </svg>
+                      </span>
+                      <span class="aee-detection-card-copy">
+                        <h2>Upload Your Videos to Detection</h2>
+                        <p>Upload recorded CCTV, body-camera, or dash-camera videos and analyze
+                          them using the AI Evidence Extractor.</p>
+                      </span>
+                      <span class="aee-detection-card-footer">
+                        <span>Recorded video analysis</span>
+                        <span class="aee-detection-card-arrow" aria-hidden="true">→</span>
+                      </span>
+                    </button>
+                  </section>
+                </main>''')
+
+        with gr.Group(visible=True, elem_id="aee-realtime-detection-window",
+                      elem_classes=["aee-utility-window-shell",
+                                    "aee-realtime-detection-window"]):
+            with gr.Column(elem_classes=["wrap"]):
+                with gr.Row(elem_classes=["aee-utility-window-header"]):
+                    gr.HTML('''<header class="aee-project-page-heading">
+                      <span class="aee-project-page-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      </span>
+                      <div><small>LIVE CAMERA</small><h1>Real-Time Detection</h1>
+                        <p>On-device detection from a live camera stream.</p></div>
+                    </header>''')
+                with gr.Column(elem_classes=["aee-realtime-content"]):
+                    gr.HTML('''<div class="aee-realtime-notice" role="note">
+                      <strong>For investigative support only.</strong> Model outputs can be
+                      inaccurate and are not proof of an event. Review the original footage and
+                      independently verify any potential finding. Camera frames are processed
+                      in memory and are not saved to analysis history. The supplied checkpoint
+                      metadata identifies its model license as AGPL-3.0.
+                    </div>''')
+                    with gr.Row(elem_classes=["aee-realtime-layout"]):
+                        with gr.Column(elem_classes=["aee-realtime-panel"]):
+                            realtime_camera = gr.Image(
+                                label="Camera preview", sources=["webcam"],
+                                streaming=True, type="numpy",
+                                elem_id="aee-realtime-camera")
+                            realtime_confidence = gr.Slider(
+                                minimum=0.05, maximum=0.95, value=0.35, step=0.05,
+                                label="Detection confidence")
+                        with gr.Column(elem_classes=["aee-realtime-panel"]):
+                            realtime_output = gr.Image(
+                                label="Live detections", type="numpy",
+                                interactive=False, elem_id="aee-realtime-output")
+                            realtime_status = gr.Markdown(
+                                "Start the camera preview to begin live detection.",
+                                elem_classes=["aee-realtime-status"],
+                                elem_id="aee-realtime-status")
+                    gr.HTML('''<p class="aee-realtime-disclaimer">
+                      Model classes include firearms, melee and blunt weapons, explosives,
+                      fire/smoke, people, and tools. Detection quality depends on camera,
+                      lighting, distance, and the supplied model; no accuracy level is guaranteed.
+                    </p>''')
+                realtime_frame_count = gr.State(0)
+                realtime_camera.stream(
+                    fn=_realtime_detect_frame,
+                    inputs=[realtime_camera, realtime_confidence, realtime_frame_count],
+                    outputs=[realtime_output, realtime_status, realtime_frame_count],
+                    stream_every=0.25, concurrency_limit=1,
+                    trigger_mode="always_last", show_progress="hidden")
 
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM

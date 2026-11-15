@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -21,6 +22,54 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_detection_mode_picker_preserves_the_existing_upload_workspace(self):
+        source = "\n".join(
+            value for value in _nested_code_constants(app.build_ui.__code__)
+            if isinstance(value, str)
+        )
+        self.assertIn("Choose Your Detection Mode", source)
+        self.assertIn(
+            "Select how you want to analyze and detect potential evidence.", source
+        )
+        self.assertEqual(source.count('data-aee-detection-mode="'), 2)
+        self.assertIn("aee-realtime-detection-window", source)
+        self.assertIn("Back to Detection Modes", source)
+        self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
+        self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
+        self.assertIn("Upload video", source)
+
+    def test_realtime_checkpoint_is_bundled_and_checksum_verified(self):
+        checkpoint = (
+            Path(app.__file__).resolve().parent
+            / "assets"
+            / "realtime_weapons.pt"
+        )
+        self.assertTrue(checkpoint.is_file())
+        digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+        self.assertEqual(digest, app._REALTIME_MODEL_SHA256)
+
+    def test_realtime_detector_annotates_model_results(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        box = SimpleNamespace(
+            cls=[0], conf=[0.91], xyxy=[app.np.array([2, 3, 25, 27])]
+        )
+        model = SimpleNamespace(
+            names={0: "Blunt_Weapon"},
+            predict=Mock(return_value=[SimpleNamespace(boxes=[box])]),
+        )
+        with (
+            patch.object(app, "_load_realtime_model", return_value=model),
+            patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
+        ):
+            annotated, status, frame_count = app._realtime_detect_frame(
+                frame, 0.35, 4
+            )
+        self.assertEqual(annotated.shape, frame.shape)
+        self.assertIn("Frame 5", status)
+        self.assertIn("1 detection", status)
+        self.assertIn("Blunt", status)
+        self.assertEqual(frame_count, 5)
+
     def test_feedback_controls_have_modern_theme_and_focus_styles(self):
         for css in (
             "#aee-feedback-kind .wrap,#aee-feedback-kind .input-container,",

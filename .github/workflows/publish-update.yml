@@ -85,7 +85,10 @@ jobs:
             $utf8NoBom
           )
           @"
-          Includes the latest AI Evidence Extractor fixes and improvements.
+          Adds a post-sign-in detection-mode selector and live webcam detection.
+          The supplied model is included in new installers and released as a separately
+          checksum-verified download for existing installations. Its embedded metadata
+          identifies the model license as AGPL-3.0; see MODEL_LICENSES.md in the source.
 
           Existing users can use the in-app updater. The setup installer is for new installations and recovery.
           "@ | Set-Content .\dist\release-notes.md -Encoding utf8
@@ -98,10 +101,13 @@ jobs:
           $ErrorActionPreference = "Stop"
           $version = (Get-Content -Raw .\version.txt).Trim()
           $tag = "v$version"
+          Copy-Item .\assets\realtime_weapons.pt `
+            .\dist\AI_Evidence_Extractor_Realtime_Weapons.pt -Force
           $assets = @(
             ".\dist\AI_Evidence_Extractor_Setup.exe",
             ".\dist\AI_Evidence_Extractor_Update.zip",
-            ".\dist\latest.json"
+            ".\dist\latest.json",
+            ".\dist\AI_Evidence_Extractor_Realtime_Weapons.pt"
           )
           gh release view $tag --repo othmanola/AI-Evidence-Extractor *> $null
           if ($LASTEXITCODE -eq 0) {
