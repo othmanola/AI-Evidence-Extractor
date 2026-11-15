@@ -29,6 +29,7 @@ OUTPUT_DIR = APP_DATA / "outputs"
 HISTORY_FILE = APP_DATA / "analysis_history.json"
 HISTORY_DIR = OUTPUT_DIR / "history"
 HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
+_ANALYSIS_UI_UPDATE_INTERVAL = 0.75
 _HISTORY_LOCK = threading.Lock()
 _FEEDBACK_LOCK = threading.Lock()
 _FEEDBACK_LAST_SENT = {}
@@ -106,7 +107,13 @@ def _history_dataframe():
             "Video": str(entry.get("video", "")),
             "Duration (s)": round(float(entry.get("duration_seconds", 0) or 0), 2),
             "Detections": int(entry.get("detections", 0) or 0),
-            "Mode": "Enhanced" if entry.get("high_accuracy") else "Standard",
+            "Mode": (
+                ("Enhanced" if entry.get("high_accuracy") else "Standard")
+                + (
+                    " · Fast (0.5 fps)"
+                    if entry.get("analysis_speed") == "fast" else ""
+                )
+            ),
             "Case": str(entry.get("case", "")),
         })
     return pd.DataFrame(rows, columns=HISTORY_COLUMNS)
@@ -615,7 +622,8 @@ def _history_json_default(value):
 
 
 def _record_analysis_history(results, master_path, report_path, case_number=None,
-                             high_accuracy=False, *, case_meta=None, case_notes="",
+                             high_accuracy=False, *, analysis_speed="balanced",
+                             sampling_fps=None, case_meta=None, case_notes="",
                              tracker_rows=None, cam_items=None, work_root=None):
     if not results:
         return []
@@ -694,6 +702,10 @@ def _record_analysis_history(results, master_path, report_path, case_number=None
             "duration_seconds": round(float(result.metadata.duration or 0), 2),
             "detections": len(result.detections),
             "high_accuracy": bool(high_accuracy),
+            "analysis_speed": analysis_speed,
+            "sampling_fps": float(
+                CFG.FPS if sampling_fps is None else sampling_fps
+            ),
             "case": (case_number or "").strip(),
             "master_video": saved_master,
             "report_pdf": saved_report,
@@ -760,6 +772,21 @@ class CFG:
         "firearm_yolov8n": 0.75,
         "cypher_weapon":   {"__weapons__": 0.50},
     }
+
+
+_ANALYSIS_SPEED_FPS = {
+    "balanced": CFG.FPS,
+    "fast": CFG.FPS / 2.0,
+}
+
+
+def _analysis_sampling_fps(analysis_speed):
+    try:
+        return _ANALYSIS_SPEED_FPS[analysis_speed]
+    except (KeyError, TypeError):
+        raise ValueError(
+            "Analysis speed must be either 'balanced' or 'fast'."
+        ) from None
 
 
 CMAP = {"gun":"Firearm","pistol":"Firearm","handgun":"Firearm","firearm":"Firearm",
@@ -1889,7 +1916,11 @@ class Processor:
             stop_event.set()
             decoder.join()
 
-    def process_stream(self, vp, root, cancel_event=None, high_accuracy=False):
+    def process_stream(
+        self, vp, root, cancel_event=None, high_accuracy=False,
+        analysis_speed="balanced",
+    ):
+        sample_fps = _analysis_sampling_fps(analysis_speed)
         video = Path(vp)
         if video.suffix.lower() not in CFG.SUPPORTED:
             yield ("error", "Unsupported format"); return
@@ -1944,7 +1975,7 @@ class Processor:
             cap.release()
             yield ("error", "Cannot reopen video for frame analysis")
             return
-        sample_period = 1.0 / max(CFG.FPS, 0.01)
+        sample_period = 1.0 / max(sample_fps, 0.01)
         total = max(1, int(math.ceil(meta.duration / sample_period)) + 1)
         idx = proc = 0
         t0 = time.time()
@@ -4232,6 +4263,24 @@ html[data-theme="light"] .aee-up-progress.error{
   font-size:.68rem;color:var(--text-subtle);
   font-family:'JetBrains Mono',monospace;
   display:flex;align-items:center;gap:6px;
+}
+
+.aee-analysis-options{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(240px,1fr);
+  align-items:end;gap:14px!important;margin-top:14px!important;
+  padding:15px!important;border:1px solid var(--border-strong)!important;
+  border-radius:16px!important;
+  background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.06));
+}
+.aee-analysis-options>.block{min-width:0!important;margin:0!important;}
+.aee-analysis-options .info{color:var(--text-subtle)!important;font-size:.73rem!important;}
+html[data-theme="light"] .aee-analysis-options{
+  background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(248,231,200,.58));
+  border-color:rgba(121,98,83,.2)!important;
+}
+@media(max-width:640px){
+  .aee-analysis-options{grid-template-columns:1fr;gap:10px!important;padding:12px!important;}
 }
 
 .aee-actions{
@@ -7298,6 +7347,11 @@ _JS_HEAD = r"""
     'Agreement':'توافق النماذج','models':'نماذج','fusion':'دمج',
     'Analysis workflow':'خطوات التحليل','Add video':'إضافة فيديو',
     'Configure':'الإعدادات','Analyze':'تحليل','Review & export':'مراجعة وتصدير',
+    'Analysis speed':'سرعة التحليل',
+    'Balanced · 1 sample/sec':'متوازن · عينة واحدة/ثانية',
+    'Fast · 0.5 samples/sec':'سريع · 0.5 عينة/ثانية',
+    'Fast mode analyzes half as many frames, which can miss brief events.':'يحلل الوضع السريع نصف عدد الإطارات، وقد يفوّت الأحداث القصيرة.',
+    'Choose fewer sampled frames for faster review, or keep balanced coverage.':'اختر إطارات أقل لتسريع المراجعة، أو احتفظ بالتغطية المتوازنة.',
     'Evidence intake':'استيراد الأدلة','batch supported':'يدعم المعالجة الدفعية',
     'Fingerprint every byte before analysis':'تحقق من سلامة البيانات قبل التحليل',
     'READY':'جاهز','Supported video formats':'تنسيقات الفيديو المدعومة',
@@ -9122,7 +9176,9 @@ def _build_master(results, out, work):
 
 
 def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes,
-                  high_accuracy=False, progress=gr.Progress()):
+                  high_accuracy=False, analysis_speed="balanced",
+                  progress=gr.Progress()):
+    sample_fps = _analysis_sampling_fps(analysis_speed)
     EMPTY_DF = _det_df([])
     EMPTY_TRACK_HTML = Tracker().panel_html()
     EMPTY_CAM_HTML = CAMCache().panel_html()
@@ -9206,7 +9262,8 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
                     try:
                         for ev in proc.process_stream(
                                 vp, root, cancel_event=cancel_event,
-                                high_accuracy=high_accuracy):
+                                high_accuracy=high_accuracy,
+                                analysis_speed=analysis_speed):
                             if stop.is_set(): return
                             if ev[0] == "stage":
                                 q.put(("stage", ev[1], ev[2], ev[3], i, Path(vp).name))
@@ -9278,7 +9335,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             try: ev = q.get(timeout=0.35)
             except queue.Empty:
                 if cancel_event.is_set(): stop.set()
-                elif time.time() - last_yield > 1.2:
+                elif time.time() - last_yield > _ANALYSIS_UI_UPDATE_INTERVAL:
                     yield snapshot(); last_yield = time.time()
                 continue
 
@@ -9301,7 +9358,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             elif kind == "error":
                 errs.append({"video": ev[2], "error": ev[1]})
 
-            if time.time() - last_yield > 0.35:
+            if time.time() - last_yield > _ANALYSIS_UI_UPDATE_INTERVAL:
                 yield snapshot(); last_yield = time.time()
 
         if was_cancelled or cancel_event.is_set():
@@ -9349,7 +9406,8 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
 
         history_warnings = _record_analysis_history(
             results, master_s, pdf_s, case_number,
-            high_accuracy=high_accuracy, case_meta=case_meta,
+            high_accuracy=high_accuracy, analysis_speed=analysis_speed,
+            sampling_fps=sample_fps, case_meta=case_meta,
             case_notes=case_notes, tracker_rows=track_rows,
             cam_items=proc.camcache.items, work_root=root)
         history_status = ""
@@ -10707,9 +10765,19 @@ def build_ui():
 
                 gr.HTML(_formats_html())
                 gr.HTML(value="", elem_id="aee-upload-progress-host")
-                high_accuracy = gr.Checkbox(
-                    label="Enhanced accuracy (slower)", value=False,
-                    info="Use test-time augmentation on supported models for difficult or small objects.")
+                with gr.Row(elem_classes=["aee-analysis-options"]):
+                    high_accuracy = gr.Checkbox(
+                        label="Enhanced accuracy (slower)", value=False,
+                        info="Use test-time augmentation on supported models for difficult or small objects.")
+                    analysis_speed = gr.Dropdown(
+                        choices=[
+                            ("Balanced · 1 sample/sec", "balanced"),
+                            ("Fast · 0.5 samples/sec", "fast"),
+                        ],
+                        value="balanced",
+                        label="Analysis speed",
+                        info="Choose fewer sampled frames for faster review, or keep balanced coverage.",
+                    )
 
                 with gr.Row(elem_classes="aee-actions"):
                     reset_btn = gr.Button("← Reset", size="sm",
@@ -11513,7 +11581,8 @@ def build_ui():
             queue=False)
 
         process_event = process_btn.click(
-            fn=process_batch, inputs=[video_input, *CASE_INPUTS, high_accuracy],
+            fn=process_batch,
+            inputs=[video_input, *CASE_INPUTS, high_accuracy, analysis_speed],
             outputs=OUT, show_progress="hidden", api_name="analyze")
 
         def _post(master, pdf, caps, sums, prev, capc, evc, df, ov, prog,

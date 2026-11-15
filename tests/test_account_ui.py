@@ -38,6 +38,10 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Input resolution", source)
         self.assertIn("Minimum confidence", source)
         self.assertIn("640 is a balanced starting point", source)
+        self.assertIn("Analysis speed", source)
+        self.assertIn("Fast · 0.5 samples/sec", source)
+        self.assertIn("aee-analysis-options", source)
+        self.assertIn("analysis_speed", source)
         self.assertIn("Back to Detection Modes", source)
         self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
         self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
@@ -98,6 +102,14 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(app.np.array_equal(annotated, frame))
         self.assertEqual(frame_count, 4)
         load_model.assert_not_called()
+
+    def test_analysis_speed_modes_preserve_balanced_default_and_record_tradeoff(self):
+        self.assertEqual(app._analysis_sampling_fps("balanced"), app.CFG.FPS)
+        self.assertEqual(
+            app._analysis_sampling_fps("fast"), app.CFG.FPS / 2.0
+        )
+        with self.assertRaisesRegex(ValueError, "Analysis speed"):
+            app._analysis_sampling_fps("unknown")
 
     def test_realtime_box_clips_coordinates_and_skips_degenerate_boxes(self):
         frame = app.np.zeros((40, 48, 3), dtype=app.np.uint8)
@@ -937,6 +949,7 @@ class AccountUiTests(unittest.TestCase):
                 "duration_seconds": 12.5,
                 "detections": index,
                 "high_accuracy": False,
+                "analysis_speed": "fast" if index == 0 else "balanced",
                 "case": "case-1",
             }
             for index in range(101)
@@ -951,6 +964,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(history), 101)
         self.assertEqual(len(choices), 101)
         self.assertEqual(selected, "history-100")
+        self.assertEqual(history.iloc[-1]["Mode"], "Standard · Fast (0.5 fps)")
         self.assertIn(".aee-history-detail", app.CSS)
 
     def test_history_zip_contains_analysis_details_and_generated_files(self):
@@ -1056,6 +1070,7 @@ class AccountUiTests(unittest.TestCase):
             ):
                 warnings = app._record_analysis_history(
                     [result], str(master), str(report), "case-1",
+                    analysis_speed="fast", sampling_fps=0.5,
                     case_meta={"examiner": "Analyst"}, case_notes="Case notes",
                     tracker_rows=[{"Video": "sample.mp4", "Track": 4}],
                     cam_items=[{"video": "sample.mp4", "heat": str(heat),
@@ -1068,6 +1083,8 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertEqual(warnings, [])
         self.assertEqual(saved_entries[0]["source_path"], str(source_video))
+        self.assertEqual(saved_entries[0]["analysis_speed"], "fast")
+        self.assertEqual(saved_entries[0]["sampling_fps"], 0.5)
         self.assertEqual(saved_entries[0]["details"]["case_notes"], "Case notes")
         self.assertEqual(len(saved_entries[0]["details"]["captures"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["highlights"]), 1)
