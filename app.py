@@ -798,6 +798,9 @@ _REALTIME_MODEL_URL = (
     "AI_Evidence_Extractor_Realtime_Weapons.pt"
 )
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
+_REALTIME_DEFAULT_CONFIDENCE = 0.25
+_REALTIME_IMAGE_SIZES = (512, 640, 960)
+_REALTIME_DEFAULT_IMAGE_SIZE = 640
 _REALTIME_MODEL_LOCK = threading.RLock()
 _REALTIME_MODEL = None
 _REALTIME_MODEL_ERROR = None
@@ -975,7 +978,9 @@ def _draw_realtime_detection_box(image, coordinates, label, confidence):
     return True
 
 
-def _realtime_detect_frame(frame, confidence, frame_count):
+def _realtime_detect_frame(
+    frame, confidence, frame_count, image_size=_REALTIME_DEFAULT_IMAGE_SIZE
+):
     frame_count = int(frame_count or 0)
     if frame is None:
         return None, "Start the camera preview to begin live detection.", frame_count
@@ -992,13 +997,19 @@ def _realtime_detect_frame(frame, confidence, frame_count):
         if not math.isfinite(threshold):
             raise ValueError("The confidence threshold is invalid.")
         threshold = min(0.95, max(0.05, threshold))
+        image_size = int(image_size)
+        if image_size not in _REALTIME_IMAGE_SIZES:
+            raise ValueError(
+                f"Input size must be one of {_REALTIME_IMAGE_SIZES} pixels."
+            )
         model = _load_realtime_model()
         device, half = _resolve_inference_device()
         started = time.perf_counter()
+        model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         with _REALTIME_MODEL_LOCK:
             result = model.predict(
-                source=image, conf=threshold, imgsz=CFG.IMG,
-                verbose=False, device=device, half=half,
+                source=model_image, conf=threshold, imgsz=image_size,
+                iou=0.5, verbose=False, device=device, half=half,
             )[0]
         detections = []
         boxes = result.boxes
@@ -11382,16 +11393,23 @@ def build_ui():
                             </div>''')
                             realtime_camera = gr.Image(
                                 label="Camera preview", show_label=False,
-                                sources=["webcam"],
+                                sources=["webcam"], image_mode="RGB",
                                 streaming=True, type="numpy",
                                 height=360,
                                 elem_id="aee-realtime-camera")
                             realtime_confidence = gr.Slider(
-                                minimum=0.05, maximum=0.95, value=0.35, step=0.05,
-                                label="Detection confidence",
-                                info="Raise the threshold to show only higher-confidence boxes.")
+                                minimum=0.05, maximum=0.95,
+                                value=_REALTIME_DEFAULT_CONFIDENCE, step=0.05,
+                                label="Minimum confidence",
+                                info="Lower values favor recall; higher values reduce weak detections.")
+                            realtime_image_size = gr.Dropdown(
+                                choices=list(_REALTIME_IMAGE_SIZES),
+                                value=_REALTIME_DEFAULT_IMAGE_SIZE,
+                                label="Input resolution",
+                                info="640 is a balanced starting point; 960 can help with small objects but is slower.")
                             gr.HTML('''<p class="aee-realtime-confidence-note">
                               Confidence is a model score, not a probability that an event occurred.
+                              Tune it using labeled footage from your cameras.
                             </p>''')
                         with gr.Column(elem_classes=["aee-realtime-panel"]):
                             gr.HTML('''<div class="aee-realtime-panel-heading">
@@ -11427,7 +11445,8 @@ def build_ui():
                 realtime_frame_count = gr.State(0)
                 realtime_camera.stream(
                     fn=_realtime_detect_frame,
-                    inputs=[realtime_camera, realtime_confidence, realtime_frame_count],
+                    inputs=[realtime_camera, realtime_confidence,
+                            realtime_frame_count, realtime_image_size],
                     outputs=[realtime_output, realtime_status, realtime_frame_count],
                     stream_every=0.25, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")

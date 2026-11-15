@@ -35,6 +35,9 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("aee-realtime-detection-window", source)
         self.assertIn("AI detection overlay", source)
         self.assertIn("Bounding-box colors", source)
+        self.assertIn("Input resolution", source)
+        self.assertIn("Minimum confidence", source)
+        self.assertIn("640 is a balanced starting point", source)
         self.assertIn("Back to Detection Modes", source)
         self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
         self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
@@ -52,6 +55,7 @@ class AccountUiTests(unittest.TestCase):
 
     def test_realtime_detector_annotates_model_results(self):
         frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        frame[0, 0] = [11, 22, 33]
         box = SimpleNamespace(
             cls=[0], conf=[0.91], xyxy=[app.np.array([2, 3, 25, 27])]
         )
@@ -64,7 +68,7 @@ class AccountUiTests(unittest.TestCase):
             patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
         ):
             annotated, status, frame_count = app._realtime_detect_frame(
-                frame, 0.35, 4
+                frame, 0.35, 4, 960
             )
         self.assertEqual(annotated.shape, frame.shape)
         self.assertIn("Frame 5", status)
@@ -74,7 +78,26 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(app.np.any(app.np.all(
             annotated == [234, 179, 8], axis=2
         )))
-        self.assertFalse(app.np.any(frame))
+        self.assertTrue(app.np.array_equal(frame[0, 0], [11, 22, 33]))
+        model.predict.assert_called_once()
+        inference = model.predict.call_args.kwargs
+        self.assertTrue(app.np.array_equal(
+            inference["source"][0, 0], [33, 22, 11]
+        ))
+        self.assertEqual(inference["conf"], 0.35)
+        self.assertEqual(inference["imgsz"], 960)
+        self.assertEqual(inference["iou"], 0.5)
+
+    def test_realtime_detector_rejects_unsupported_input_size(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        with patch.object(app, "_load_realtime_model") as load_model:
+            annotated, status, frame_count = app._realtime_detect_frame(
+                frame, 0.25, 4, 800
+            )
+        self.assertIn("Input size must be one of", status)
+        self.assertTrue(app.np.array_equal(annotated, frame))
+        self.assertEqual(frame_count, 4)
+        load_model.assert_not_called()
 
     def test_realtime_box_clips_coordinates_and_skips_degenerate_boxes(self):
         frame = app.np.zeros((40, 48, 3), dtype=app.np.uint8)
