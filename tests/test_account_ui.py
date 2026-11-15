@@ -123,6 +123,17 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("offsetLeft", app._JS_HEAD)
         self.assertIn("dataContainer", app._JS_HEAD)
         self.assertIn("contentWidth", app._JS_HEAD)
+        self.assertIn("const mirrored = Boolean(transformMatrix", app._JS_HEAD)
+        self.assertIn("payload.width - x2 : x1", app._JS_HEAD)
+        self.assertNotIn("state.canvas.style.transform =", app._JS_HEAD)
+        self.assertEqual(
+            app._realtime_checkpoint_hash(
+                Path(app.__file__).resolve().parent
+                / "assets"
+                / "realtime_weapons.pt"
+            ),
+            app._REALTIME_MODEL_SHA256,
+        )
         with (
             patch.object(app, "_load_realtime_model", return_value=model),
             patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),

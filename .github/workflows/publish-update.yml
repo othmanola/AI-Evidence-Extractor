@@ -85,10 +85,9 @@ jobs:
             $utf8NoBom
           )
           @"
-          Aligns live detection boxes to the webcam's transformed and letterboxed video
-          layout, batches detector-output transfer, and adds an optional 512-pixel fast
-          mode while keeping 640-pixel balanced detection as the default. Fast mode can
-          miss small objects; both modes retain the same 0.25 confidence threshold.
+          Aligns live detection boxes to mirrored and letterboxed webcam video without
+          mirroring their labels. The verified user-supplied model remains in use.
+          Balanced and optional fast inference settings retain the same threshold.
           Samples the latest frame every 0.1 seconds; box refresh speed depends on the
           camera and local inference hardware.
           The supplied model is included in new installers and released as a separately

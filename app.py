@@ -7097,8 +7097,13 @@ _JS_HEAD = r"""
     if (state.canvas.width !== canvasWidth) state.canvas.width = canvasWidth;
     if (state.canvas.height !== canvasHeight) state.canvas.height = canvasHeight;
     const videoStyle = window.getComputedStyle(video);
-    state.canvas.style.transform = videoStyle.transform;
-    state.canvas.style.transformOrigin = videoStyle.transformOrigin;
+    const videoTransform = videoStyle.transform;
+    const transformMatrix = videoTransform && videoTransform !== 'none'
+      ? new DOMMatrixReadOnly(videoTransform) : null;
+    const mirrored = Boolean(transformMatrix &&
+      transformMatrix.a < 0 &&
+      Math.abs(transformMatrix.b) < 0.001 &&
+      Math.abs(transformMatrix.c) < 0.001);
     const context = state.canvas.getContext('2d');
     if (!context) return;
     context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
@@ -7134,9 +7139,11 @@ _JS_HEAD = r"""
           detection.coordinates.length !== 4) continue;
       const [x1, y1, x2, y2] = detection.coordinates;
       if (![x1, y1, x2, y2].every(Number.isFinite)) continue;
-      const left = offsetX + x1 * scaleX;
+      const sourceX1 = mirrored ? payload.width - x2 : x1;
+      const sourceX2 = mirrored ? payload.width - x1 : x2;
+      const left = offsetX + sourceX1 * scaleX;
       const top = offsetY + y1 * scaleY;
-      const boxWidth = Math.max(0, (x2 - x1) * scaleX);
+      const boxWidth = Math.max(0, (sourceX2 - sourceX1) * scaleX);
       const boxHeight = Math.max(0, (y2 - y1) * scaleY);
       if (boxWidth < 2 || boxHeight < 2) continue;
       const color = /^#[0-9a-f]{6}$/i.test(detection.color)
