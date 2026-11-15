@@ -827,7 +827,7 @@ _REALTIME_MODEL_URL = (
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
 _REALTIME_BALANCED_CONFIDENCE = 0.25
 _REALTIME_IMAGE_SIZE = 640
-_REALTIME_STREAM_INTERVAL = 0.05
+_REALTIME_STREAM_INTERVAL = 0.1
 _REALTIME_MODEL_LOCK = threading.RLock()
 _REALTIME_MODEL = None
 _REALTIME_MODEL_ERROR = None
@@ -930,84 +930,38 @@ def _load_realtime_model():
         return model
 
 
-def _draw_realtime_detection_box(image, coordinates, label, confidence):
+def _realtime_box_coordinates(image, coordinates):
     height, width = image.shape[:2]
     if height < 1 or width < 1:
-        return False
+        return None
     values = np.asarray(coordinates, dtype=np.float64).reshape(-1)
     if values.size != 4 or not np.isfinite(values).all():
-        return False
+        return None
     x1, y1, x2, y2 = np.rint(values).astype(int).tolist()
     x1, x2 = sorted((max(0, min(width - 1, x1)), max(0, min(width - 1, x2))))
     y1, y2 = sorted((max(0, min(height - 1, y1)), max(0, min(height - 1, y2))))
     if x2 - x1 < 2 or y2 - y1 < 2:
-        return False
+        return None
+    return [x1, y1, x2, y2]
 
-    color = {
-        "Firearm": (244, 63, 94),
-        "Explosive": (239, 68, 68),
-        "Fire/Smoke": (249, 115, 22),
-        "Knife": (245, 158, 11),
-        "Blunt": (234, 179, 8),
-        "Person": (59, 130, 246),
-        "Tool": (20, 184, 166),
-    }.get(label, (168, 85, 247))
-    line_width = max(2, min(5, round(min(width, height) / 240)))
-    cv2.rectangle(
-        image, (x1, y1), (x2, y2), (12, 16, 24), line_width + 3, cv2.LINE_AA
-    )
-    cv2.rectangle(
-        image, (x1, y1), (x2, y2), color, line_width, cv2.LINE_AA
-    )
 
-    corner_length = max(7, min(20, round(min(width, height) / 28)))
-    corner_length = min(corner_length, (x2 - x1) // 3, (y2 - y1) // 3)
-    if corner_length > 0:
-        for start, direction_x, direction_y in (
-            ((x1, y1), 1, 1),
-            ((x2, y1), -1, 1),
-            ((x1, y2), 1, -1),
-            ((x2, y2), -1, -1),
-        ):
-            cv2.line(
-                image, start,
-                (start[0] + direction_x * corner_length,
-                 start[1] + direction_y * corner_length),
-                (255, 255, 255), max(1, line_width - 1), cv2.LINE_AA,
-            )
-
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = max(0.45, min(0.75, min(width, height) / 900))
-    text = f"{label}  {confidence:.0%}"
-    text_width, text_height = cv2.getTextSize(
-        text, font, font_scale, 2
-    )[0]
-    padding_x, padding_y = 9, 6
-    badge_width = min(width, text_width + padding_x * 2)
-    badge_height = text_height + padding_y * 2
-    badge_x = min(max(0, x1), width - badge_width)
-    badge_y = (
-        y1 - badge_height
-        if y1 >= badge_height + 3
-        else min(height - badge_height, y2 + 3)
+def _realtime_overlay_html(width, height, boxes):
+    payload = json.dumps(
+        {"width": width, "height": height, "boxes": boxes},
+        separators=(",", ":"), ensure_ascii=False,
     )
-    badge_y = max(0, badge_y)
-    cv2.rectangle(
-        image, (badge_x, badge_y),
-        (badge_x + badge_width, min(height - 1, badge_y + badge_height)),
-        color, -1, cv2.LINE_AA,
+    return (
+        '<div data-aee-realtime-payload="'
+        f'{_html.escape(payload, quote=True)}"></div>'
     )
-    cv2.putText(
-        image, text,
-        (badge_x + padding_x, min(height - 1, badge_y + padding_y + text_height)),
-        font, font_scale, (255, 255, 255), 2, cv2.LINE_AA,
-    )
-    return True
 
 
 def _realtime_detect_frame(frame):
     if frame is None:
-        return None, "Enable the camera to begin live detection."
+        return (
+            "Enable the camera to begin live detection.",
+            _realtime_overlay_html(0, 0, []),
+        )
     try:
         image = np.asarray(frame)
         if image.ndim != 3 or image.shape[2] not in (3, 4):
@@ -1016,7 +970,7 @@ def _realtime_detect_frame(frame):
             image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
         if image.dtype != np.uint8:
             image = np.clip(image, 0, 255).astype(np.uint8)
-        annotated = image.copy()
+        height, width = image.shape[:2]
         model = _load_realtime_model()
         device, half = _resolve_inference_device()
         started = time.perf_counter()
@@ -1027,7 +981,7 @@ def _realtime_detect_frame(frame):
                 imgsz=_REALTIME_IMAGE_SIZE,
                 iou=0.5, verbose=False, device=device, half=half,
             )[0]
-        detections = []
+        boxes_payload = []
         boxes = result.boxes
         if boxes is not None:
             names = model.names
@@ -1039,25 +993,46 @@ def _realtime_detect_frame(frame):
                 )
                 label = norm(raw_name)
                 score = float(box.conf[0])
-                if _draw_realtime_detection_box(
-                    annotated, box.xyxy[0].tolist(), label, score
-                ):
-                    detections.append(label)
+                coordinates = _realtime_box_coordinates(
+                    image, box.xyxy[0].tolist()
+                )
+                if coordinates is None or not math.isfinite(score):
+                    continue
+                color = {
+                    "Firearm": "#f43f5e",
+                    "Explosive": "#ef4444",
+                    "Fire/Smoke": "#f97316",
+                    "Knife": "#f59e0b",
+                    "Blunt": "#eab308",
+                    "Person": "#3b82f6",
+                    "Tool": "#14b8a6",
+                }.get(label, "#a855f7")
+                boxes_payload.append({
+                    "coordinates": coordinates,
+                    "label": label,
+                    "confidence": score,
+                    "color": color,
+                })
         elapsed = max(time.perf_counter() - started, 0.001)
-        classes = ", ".join(sorted(set(detections))) or "none"
+        classes = ", ".join(sorted({
+            detection["label"] for detection in boxes_payload
+        })) or "none"
         count_label = (
-            f"{len(detections)} detection"
-            f"{'s' if len(detections) != 1 else ''}"
+            f"{len(boxes_payload)} detection"
+            f"{'s' if len(boxes_payload) != 1 else ''}"
         )
         status = (
             f"**LIVE** · {count_label} · Classes: {classes} · "
             f"{elapsed * 1000:.0f} ms"
         )
-        return annotated, status
+        return status, _realtime_overlay_html(width, height, boxes_payload)
     except Exception as exc:
         if str(exc) != _REALTIME_MODEL_ERROR:
             log.exception("Live detection frame failed")
-        return frame, f"Live detection error: {_html.escape(str(exc))}"
+        return (
+            f"Live detection error: {_html.escape(str(exc))}",
+            _realtime_overlay_html(0, 0, []),
+        )
 
 
 def threat_score(d, tracker=None, video_name=None):
@@ -2918,12 +2893,15 @@ body.aee-access-required #aee-detection-back{display:none!important;}
   color:#94a3b8;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
 .aee-realtime-feed-badge:before{width:6px;height:6px;border-radius:50%;background:#34d399;content:"";}
 .aee-realtime-panel .label-wrap{color:#dbeafe!important;font-weight:650!important;}
-.aee-realtime-panel img{border:1px solid rgba(148,163,184,.13)!important;
+.aee-realtime-panel img,.aee-realtime-panel video{
+  border:1px solid rgba(148,163,184,.13)!important;
   border-radius:14px!important;background:#080d17!important;}
 #aee-realtime-camera .button-wrap{display:none!important;}
 #aee-realtime-camera [title="grant webcam access"]{display:none!important;}
-#aee-realtime-camera img{width:100%!important;max-height:min(62vh,680px)!important;
+#aee-realtime-camera img,#aee-realtime-camera video[data-testid="webcam-video"]{
+  width:100%!important;max-height:min(62vh,680px)!important;
   object-fit:contain!important;}
+.aee-realtime-overlay{position:absolute;z-index:5;pointer-events:none;}
 .aee-realtime-camera-toolbar{display:flex;align-items:center;gap:12px;margin:0 0 14px;}
 .aee-realtime-camera-toolbar .aee-realtime-panel-icon{width:42px;height:42px;}
 .aee-realtime-camera-title{min-width:0;flex:1;}
@@ -2986,7 +2964,8 @@ html[data-theme="light"] .aee-realtime-panel-heading strong{color:#1e293b;}
 html[data-theme="light"] .aee-realtime-summary-copy span,
 html[data-theme="light"] .aee-realtime-panel-heading span,
 html[data-theme="light"] .aee-realtime-legend{color:#64748b;}
-html[data-theme="light"] .aee-realtime-panel img{background:#e2e8f0!important;}
+html[data-theme="light"] .aee-realtime-panel img,
+html[data-theme="light"] .aee-realtime-panel video{background:#e2e8f0!important;}
 html[data-theme="light"] .aee-realtime-notice{color:#475569;
   border-color:rgba(37,99,235,.16);background:rgba(37,99,235,.045);}
 html[data-theme="light"] .aee-realtime-notice strong{color:#1d4ed8;}
@@ -7062,11 +7041,188 @@ _JS_HEAD = r"""
       window.__aeeRealtimeCameraStartTimer = null;
     }
   }
+  const realtimeOverlayState = {
+    camera:null, video:null, parent:null, canvas:null, payload:null,
+    cameraObserver:null, dataObserver:null, resizeObserver:null,
+    parentPosition:null, positionAdjusted:false
+  };
+  function drawAeeRealtimeOverlay(){
+    const state = realtimeOverlayState;
+    if (!state.video || !state.canvas || !state.parent) return;
+    const videoRect = state.video.getBoundingClientRect();
+    const parentRect = state.parent.getBoundingClientRect();
+    const width = videoRect.width;
+    const height = videoRect.height;
+    if (width <= 0 || height <= 0) return;
+    state.canvas.style.left = `${videoRect.left - parentRect.left}px`;
+    state.canvas.style.top = `${videoRect.top - parentRect.top}px`;
+    state.canvas.style.width = `${width}px`;
+    state.canvas.style.height = `${height}px`;
+    const deviceScale = Math.min(window.devicePixelRatio || 1, 2);
+    const canvasWidth = Math.max(1, Math.round(width * deviceScale));
+    const canvasHeight = Math.max(1, Math.round(height * deviceScale));
+    if (state.canvas.width !== canvasWidth) state.canvas.width = canvasWidth;
+    if (state.canvas.height !== canvasHeight) state.canvas.height = canvasHeight;
+    const videoStyle = window.getComputedStyle(state.video);
+    state.canvas.style.transform = videoStyle.transform;
+    state.canvas.style.transformOrigin = videoStyle.transformOrigin;
+    const context = state.canvas.getContext('2d');
+    if (!context) return;
+    context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+    context.clearRect(0, 0, width, height);
+    const payload = state.payload;
+    if (!payload || !payload.width || !payload.height ||
+        !Array.isArray(payload.boxes)) return;
+    const sourceAspect = payload.width / payload.height;
+    const displayAspect = width / height;
+    const renderedWidth = sourceAspect > displayAspect
+      ? width : height * sourceAspect;
+    const renderedHeight = sourceAspect > displayAspect
+      ? width / sourceAspect : height;
+    const offsetX = (width - renderedWidth) / 2;
+    const offsetY = (height - renderedHeight) / 2;
+    const scaleX = renderedWidth / payload.width;
+    const scaleY = renderedHeight / payload.height;
+    for (const detection of payload.boxes){
+      if (!Array.isArray(detection.coordinates) ||
+          detection.coordinates.length !== 4) continue;
+      const [x1, y1, x2, y2] = detection.coordinates;
+      if (![x1, y1, x2, y2].every(Number.isFinite)) continue;
+      const left = offsetX + x1 * scaleX;
+      const top = offsetY + y1 * scaleY;
+      const boxWidth = Math.max(0, (x2 - x1) * scaleX);
+      const boxHeight = Math.max(0, (y2 - y1) * scaleY);
+      if (boxWidth < 2 || boxHeight < 2) continue;
+      const color = /^#[0-9a-f]{6}$/i.test(detection.color)
+        ? detection.color : '#a855f7';
+      context.lineWidth = Math.max(2, Math.min(4, width / 400));
+      context.strokeStyle = '#0c1018';
+      context.strokeRect(left, top, boxWidth, boxHeight);
+      context.lineWidth = Math.max(1.5, Math.min(3, width / 600));
+      context.strokeStyle = color;
+      context.strokeRect(left, top, boxWidth, boxHeight);
+      const label = `${String(detection.label || 'Object')}  ${
+        Math.round(Math.max(0, Math.min(1, Number(detection.confidence) || 0)) * 100)
+      }%`;
+      context.font = `600 ${Math.max(12, Math.min(18, width / 55))}px Inter, sans-serif`;
+      const labelHeight = Math.max(24, Math.min(30, width / 30));
+      const labelWidth = Math.min(width, context.measureText(label).width + 16);
+      const labelLeft = Math.min(
+        Math.max(0, left), Math.max(0, width - labelWidth)
+      );
+      const proposedLabelTop = top >= labelHeight + 4 ? top - labelHeight : top;
+      const labelTop = Math.max(
+        0, Math.min(height - labelHeight, proposedLabelTop)
+      );
+      context.fillStyle = color;
+      context.fillRect(labelLeft, labelTop, labelWidth, labelHeight);
+      context.fillStyle = '#ffffff';
+      context.textBaseline = 'middle';
+      context.fillText(
+        label, labelLeft + 8, labelTop + labelHeight / 2,
+        Math.max(1, labelWidth - 12)
+      );
+    }
+  }
+  function readAeeRealtimeOverlay(){
+    const root = document.getElementById('aee-realtime-overlay-data');
+    const payloadNode = root && root.querySelector('[data-aee-realtime-payload]');
+    if (!payloadNode) return;
+    try {
+      realtimeOverlayState.payload = JSON.parse(
+        payloadNode.getAttribute('data-aee-realtime-payload')
+      );
+      drawAeeRealtimeOverlay();
+    } catch(error) {
+      console.warn('Could not read live detection overlay data.', error);
+    }
+  }
+  function syncAeeRealtimeOverlay(){
+    const state = realtimeOverlayState;
+    if (!state.camera) return;
+    const video = state.camera.querySelector(
+      'video[data-testid="webcam-video"], video'
+    );
+    if (video === state.video){
+      drawAeeRealtimeOverlay();
+      return;
+    }
+    if (state.resizeObserver) state.resizeObserver.disconnect();
+    if (state.canvas) state.canvas.remove();
+    if (state.video){
+      state.video.removeEventListener('loadedmetadata', drawAeeRealtimeOverlay);
+      state.video.removeEventListener('resize', drawAeeRealtimeOverlay);
+    }
+    if (state.positionAdjusted && state.parent){
+      state.parent.style.position = state.parentPosition;
+    }
+    state.positionAdjusted = false;
+    state.video = video || null;
+    state.parent = video && video.parentElement;
+    state.canvas = null;
+    if (!video || !state.parent) return;
+    if (window.getComputedStyle(state.parent).position === 'static'){
+      state.parentPosition = state.parent.style.position;
+      state.positionAdjusted = true;
+      state.parent.style.position = 'relative';
+    }
+    const canvas = document.createElement('canvas');
+    canvas.className = 'aee-realtime-overlay';
+    canvas.setAttribute('aria-hidden', 'true');
+    state.parent.appendChild(canvas);
+    state.canvas = canvas;
+    state.resizeObserver = new ResizeObserver(drawAeeRealtimeOverlay);
+    state.resizeObserver.observe(video);
+    video.addEventListener('loadedmetadata', drawAeeRealtimeOverlay);
+    video.addEventListener('resize', drawAeeRealtimeOverlay);
+    drawAeeRealtimeOverlay();
+  }
+  function watchAeeRealtimeOverlay(camera){
+    const state = realtimeOverlayState;
+    if (state.cameraObserver) state.cameraObserver.disconnect();
+    if (state.dataObserver) state.dataObserver.disconnect();
+    state.camera = camera;
+    const dataRoot = document.getElementById('aee-realtime-overlay-data');
+    if (dataRoot){
+      state.dataObserver = new MutationObserver(readAeeRealtimeOverlay);
+      state.dataObserver.observe(dataRoot, {
+        childList:true, subtree:true, attributes:true
+      });
+    }
+    state.cameraObserver = new MutationObserver(syncAeeRealtimeOverlay);
+    state.cameraObserver.observe(camera, {childList:true, subtree:true});
+    readAeeRealtimeOverlay();
+    syncAeeRealtimeOverlay();
+    window.addEventListener('resize', drawAeeRealtimeOverlay, {passive:true});
+  }
+  function stopAeeRealtimeOverlay(){
+    const state = realtimeOverlayState;
+    if (state.cameraObserver) state.cameraObserver.disconnect();
+    if (state.dataObserver) state.dataObserver.disconnect();
+    if (state.resizeObserver) state.resizeObserver.disconnect();
+    if (state.canvas) state.canvas.remove();
+    if (state.video){
+      state.video.removeEventListener('loadedmetadata', drawAeeRealtimeOverlay);
+      state.video.removeEventListener('resize', drawAeeRealtimeOverlay);
+    }
+    if (state.positionAdjusted && state.parent){
+      state.parent.style.position = state.parentPosition;
+    }
+    window.removeEventListener('resize', drawAeeRealtimeOverlay);
+    state.camera = null;
+    state.video = null;
+    state.parent = null;
+    state.canvas = null;
+    state.payload = null;
+    state.parentPosition = null;
+    state.positionAdjusted = false;
+  }
   function stopAeeRealtimeCamera(){
     clearAeeRealtimeCameraStart();
     const camera = document.getElementById('aee-realtime-camera');
     const capture = camera && camera.querySelector('.button-wrap .capture-button');
     if (capture && capture.querySelector('[title="stop recording"]')) capture.click();
+    stopAeeRealtimeOverlay();
     setAeeRealtimeCameraButton('ready');
   }
   function startAeeRealtimeCamera(){
@@ -7079,6 +7235,7 @@ _JS_HEAD = r"""
     const capture = camera.querySelector('.button-wrap .capture-button');
     if (capture){
       if (!capture.querySelector('[title="stop recording"]')) capture.click();
+      watchAeeRealtimeOverlay(camera);
       setAeeRealtimeCameraButton('active');
       return;
     }
@@ -7098,6 +7255,7 @@ _JS_HEAD = r"""
         return;
       }
       if (!liveCapture.querySelector('[title="stop recording"]')) liveCapture.click();
+      watchAeeRealtimeOverlay(camera);
       setAeeRealtimeCameraButton('active');
     });
     window.__aeeRealtimeCameraObserver = observer;
@@ -11596,6 +11754,10 @@ def build_ui():
                                 "Enable the camera to begin live detection.",
                                 elem_classes=["aee-realtime-status"],
                                 elem_id="aee-realtime-status")
+                            realtime_overlay_data = gr.HTML(
+                                value=_realtime_overlay_html(0, 0, []),
+                                visible="hidden",
+                                elem_id="aee-realtime-overlay-data")
                             gr.HTML('''<div class="aee-realtime-legend" aria-label="Bounding-box colors">
                               <span><i></i>Potential threat classes</span>
                               <span><i class="aee-legend-person"></i>Person</span>
@@ -11609,7 +11771,7 @@ def build_ui():
                 realtime_camera.stream(
                     fn=_realtime_detect_frame,
                     inputs=[realtime_camera],
-                    outputs=[realtime_camera, realtime_status],
+                    outputs=[realtime_status, realtime_overlay_data],
                     stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")
 

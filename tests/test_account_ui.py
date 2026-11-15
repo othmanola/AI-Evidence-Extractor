@@ -1,7 +1,9 @@
 import base64
 import hashlib
+import html
 import json
 from pathlib import Path
+import re
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -37,15 +39,21 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Balanced · 0.25 confidence", source)
         self.assertIn("data-aee-realtime-enable", source)
         self.assertIn("Bounding-box colors", source)
+        self.assertIn("watchAeeRealtimeOverlay", app._JS_HEAD)
+        self.assertIn("drawAeeRealtimeOverlay", app._JS_HEAD)
         self.assertNotIn("AI detection overlay", source)
         self.assertNotIn("Minimum confidence", source)
         self.assertNotIn("Input resolution", source)
         self.assertNotIn('data-aee-realtime-feed-badge">Input', source)
         self.assertNotIn('data-aee-realtime-feed-badge">Output', source)
-        self.assertIn("outputs=[realtime_camera, realtime_status]", source)
+        self.assertIn("outputs=[realtime_status, realtime_overlay_data]", source)
+        self.assertNotIn("outputs=[realtime_camera", source)
         self.assertIn("inputs=[realtime_camera]", source)
+        self.assertIn('visible="hidden"', source)
         self.assertIn("_REALTIME_STREAM_INTERVAL", source)
-        self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.05)
+        self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.1)
+        self.assertIn("data-aee-realtime-overlay", app._JS_HEAD)
+        self.assertIn("data-testid=\"webcam-video\"", app._JS_HEAD)
         application_source = Path(app.__file__).read_text(encoding="utf-8")
         image_config = application_source.split(
             "realtime_camera = gr.Image(", 1
@@ -73,7 +81,7 @@ class AccountUiTests(unittest.TestCase):
         digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
         self.assertEqual(digest, app._REALTIME_MODEL_SHA256)
 
-    def test_realtime_detector_annotates_model_results(self):
+    def test_realtime_detector_returns_box_metadata_without_replacing_camera_frame(self):
         frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
         frame[0, 0] = [11, 22, 33]
         box = SimpleNamespace(
@@ -87,15 +95,19 @@ class AccountUiTests(unittest.TestCase):
             patch.object(app, "_load_realtime_model", return_value=model),
             patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
         ):
-            annotated, status = app._realtime_detect_frame(frame)
-        self.assertEqual(annotated.shape, frame.shape)
+            status, overlay_html = app._realtime_detect_frame(frame)
         self.assertIn("1 detection", status)
         self.assertIn("Blunt", status)
         self.assertIn("ms", status)
-        self.assertTrue(app.np.any(app.np.all(
-            annotated == [234, 179, 8], axis=2
-        )))
-        self.assertTrue(app.np.array_equal(frame[0, 0], [11, 22, 33]))
+        payload_text = re.search(
+            r'data-aee-realtime-payload="([^"]+)"', overlay_html
+        ).group(1)
+        payload = json.loads(html.unescape(payload_text))
+        self.assertEqual((payload["width"], payload["height"]), (32, 32))
+        self.assertEqual(payload["boxes"][0]["coordinates"], [2, 3, 25, 27])
+        self.assertEqual(payload["boxes"][0]["label"], "Blunt")
+        self.assertAlmostEqual(payload["boxes"][0]["confidence"], 0.91)
+        self.assertEqual(payload["boxes"][0]["color"], "#eab308")
         model.predict.assert_called_once()
         inference = model.predict.call_args.kwargs
         self.assertTrue(app.np.array_equal(
@@ -108,9 +120,9 @@ class AccountUiTests(unittest.TestCase):
     def test_realtime_detector_rejects_unsupported_camera_frame(self):
         frame = app.np.zeros((32, 32), dtype=app.np.uint8)
         with patch.object(app, "_load_realtime_model") as load_model:
-            annotated, status = app._realtime_detect_frame(frame)
+            status, overlay_html = app._realtime_detect_frame(frame)
         self.assertIn("unsupported image format", status)
-        self.assertTrue(app.np.array_equal(annotated, frame))
+        self.assertIn('"width":0,"height":0,"boxes":[]', html.unescape(overlay_html))
         load_model.assert_not_called()
 
     def test_analysis_speed_modes_preserve_balanced_default_and_record_tradeoff(self):
@@ -123,13 +135,11 @@ class AccountUiTests(unittest.TestCase):
 
     def test_realtime_box_clips_coordinates_and_skips_degenerate_boxes(self):
         frame = app.np.zeros((40, 48, 3), dtype=app.np.uint8)
-        self.assertTrue(app._draw_realtime_detection_box(
-            frame, [-20, -8, 60, 55], "Firearm", 0.92
-        ))
-        self.assertTrue(app.np.array_equal(frame[0, 20], [244, 63, 94]))
-        self.assertFalse(app._draw_realtime_detection_box(
-            frame, [8, 8, 9, 20], "Firearm", 0.92
-        ))
+        self.assertEqual(
+            app._realtime_box_coordinates(frame, [-20, -8, 60, 55]),
+            [0, 0, 47, 39],
+        )
+        self.assertIsNone(app._realtime_box_coordinates(frame, [8, 8, 9, 20]))
 
     def test_feedback_controls_have_modern_theme_and_focus_styles(self):
         for css in (
