@@ -85,8 +85,10 @@ jobs:
             $utf8NoBom
           )
           @"
-          Adds a faster video-analysis sampling mode, reduces progress-render overhead,
-          and modernizes the analysis speed controls while preserving balanced defaults.
+          Unifies webcam input and annotated output into one live camera view,
+          hides recording controls, and applies a fixed balanced confidence threshold.
+          Uses 0.1-second frame sampling for responsive live feedback; actual latency
+          depends on the camera and local inference hardware.
           The supplied model is included in new installers and released as a separately
           checksum-verified download for existing installations. Its embedded metadata
           identifies the model license as AGPL-3.0; see MODEL_LICENSES.md in the source.

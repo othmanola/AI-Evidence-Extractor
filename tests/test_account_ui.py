@@ -33,11 +33,18 @@ class AccountUiTests(unittest.TestCase):
         )
         self.assertEqual(source.count('data-aee-detection-mode="'), 2)
         self.assertIn("aee-realtime-detection-window", source)
-        self.assertIn("AI detection overlay", source)
+        self.assertIn("Live camera", source)
+        self.assertIn("Balanced · 0.25 confidence", source)
+        self.assertIn("data-aee-realtime-enable", source)
         self.assertIn("Bounding-box colors", source)
-        self.assertIn("Input resolution", source)
-        self.assertIn("Minimum confidence", source)
-        self.assertIn("640 is a balanced starting point", source)
+        self.assertNotIn("AI detection overlay", source)
+        self.assertNotIn("Minimum confidence", source)
+        self.assertNotIn("Input resolution", source)
+        self.assertNotIn('data-aee-realtime-feed-badge">Input', source)
+        self.assertNotIn('data-aee-realtime-feed-badge">Output', source)
+        self.assertIn("outputs=[realtime_camera, realtime_status]", source)
+        self.assertIn("inputs=[realtime_camera]", source)
+        self.assertIn("_REALTIME_STREAM_INTERVAL", source)
         self.assertIn("Analysis speed", source)
         self.assertIn("Fast · 0.5 samples/sec", source)
         self.assertIn("aee-analysis-options", source)
@@ -45,6 +52,9 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Back to Detection Modes", source)
         self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
         self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
+        self.assertIn("startAeeRealtimeCamera", app._JS_HEAD)
+        self.assertIn("stopAeeRealtimeCamera", app._JS_HEAD)
+        self.assertIn("button-wrap .capture-button", app._JS_HEAD)
         self.assertIn("Upload video", source)
 
     def test_realtime_checkpoint_is_bundled_and_checksum_verified(self):
@@ -71,14 +81,11 @@ class AccountUiTests(unittest.TestCase):
             patch.object(app, "_load_realtime_model", return_value=model),
             patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
         ):
-            annotated, status, frame_count = app._realtime_detect_frame(
-                frame, 0.35, 4, 960
-            )
+            annotated, status = app._realtime_detect_frame(frame)
         self.assertEqual(annotated.shape, frame.shape)
-        self.assertIn("Frame 5", status)
         self.assertIn("1 detection", status)
         self.assertIn("Blunt", status)
-        self.assertEqual(frame_count, 5)
+        self.assertIn("ms", status)
         self.assertTrue(app.np.any(app.np.all(
             annotated == [234, 179, 8], axis=2
         )))
@@ -88,19 +95,16 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(app.np.array_equal(
             inference["source"][0, 0], [33, 22, 11]
         ))
-        self.assertEqual(inference["conf"], 0.35)
-        self.assertEqual(inference["imgsz"], 960)
+        self.assertEqual(inference["conf"], app._REALTIME_BALANCED_CONFIDENCE)
+        self.assertEqual(inference["imgsz"], app._REALTIME_IMAGE_SIZE)
         self.assertEqual(inference["iou"], 0.5)
 
-    def test_realtime_detector_rejects_unsupported_input_size(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+    def test_realtime_detector_rejects_unsupported_camera_frame(self):
+        frame = app.np.zeros((32, 32), dtype=app.np.uint8)
         with patch.object(app, "_load_realtime_model") as load_model:
-            annotated, status, frame_count = app._realtime_detect_frame(
-                frame, 0.25, 4, 800
-            )
-        self.assertIn("Input size must be one of", status)
+            annotated, status = app._realtime_detect_frame(frame)
+        self.assertIn("unsupported image format", status)
         self.assertTrue(app.np.array_equal(annotated, frame))
-        self.assertEqual(frame_count, 4)
         load_model.assert_not_called()
 
     def test_analysis_speed_modes_preserve_balanced_default_and_record_tradeoff(self):

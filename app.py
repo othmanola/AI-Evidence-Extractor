@@ -825,9 +825,9 @@ _REALTIME_MODEL_URL = (
     "AI_Evidence_Extractor_Realtime_Weapons.pt"
 )
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
-_REALTIME_DEFAULT_CONFIDENCE = 0.25
-_REALTIME_IMAGE_SIZES = (512, 640, 960)
-_REALTIME_DEFAULT_IMAGE_SIZE = 640
+_REALTIME_BALANCED_CONFIDENCE = 0.25
+_REALTIME_IMAGE_SIZE = 640
+_REALTIME_STREAM_INTERVAL = 0.1
 _REALTIME_MODEL_LOCK = threading.RLock()
 _REALTIME_MODEL = None
 _REALTIME_MODEL_ERROR = None
@@ -1005,12 +1005,9 @@ def _draw_realtime_detection_box(image, coordinates, label, confidence):
     return True
 
 
-def _realtime_detect_frame(
-    frame, confidence, frame_count, image_size=_REALTIME_DEFAULT_IMAGE_SIZE
-):
-    frame_count = int(frame_count or 0)
+def _realtime_detect_frame(frame):
     if frame is None:
-        return None, "Start the camera preview to begin live detection.", frame_count
+        return None, "Enable the camera to begin live detection."
     try:
         image = np.asarray(frame)
         if image.ndim != 3 or image.shape[2] not in (3, 4):
@@ -1020,22 +1017,14 @@ def _realtime_detect_frame(
         if image.dtype != np.uint8:
             image = np.clip(image, 0, 255).astype(np.uint8)
         annotated = image.copy()
-        threshold = float(confidence)
-        if not math.isfinite(threshold):
-            raise ValueError("The confidence threshold is invalid.")
-        threshold = min(0.95, max(0.05, threshold))
-        image_size = int(image_size)
-        if image_size not in _REALTIME_IMAGE_SIZES:
-            raise ValueError(
-                f"Input size must be one of {_REALTIME_IMAGE_SIZES} pixels."
-            )
         model = _load_realtime_model()
         device, half = _resolve_inference_device()
         started = time.perf_counter()
         model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         with _REALTIME_MODEL_LOCK:
             result = model.predict(
-                source=model_image, conf=threshold, imgsz=image_size,
+                source=model_image, conf=_REALTIME_BALANCED_CONFIDENCE,
+                imgsz=_REALTIME_IMAGE_SIZE,
                 iou=0.5, verbose=False, device=device, half=half,
             )[0]
         detections = []
@@ -1061,14 +1050,14 @@ def _realtime_detect_frame(
             f"{'s' if len(detections) != 1 else ''}"
         )
         status = (
-            f"**LIVE** · Frame {frame_count + 1} · {count_label} · "
-            f"Classes: {classes} · {1 / elapsed:.1f} FPS"
+            f"**LIVE** · {count_label} · Classes: {classes} · "
+            f"{elapsed * 1000:.0f} ms"
         )
-        return annotated, status, frame_count + 1
+        return annotated, status
     except Exception as exc:
         if str(exc) != _REALTIME_MODEL_ERROR:
             log.exception("Live detection frame failed")
-        return frame, f"Live detection error: {_html.escape(str(exc))}", frame_count
+        return frame, f"Live detection error: {_html.escape(str(exc))}"
 
 
 def threat_score(d, tracker=None, video_name=None):
@@ -2914,7 +2903,7 @@ body.aee-access-required #aee-detection-back{display:none!important;}
 .aee-realtime-notice{margin:0 auto 18px;padding:14px 17px;border:1px solid rgba(96,165,250,.17);
   border-radius:13px;color:#aab8ca;background:rgba(37,99,235,.065);font-size:.77rem;line-height:1.6;}
 .aee-realtime-notice strong{color:#dbeafe;}
-.aee-realtime-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+.aee-realtime-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;}
 .aee-realtime-panel{min-width:0;align-self:start;padding:17px;border:1px solid rgba(148,163,184,.16);
   border-radius:20px;background:linear-gradient(155deg,rgba(15,23,42,.72),rgba(10,15,28,.58));
   box-shadow:0 18px 48px -38px rgba(0,0,0,.8);}
@@ -2931,6 +2920,30 @@ body.aee-access-required #aee-detection-back{display:none!important;}
 .aee-realtime-panel .label-wrap{color:#dbeafe!important;font-weight:650!important;}
 .aee-realtime-panel img{border:1px solid rgba(148,163,184,.13)!important;
   border-radius:14px!important;background:#080d17!important;}
+#aee-realtime-camera .button-wrap{display:none!important;}
+#aee-realtime-camera [title="grant webcam access"]{display:none!important;}
+#aee-realtime-camera img{width:100%!important;max-height:min(62vh,680px)!important;
+  object-fit:contain!important;}
+.aee-realtime-camera-toolbar{display:flex;align-items:center;gap:12px;margin:0 0 14px;}
+.aee-realtime-camera-toolbar .aee-realtime-panel-icon{width:42px;height:42px;}
+.aee-realtime-camera-title{min-width:0;flex:1;}
+.aee-realtime-camera-title strong{display:block;color:#e2e8f0;font-size:.95rem;font-weight:750;}
+.aee-realtime-camera-title span{display:block;margin-top:3px;color:#8291a7;font-size:.7rem;}
+.aee-realtime-balanced-badge{flex:none;padding:7px 10px;border:1px solid rgba(52,211,153,.22);
+  border-radius:999px;color:#a7f3d0;background:rgba(16,185,129,.08);
+  font-size:.66rem;font-weight:750;letter-spacing:.03em;}
+.aee-realtime-enable{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:8px;
+  min-height:40px;padding:0 13px;border:1px solid rgba(96,165,250,.28);border-radius:12px;
+  color:#dbeafe;background:linear-gradient(145deg,rgba(37,99,235,.2),rgba(79,70,229,.16));
+  font:700 .72rem Inter,system-ui,sans-serif;cursor:pointer;
+  transition:transform .16s,border-color .16s,background .16s;}
+.aee-realtime-enable:hover:not(:disabled){transform:translateY(-1px);
+  border-color:rgba(96,165,250,.55);background:rgba(37,99,235,.25);}
+.aee-realtime-enable:focus-visible{outline:2px solid #60a5fa;outline-offset:3px;}
+.aee-realtime-enable:disabled{opacity:.7;cursor:wait;}
+.aee-realtime-enable[data-state="active"]{color:#a7f3d0;border-color:rgba(52,211,153,.3);
+  background:rgba(16,185,129,.09);cursor:default;}
+.aee-realtime-enable svg{width:16px;height:16px;}
 .aee-realtime-panel .aee-realtime-status{min-height:48px;margin:12px 0 0;padding:12px 14px;
   border:1px solid rgba(52,211,153,.15);border-radius:12px;color:#cbd5e1;
   background:linear-gradient(110deg,rgba(16,185,129,.07),rgba(2,6,23,.35));
@@ -2958,6 +2971,14 @@ html[data-theme="light"] .aee-realtime-panel{border-color:rgba(100,116,139,.18);
 html[data-theme="light"] .aee-realtime-panel .label-wrap{color:#334155!important;}
 html[data-theme="light"] .aee-realtime-panel .aee-realtime-status{color:#334155;
   border-color:rgba(100,116,139,.16);background:rgba(241,245,249,.8);}
+html[data-theme="light"] .aee-realtime-camera-title strong{color:#1e293b;}
+html[data-theme="light"] .aee-realtime-camera-title span{color:#64748b;}
+html[data-theme="light"] .aee-realtime-balanced-badge{color:#047857;
+  border-color:rgba(5,150,105,.2);background:rgba(16,185,129,.07);}
+html[data-theme="light"] .aee-realtime-enable{color:#1d4ed8;background:#eff6ff;
+  border-color:rgba(59,130,246,.23);}
+html[data-theme="light"] .aee-realtime-enable[data-state="active"]{color:#047857;
+  background:#ecfdf5;border-color:rgba(5,150,105,.22);}
 html[data-theme="light"] .aee-realtime-summary{border-color:rgba(100,116,139,.17);
   background:linear-gradient(110deg,rgba(255,255,255,.95),rgba(243,247,252,.8));}
 html[data-theme="light"] .aee-realtime-summary-copy strong,
@@ -2979,6 +3000,10 @@ html[data-theme="light"] .aee-realtime-notice strong{color:#1d4ed8;}
   .aee-realtime-summary{align-items:flex-start;flex-direction:column;gap:11px;padding:14px;}
   .aee-realtime-local-badge{align-self:flex-start;}
   .aee-realtime-panel{padding:13px;border-radius:17px;}
+  .aee-realtime-camera-toolbar{align-items:flex-start;flex-wrap:wrap;}
+  .aee-realtime-camera-title{flex:1 1 calc(100% - 60px);}
+  .aee-realtime-balanced-badge{margin-left:54px;}
+  .aee-realtime-enable{margin-left:auto;}
 }
 .aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
   border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
@@ -7011,6 +7036,86 @@ _JS_HEAD = r"""
     }, 350);
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:false}}));
   }
+  function setAeeRealtimeCameraButton(state){
+    const button = document.querySelector('[data-aee-realtime-enable]');
+    if (!button) return;
+    const labels = {
+      ready:'Enable live camera',
+      connecting:'Connecting to camera…',
+      active:'Live camera active',
+      error:'Try camera again'
+    };
+    button.dataset.state = state;
+    button.disabled = state === 'connecting';
+    button.setAttribute('aria-pressed', String(state === 'active'));
+    button.setAttribute('aria-label', labels[state] || labels.ready);
+    const label = button.querySelector('span');
+    if (label) label.textContent = labels[state] || labels.ready;
+  }
+  function clearAeeRealtimeCameraStart(){
+    if (window.__aeeRealtimeCameraObserver){
+      window.__aeeRealtimeCameraObserver.disconnect();
+      window.__aeeRealtimeCameraObserver = null;
+    }
+    if (window.__aeeRealtimeCameraStartTimer){
+      window.clearTimeout(window.__aeeRealtimeCameraStartTimer);
+      window.__aeeRealtimeCameraStartTimer = null;
+    }
+  }
+  function stopAeeRealtimeCamera(){
+    clearAeeRealtimeCameraStart();
+    const camera = document.getElementById('aee-realtime-camera');
+    const capture = camera && camera.querySelector('.button-wrap .capture-button');
+    if (capture && capture.querySelector('[title="stop recording"]')) capture.click();
+    setAeeRealtimeCameraButton('ready');
+  }
+  function startAeeRealtimeCamera(){
+    if (!document.body.classList.contains('aee-detection-route-realtime')) return;
+    const camera = document.getElementById('aee-realtime-camera');
+    if (!camera){
+      setAeeRealtimeCameraButton('error');
+      return;
+    }
+    const capture = camera.querySelector('.button-wrap .capture-button');
+    if (capture){
+      if (!capture.querySelector('[title="stop recording"]')) capture.click();
+      setAeeRealtimeCameraButton('active');
+      return;
+    }
+    const permission = camera.querySelector('[title="grant webcam access"] button');
+    if (!permission){
+      setAeeRealtimeCameraButton('error');
+      return;
+    }
+    clearAeeRealtimeCameraStart();
+    setAeeRealtimeCameraButton('connecting');
+    const observer = new MutationObserver(() => {
+      const liveCapture = camera.querySelector('.button-wrap .capture-button');
+      if (!liveCapture) return;
+      clearAeeRealtimeCameraStart();
+      if (!document.body.classList.contains('aee-detection-route-realtime')){
+        stopAeeRealtimeCamera();
+        return;
+      }
+      if (!liveCapture.querySelector('[title="stop recording"]')) liveCapture.click();
+      setAeeRealtimeCameraButton('active');
+    });
+    window.__aeeRealtimeCameraObserver = observer;
+    observer.observe(camera, {childList:true, subtree:true});
+    permission.click();
+    window.__aeeRealtimeCameraStartTimer = window.setTimeout(() => {
+      clearAeeRealtimeCameraStart();
+      setAeeRealtimeCameraButton('error');
+    }, 10000);
+  }
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-aee-realtime-enable]')){
+      startAeeRealtimeCamera();
+    }
+  });
+  document.addEventListener('aee:detection-route', event => {
+    if (event.detail.route !== 'realtime') stopAeeRealtimeCamera();
+  });
   function navigateAeeDetection(route){
     if (aeeAccessRequired()){
       activateAeeUtilityWindow('account');
@@ -7352,6 +7457,12 @@ _JS_HEAD = r"""
     'Fast · 0.5 samples/sec':'سريع · 0.5 عينة/ثانية',
     'Fast mode analyzes half as many frames, which can miss brief events.':'يحلل الوضع السريع نصف عدد الإطارات، وقد يفوّت الأحداث القصيرة.',
     'Choose fewer sampled frames for faster review, or keep balanced coverage.':'اختر إطارات أقل لتسريع المراجعة، أو احتفظ بالتغطية المتوازنة.',
+    'Live camera':'الكاميرا المباشرة',
+    'Balanced · 0.25 confidence':'متوازن · ثقة 0.25',
+    'Enable live camera':'تشغيل الكاميرا المباشرة',
+    'Connecting to camera…':'جارٍ الاتصال بالكاميرا…',
+    'Live camera active':'الكاميرا المباشرة نشطة',
+    'Try camera again':'حاول تشغيل الكاميرا مجدداً',
     'Evidence intake':'استيراد الأدلة','batch supported':'يدعم المعالجة الدفعية',
     'Fingerprint every byte before analysis':'تحقق من سلامة البيانات قبل التحليل',
     'READY':'جاهز','Supported video formats':'تنسيقات الفيديو المدعومة',
@@ -11434,7 +11545,7 @@ def build_ui():
                     gr.HTML('''<div class="aee-realtime-summary">
                       <div class="aee-realtime-summary-copy">
                         <strong>Live visual screening</strong>
-                        <span>AI overlays are applied to each incoming camera frame as it is analyzed.</span>
+                        <span>Detections appear directly on the live camera view. Processing speed depends on your device.</span>
                       </div>
                       <span class="aee-realtime-local-badge">Processed on this device</span>
                     </div>''')
@@ -11447,57 +11558,43 @@ def build_ui():
                     </div>''')
                     with gr.Row(elem_classes=["aee-realtime-layout"]):
                         with gr.Column(elem_classes=["aee-realtime-panel"]):
-                            gr.HTML('''<div class="aee-realtime-panel-heading">
+                            gr.HTML('''<div class="aee-realtime-camera-toolbar">
                               <span class="aee-realtime-panel-icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                   stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                  <rect x="3" y="6" width="13" height="12" rx="2"/>
-                                  <path d="m16 10 5-3v10l-5-3"/>
+                                  <rect x="3" y="5" width="18" height="14" rx="3"/>
+                                  <circle cx="12" cy="12" r="3"/>
+                                  <path d="m7 5 1-2h8l1 2"/>
                                 </svg>
                               </span>
-                              <div><strong>Camera feed</strong>
-                                <span>Allow camera access to start the live stream</span></div>
-                              <span class="aee-realtime-feed-badge">Input</span>
+                              <div class="aee-realtime-camera-title">
+                                <strong>Live camera</strong>
+                                <span>Bounding boxes are drawn directly on the video.</span>
+                              </div>
+                              <span class="aee-realtime-balanced-badge">
+                                Balanced · 0.25 confidence</span>
+                              <button type="button" class="aee-realtime-enable"
+                                data-aee-realtime-enable data-state="ready"
+                                aria-label="Enable live camera" aria-pressed="false">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                  aria-hidden="true">
+                                  <path d="M14 10 21 6v12l-7-4"/>
+                                  <rect x="3" y="6" width="12" height="12" rx="2"/>
+                                </svg>
+                                <span>Enable live camera</span>
+                              </button>
                             </div>''')
                             realtime_camera = gr.Image(
-                                label="Camera preview", show_label=False,
+                                label="Live camera", show_label=False,
                                 sources=["webcam"], image_mode="RGB",
                                 streaming=True, type="numpy",
-                                height=360,
-                                elem_id="aee-realtime-camera")
-                            realtime_confidence = gr.Slider(
-                                minimum=0.05, maximum=0.95,
-                                value=_REALTIME_DEFAULT_CONFIDENCE, step=0.05,
-                                label="Minimum confidence",
-                                info="Lower values favor recall; higher values reduce weak detections.")
-                            realtime_image_size = gr.Dropdown(
-                                choices=list(_REALTIME_IMAGE_SIZES),
-                                value=_REALTIME_DEFAULT_IMAGE_SIZE,
-                                label="Input resolution",
-                                info="640 is a balanced starting point; 960 can help with small objects but is slower.")
-                            gr.HTML('''<p class="aee-realtime-confidence-note">
-                              Confidence is a model score, not a probability that an event occurred.
-                              Tune it using labeled footage from your cameras.
-                            </p>''')
-                        with gr.Column(elem_classes=["aee-realtime-panel"]):
-                            gr.HTML('''<div class="aee-realtime-panel-heading">
-                              <span class="aee-realtime-panel-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                  <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>
-                                  <path d="M8 12h8"/>
-                                </svg>
-                              </span>
-                              <div><strong>AI detection overlay</strong>
-                                <span>Boxes identify detected objects and model scores</span></div>
-                              <span class="aee-realtime-feed-badge">Output</span>
-                            </div>''')
-                            realtime_output = gr.Image(
-                                label="Live detections", show_label=False,
-                                type="numpy", height=360,
-                                interactive=False, elem_id="aee-realtime-output")
+                                height=520,
+                                stream_every=_REALTIME_STREAM_INTERVAL,
+                                elem_id="aee-realtime-camera",
+                                elem_classes=["aee-realtime-camera"])
                             realtime_status = gr.Markdown(
-                                "Start the camera preview to begin live detection.",
+                                "Enable the camera to begin live detection.",
                                 elem_classes=["aee-realtime-status"],
                                 elem_id="aee-realtime-status")
                             gr.HTML('''<div class="aee-realtime-legend" aria-label="Bounding-box colors">
@@ -11510,13 +11607,11 @@ def build_ui():
                       fire/smoke, people, and tools. Detection quality depends on camera,
                       lighting, distance, and the supplied model; no accuracy level is guaranteed.
                     </p>''')
-                realtime_frame_count = gr.State(0)
                 realtime_camera.stream(
                     fn=_realtime_detect_frame,
-                    inputs=[realtime_camera, realtime_confidence,
-                            realtime_frame_count, realtime_image_size],
-                    outputs=[realtime_output, realtime_status, realtime_frame_count],
-                    stream_every=0.25, concurrency_limit=1,
+                    inputs=[realtime_camera],
+                    outputs=[realtime_camera, realtime_status],
+                    stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")
 
         gr.HTML(f"""<div class="aee-footer">
