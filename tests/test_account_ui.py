@@ -8,7 +8,6 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 import zipfile
 
@@ -24,6 +23,126 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
+    def test_detector_backend_supports_yolo_and_rtdetr_manifests(self):
+        yolo_backend = object()
+        rtdetr_backend = object()
+        with (
+            patch.object(app, "YOLO", yolo_backend),
+            patch.object(app, "RTDETR", rtdetr_backend),
+        ):
+            self.assertIs(app.Ensemble._model_class("yolo"), yolo_backend)
+            self.assertIs(app.Ensemble._model_class("rtdetr"), rtdetr_backend)
+        with self.assertRaisesRegex(ValueError, "Unsupported detector backend"):
+            app.Ensemble._model_class("unknown")
+
+    def test_ensemble_defers_loading_models_outside_the_fast_profile(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            model_entries = []
+            for name, size in (("large", 30), ("small", 1), ("medium", 10)):
+                filename = f"{name}.pt"
+                (root / filename).write_bytes(b"x" * size)
+                model_entries.append({
+                    "name": name, "path": filename, "conf": 0.1,
+                })
+            manifest = root / "ensemble_manifest.json"
+            manifest.write_text(json.dumps(model_entries), encoding="utf-8")
+            model_loader = Mock(
+                return_value=SimpleNamespace(names={0: "Firearm"})
+            )
+            with (
+                patch.object(app, "MODEL_DIR", root),
+                patch.object(app, "MANIFEST", manifest),
+                patch.object(app, "_resolve_inference_device",
+                             return_value=("cpu", False)),
+                patch.object(app, "YOLO", model_loader),
+                patch.object(app.CFG, "MAX_ACTIVE_MODELS", 0),
+                patch.object(app.CFG, "FAST_MODEL_COUNT", 1),
+            ):
+                ensemble = app.Ensemble()
+                info = ensemble.info
+
+        self.assertEqual(model_loader.call_count, 1)
+        self.assertEqual(
+            [member["loaded"] for member in info["members"]],
+            [False, True, False],
+        )
+        self.assertEqual(info["fast_models"], ["small"])
+
+    def test_standard_detector_profile_uses_few_small_models_at_lower_resolution(self):
+        class FakeDetector:
+            names = {0: "Firearm"}
+
+            def __init__(self):
+                self.calls = []
+
+            def predict(self, **kwargs):
+                self.calls.append(kwargs)
+                box = SimpleNamespace(
+                    cls=[0], conf=[0.95],
+                    xyxy=app.np.asarray([[1, 2, 30, 40]], dtype=int),
+                )
+                return [SimpleNamespace(boxes=[box])]
+
+        detectors = [FakeDetector() for _ in range(3)]
+        ensemble = app.Ensemble.__new__(app.Ensemble)
+        ensemble.models = [
+            {
+                "model": detector, "name": name, "size_mb": size,
+                "size_bytes": size,
+                "enabled": True, "names": detector.names, "conf": 0.1,
+                "error_count": 0, "last_error": None, "infer_ms": 0.0,
+            }
+            for detector, name, size in zip(
+                detectors, ("large", "small", "medium"), (100, 1, 20)
+            )
+        ]
+        ensemble.device = "cpu"
+        ensemble.half = False
+
+        with patch.object(app.CFG, "FAST_MODEL_COUNT", 1):
+            standard = ensemble.detect(app.np.zeros((64, 64, 3), dtype=app.np.uint8))
+            enhanced = ensemble.detect(
+                app.np.zeros((64, 64, 3), dtype=app.np.uint8),
+                high_accuracy=True,
+            )
+
+        self.assertEqual(len(standard), 1)
+        self.assertEqual(len(enhanced), 3)
+        self.assertEqual([len(detector.calls) for detector in detectors], [1, 2, 1])
+        self.assertEqual(detectors[1].calls[0]["imgsz"], 512)
+        self.assertFalse(detectors[1].calls[0]["augment"])
+        self.assertEqual(detectors[0].calls[0]["imgsz"], app.CFG.IMG)
+        self.assertTrue(detectors[0].calls[0]["augment"])
+
+    def test_detector_inference_errors_are_counted_and_retained(self):
+        class BrokenDetector:
+            names = {0: "Firearm"}
+
+            def predict(self, **_kwargs):
+                raise RuntimeError("inference failed")
+
+        ensemble = app.Ensemble.__new__(app.Ensemble)
+        ensemble.models = [{
+            "model": BrokenDetector(), "name": "broken", "size_mb": 1,
+            "size_bytes": 1,
+            "enabled": True, "names": {0: "Firearm"}, "conf": 0.1,
+            "error_count": 0, "last_error": None, "infer_ms": 0.0,
+        }]
+        ensemble.device = "cpu"
+        ensemble.half = False
+        ensemble.errors = []
+
+        with patch.object(app.log, "error"):
+            detections = ensemble.detect(
+                app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+            )
+
+        self.assertEqual(detections, [])
+        self.assertEqual(ensemble.models[0]["error_count"], 1)
+        self.assertIn("inference failed", ensemble.models[0]["last_error"])
+        self.assertEqual(ensemble.errors[-1]["stage"], "inference")
+
     def test_detection_mode_picker_preserves_the_existing_upload_workspace(self):
         source = "\n".join(
             value for value in _nested_code_constants(app.build_ui.__code__)

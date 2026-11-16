@@ -18,6 +18,10 @@ except ImportError:
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
+try:
+    from ultralytics import RTDETR
+except ImportError:
+    RTDETR = None
 import account_client as _account_client
 import update_client as _update_client
 
@@ -756,6 +760,7 @@ class CFG:
     INFERENCE_DEVICE = "auto"  # "auto", "cpu", or "cuda"
     INFERENCE_HALF = True      # use FP16 on CUDA when enabled
     MAX_ACTIVE_MODELS = 0      # 0 = all; otherwise use first N manifest models
+    FAST_MODEL_COUNT = 2       # Standard mode uses the smallest enabled models
     CLIP_PAD, HL_PAD, HL_THRESH = 2.0, 5.0, 6
     W_WPN, W_MULTI, W_AUD = 15, 25, 6
     W_WPN_PERSON, W_WPN_FACE, W_PERSON_ONLY = 20, 15, -5
@@ -1154,8 +1159,11 @@ def has_audio(p):
             "-show_entries","stream=codec_type","-of","csv=p=0",str(p)],
             capture_output=True, text=True, timeout=10,
             **_quiet_subprocess_kwargs())
+        if r.returncode:
+            raise RuntimeError(r.stderr[-300:])
         return "audio" in r.stdout.lower()
-    except Exception:
+    except Exception as exc:
+        log.warning("Audio stream probe failed for %s: %s", p, exc)
         return False
 
 def probe_dur(p):
@@ -1241,8 +1249,11 @@ def _resolve_inference_device():
 
 class Ensemble:
     _i = None
+
     def __init__(self):
         self.models = []
+        self.errors = []
+        self._model_load_lock = threading.RLock()
         self.device, self.half = _resolve_inference_device()
         try:
             self.device_name = (
@@ -1253,35 +1264,106 @@ class Ensemble:
             log.warning("Could not identify the inference device: %s", exc)
             self.device_name = str(self.device)
         if MANIFEST.exists():
-            for e in json.loads(MANIFEST.read_text()):
-                model_path = _resolve_model_path(e["path"])
-                if not model_path.is_file():
-                    log.warning("model file is missing: %s", model_path)
+            try:
+                manifest_entries = json.loads(MANIFEST.read_text(encoding="utf-8"))
+                if not isinstance(manifest_entries, list):
+                    raise ValueError("model manifest must contain a list")
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+                self._record_error("manifest", "load", exc)
+                manifest_entries = []
+            for entry in manifest_entries:
+                if not isinstance(entry, dict):
+                    self._record_error("manifest", "load",
+                                       ValueError("model entry must be an object"))
                     continue
+                name = str(entry.get("name") or entry.get("path") or "unnamed model")
                 try:
-                    m = YOLO(str(model_path))
-                    size_mb = model_path.stat().st_size / 1e6
+                    model_path = _resolve_model_path(entry["path"])
+                    if not model_path.is_file():
+                        raise FileNotFoundError(f"model file is missing: {model_path}")
+                    backend = str(entry.get("backend", "yolo")).strip().lower()
+                    model_class = self._model_class(backend)
+                    size_bytes = model_path.stat().st_size
                     self.models.append({
-                        "yolo": m, "name": e["name"],
-                        "conf": e.get("conf", 0.15),
-                        "base_conf": e.get("conf", 0.15),
-                        "names": m.names,
-                        "classes": list(m.names.values()) if isinstance(m.names, dict)
-                                   else list(m.names),
-                        "size_mb": round(size_mb, 1),
-                        "source": e.get("source", ""),
+                        "model": None, "model_class": model_class,
+                        "backend": backend, "path": model_path,
+                        "name": name, "conf": entry.get("conf", 0.15),
+                        "base_conf": entry.get("conf", 0.15),
+                        "names": {}, "classes": [],
+                        "size_bytes": size_bytes,
+                        "size_mb": round(size_bytes / 1e6, 1),
+                        "source": entry.get("source", ""),
                         "enabled": True, "infer_ms": 0.0,
+                        "load_attempted": False, "error_count": 0,
+                        "last_error": None,
                     })
-                except Exception as ex:
-                    log.warning("load %s: %s", e["name"], ex)
+                except (KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
+                    self._record_error(name, "load", exc)
         model_limit = max(0, int(CFG.MAX_ACTIVE_MODELS))
         for index, model in enumerate(self.models):
             model["enabled"] = model_limit == 0 or index < model_limit
+        fast_models = self._selected_models(high_accuracy=False)
+        for model in fast_models:
+            self._load_model(model)
         active_count = sum(1 for model in self.models if model["enabled"])
         precision = "FP16" if self.half else "FP32"
-        log.info("Ensemble: %d/%d active models · device=%s (%s) · %s",
-                 active_count, len(self.models), self.device_name,
+        log.info("Ensemble: %d fast / %d enabled models · device=%s (%s) · %s",
+                 len(fast_models), active_count, self.device_name,
                  self.device, precision)
+
+    @staticmethod
+    def _model_class(backend):
+        if backend == "yolo":
+            return YOLO
+        if backend == "rtdetr":
+            if RTDETR is None:
+                raise RuntimeError(
+                    "RT-DETR requires a newer Ultralytics runtime."
+                )
+            return RTDETR
+        raise ValueError(f"Unsupported detector backend: {backend}")
+
+    def _record_error(self, name, stage, exc, model=None, log_error=True):
+        message = str(exc).strip() or type(exc).__name__
+        if model is not None:
+            model["error_count"] += 1
+            model["last_error"] = message[:400]
+        self.errors.append({
+            "model": str(name), "stage": str(stage), "message": message[:400],
+        })
+        del self.errors[:-50]
+        if log_error:
+            log.error("%s failed for %s: %s", stage, name, message,
+                      exc_info=(type(exc), exc, exc.__traceback__))
+
+    def _load_model(self, entry):
+        if entry["model"] is not None:
+            return True
+        with self._model_load_lock:
+            if entry["model"] is not None:
+                return True
+            if entry["load_attempted"]:
+                return False
+            entry["load_attempted"] = True
+            try:
+                model = entry["model_class"](str(entry["path"]))
+                names = model.names
+                entry["model"] = model
+                entry["names"] = names
+                entry["classes"] = (
+                    list(names.values()) if isinstance(names, dict) else list(names)
+                )
+                return True
+            except Exception as exc:
+                self._record_error(entry["name"], "model load", exc, entry)
+                return False
+
+    def _selected_models(self, high_accuracy):
+        enabled = [model for model in self.models if model.get("enabled", True)]
+        if high_accuracy:
+            return enabled
+        fast = sorted(enabled, key=lambda model: (model["size_bytes"], model["name"]))
+        return fast[:max(1, int(CFG.FAST_MODEL_COUNT))]
 
     @classmethod
     def get(cls):
@@ -1291,7 +1373,9 @@ class Ensemble:
     def reset(self):
         for m in self.models:
             try:
-                model = m["yolo"]
+                model = m["model"]
+                if model is None:
+                    continue
                 if hasattr(model, "predictor"):
                     model.predictor = None
             except Exception as e:
@@ -1303,46 +1387,68 @@ class Ensemble:
 
     def detect(self, frame, high_accuracy=False):
         out = []
-        for e in self.models:
-            if not e.get("enabled", True): continue
+        selected_models = self._selected_models(high_accuracy)
+        image_size = CFG.IMG if high_accuracy else min(CFG.IMG, 512)
+        for e in selected_models:
+            if not self._load_model(e):
+                continue
             t0 = time.perf_counter()
             try:
                 # The application assigns cross-model track IDs in Tracker below.
                 # Per-model Ultralytics tracking duplicates that work and its IDs
                 # are discarded when results from the ensemble are merged.
-                r = e["yolo"].predict(source=frame, conf=e["conf"], iou=CFG.IOU,
-                    imgsz=CFG.IMG, verbose=False,
+                predictions = e["model"].predict(source=frame, conf=e["conf"], iou=CFG.IOU,
+                    imgsz=image_size, verbose=False,
                     device=self.device, half=self.half,
-                    augment=bool(high_accuracy))[0]
-            except Exception as ex:
-                log.debug("%s: %s", e["name"], ex); continue
-            e["infer_ms"] = (time.perf_counter() - t0) * 1000.
-            if r.boxes is None: continue
-            for b in r.boxes:
-                cid = int(b.cls[0]); nm = e["names"]
-                raw = nm.get(cid, cid) if isinstance(nm, dict) else nm[cid]
-                label = norm(raw)
-                conf = float(b.conf[0])
-                gate = _resolve_conf_gate(e["name"], label)
-                if gate is not None and conf < gate:
+                    augment=bool(high_accuracy))
+                if not predictions:
                     continue
-                out.append({"label": label, "confidence": conf,
-                    "bbox": tuple(map(int, b.xyxy[0].tolist())),
-                    "source": e["name"],
-                    "track_id": -1})
+                r = predictions[0]
+                if r.boxes is None:
+                    continue
+                for b in r.boxes:
+                    cid = int(b.cls[0]); nm = e["names"]
+                    raw = nm.get(cid, cid) if isinstance(nm, dict) else nm[cid]
+                    label = norm(raw)
+                    conf = float(b.conf[0])
+                    gate = _resolve_conf_gate(e["name"], label)
+                    if gate is not None and conf < gate:
+                        continue
+                    out.append({"label": label, "confidence": conf,
+                        "bbox": tuple(map(int, b.xyxy[0].tolist())),
+                        "source": e["name"],
+                        "track_id": -1})
+            except Exception as ex:
+                previous_error = e.get("last_error")
+                next_error_count = e["error_count"] + 1
+                should_log = (
+                    next_error_count == 1 or str(ex)[:400] != previous_error
+                    or next_error_count % 50 == 0
+                )
+                self._record_error(e["name"], "inference", ex, e,
+                                   log_error=should_log)
+            finally:
+                e["infer_ms"] = (time.perf_counter() - t0) * 1000.
         return out
 
     @property
     def info(self):
         active = [m for m in self.models if m.get("enabled", True)]
-        return {"loaded": bool(active), "n_models": len(active),
-                "n_total": len(self.models),
+        fast_models = self._selected_models(high_accuracy=False)
+        return {"loaded": any(m["model"] is not None for m in active),
+                "n_models": len(active), "n_total": len(self.models),
                 "device": self.device_name,
                 "precision": "FP16" if self.half else "FP32",
                 "names": [m["name"] for m in active],
+                "fast_models": [m["name"] for m in fast_models],
+                "errors": list(self.errors),
                 "classes": sorted({n for m in active for n in m["classes"]}),
                 "members": [{"name": m["name"], "enabled": m["enabled"],
                              "conf": m["conf"], "size_mb": m["size_mb"],
+                             "backend": m["backend"],
+                             "loaded": m["model"] is not None,
+                             "error_count": m["error_count"],
+                             "last_error": m["last_error"],
                              "classes": m["classes"], "source": m["source"],
                              "infer_ms": m["infer_ms"]} for m in self.models]}
 
@@ -1638,6 +1744,15 @@ def grad_cam(model, frame, bbox=None):
     return None, None
 
 
+def _cam_model(ensemble, source=None):
+    for entry in ensemble.models:
+        if entry.get("backend") != "yolo" or entry.get("model") is None:
+            continue
+        if source is None or entry.get("name") == source:
+            return entry["model"]
+    return None
+
+
 class CAMCache:
     def __init__(self):
         self.items = []
@@ -1668,9 +1783,10 @@ class CAMCache:
                     '<div class="aee-empty-icon">🔍</div>'
                     '<div class="aee-empty-title">No CAM heatmaps yet</div>'
                     '<div class="aee-empty-sub">'
-                    'EigenCAM activation maps are generated <b>per weapon detection</b> '
-                    'during analysis. They appear here as soon as the pipeline finds '
-                    'a weapon and completes one forward pass.<br><br>'
+                    'EigenCAM activation maps are generated for up to 48 weapon detections '
+                    'when a compatible YOLO detector is available. They appear here as '
+                    'soon as the pipeline finds a weapon and completes an activation pass.'
+                    '<br><br>'
                     'If the pipeline ran but produced no heatmaps, verify that the '
                     'uploaded clip actually contains a detectable weapon — heavy '
                     'blur, motion blur, or extreme occlusion will yield no detections.'
@@ -1701,7 +1817,8 @@ def save_capture(frame, det, ens, out_dir, idx, explain=True, tracker=None,
     vis = frame.copy()
     if explain and ens.models:
         if cam_result is _CAM_RESULT_UNSET:
-            cam_result = grad_cam(ens.models[0]["yolo"], frame, det["bbox"])
+            model = _cam_model(ens, det.get("source"))
+            cam_result = grad_cam(model, frame, det["bbox"]) if model else (None, None)
         _, cam_blend = cam_result
         if cam_blend is not None:
             vis = cv2.addWeighted(cam_blend, 0.4, vis, 0.6, 0)
@@ -1730,7 +1847,8 @@ def save_capture(frame, det, ens, out_dir, idx, explain=True, tracker=None,
 
 
 def analyze_audio(p, dur):
-    if not p.exists(): return []
+    if not p.exists():
+        raise FileNotFoundError(f"Extracted audio file is missing: {p}")
     try:
         frame_length, hop_length = 2048, 512
         block_frames = 60 * 16000
@@ -1774,8 +1892,8 @@ def analyze_audio(p, dur):
         for e in ev:
             if not m or e["timestamp"]-m[-1]["timestamp"] > 2: m.append(e)
         return m
-    except Exception as e:
-        log.warning("audio: %s", e); return []
+    except Exception as exc:
+        raise RuntimeError(f"Audio analysis failed for {p}: {exc}") from exc
 
 
 def extract_clip(vp, s, e, out, cancel_event=None):
@@ -1852,6 +1970,7 @@ class Processor:
         self.ens = Ensemble.get()
         self.tracker = Tracker()
         self.camcache = CAMCache()
+        self.warnings = []
 
     @staticmethod
     def _prefetch_frames(capture, cancel_event=None, queue_size=4):
@@ -1943,19 +2062,31 @@ class Processor:
         self.ens.reset()
         yield ("stage", "audio", 0.0, "Extracting audio")
         aud = out / "audio.wav"; aev = []
-        try:
-            sh(["ffmpeg","-y","-i",str(video),"-vn","-ac","1","-ar","16000",
-                "-f","wav",str(aud)], cancel_event=cancel_event)
-            if cancel_event is not None and cancel_event.is_set():
+        audio_error = None
+        audio_status = "No audio stream"
+        if has_audio(video):
+            try:
+                sh(["ffmpeg","-y","-i",str(video),"-vn","-ac","1","-ar","16000",
+                    "-f","wav",str(aud)], cancel_event=cancel_event)
+                if cancel_event is not None and cancel_event.is_set():
+                    yield ("cancelled", None); return
+                yield ("stage", "audio", 0.5, "Analyzing loudness")
+                aev = analyze_audio(aud, meta.duration)
+            except InterruptedError:
                 yield ("cancelled", None); return
-            yield ("stage", "audio", 0.5, "Analyzing loudness")
-            aev = analyze_audio(aud, meta.duration)
-        except InterruptedError:
-            yield ("cancelled", None); return
-        except Exception:
-            if cancel_event is not None and cancel_event.is_set():
-                yield ("cancelled", None); return
-        yield ("stage", "audio", 1.0, f"{len(aev)} audio events")
+            except Exception as exc:
+                if cancel_event is not None and cancel_event.is_set():
+                    yield ("cancelled", None); return
+                audio_error = str(exc)[:300]
+                self.warnings.append(
+                    f"{name}: audio analysis unavailable: {audio_error}"
+                )
+                log.warning("Audio analysis failed for %s: %s", name, exc,
+                            exc_info=True)
+            audio_status = f"{len(aev)} audio events"
+        if audio_error:
+            audio_status += f" · audio unavailable: {audio_error}"
+        yield ("stage", "audio", 1.0, audio_status)
 
         yield ("stage", "detect", 0.0, "Running ensemble tracking")
         caps_dir = out / "captures"; caps_dir.mkdir(exist_ok=True)
@@ -1973,6 +2104,7 @@ class Processor:
         t0 = time.time()
         fails = 0
         cam_count = 0
+        cam_attempts = 0
         next_sample_t = 0.0
         last_frame_t = -1.0
         try:
@@ -2012,24 +2144,30 @@ class Processor:
                         if d["label"] in WEAPONS:
                             yield ("detection", d)
                             need_capture = len(caps) < CFG.CAP_MAX
-                            need_cam = cam_count < CFG.CAM_MAX and bool(self.ens.models)
+                            cam_model = _cam_model(self.ens, d["source"])
+                            need_cam = (
+                                cam_count < CFG.CAM_MAX
+                                and cam_attempts < CFG.CAM_MAX
+                                and cam_model is not None
+                            )
                             cam_result = _CAM_RESULT_UNSET
-                            if self.ens.models and (need_capture or need_cam):
+                            if need_cam:
+                                cam_attempts += 1
                                 try:
-                                    cam_result = grad_cam(
-                                        self.ens.models[0]["yolo"], fr, d["bbox"])
+                                    cam_result = grad_cam(cam_model, fr, d["bbox"])
                                 except Exception as ce:
                                     log.warning("CAM inference failed: %s", ce)
                                     cam_result = (None, None)
                             if need_capture:
                                 cp = save_capture(fr, d, self.ens, caps_dir, len(caps),
+                                                  explain=need_cam,
                                                   tracker=self.tracker, video_name=name,
                                                   cam_result=cam_result)
                                 if cp: caps.append(cp)
                             if need_cam:
                                 try:
                                     rec = self.camcache.add(fr, d,
-                                        self.ens.models[0]["yolo"],
+                                        cam_model,
                                         cam_dir, name, cam_count,
                                         cam_result=cam_result)
                                     if rec:
@@ -9551,8 +9689,18 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
         if not valid:
             out = list(EMPTY_OUT); out[9] = "No usable video was found."
             yield tuple(out); return
-        if not Ensemble.get().info["loaded"]:
-            out = list(EMPTY_OUT); out[9] = "Detection models are not ready."
+        model_info = Ensemble.get().info
+        if not model_info["loaded"]:
+            model_errors = model_info.get("errors", [])
+            if model_errors:
+                details = "; ".join(
+                    f"{error['model']} ({error['stage']}): {error['message']}"
+                    for error in model_errors[-3:]
+                )
+                message = f"Detection models are not ready. {details}"
+            else:
+                message = "Detection models are not ready."
+            out = list(EMPTY_OUT); out[9] = message
             yield tuple(out); return
 
         _init_html = ('<div class="aee-load" style="padding:32px;text-align:center;">'
@@ -9742,6 +9890,32 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
                 + history_warnings[0][:300])
         if results:
             history_status += _ANALYSIS_COMPLETE_MARKER
+        if proc.warnings:
+            if history_status:
+                history_status += " "
+            history_status += "Pipeline warnings: " + "; ".join(
+                warning[:300] for warning in proc.warnings[-5:]
+            )
+        detector_errors = Ensemble.get().info.get("errors", [])
+        if detector_errors:
+            unique_errors = []
+            seen_errors = set()
+            for error in detector_errors:
+                key = (error["model"], error["stage"], error["message"])
+                if key not in seen_errors:
+                    seen_errors.add(key)
+                    unique_errors.append(error)
+            error_summary = "; ".join(
+                f"{error['model']} ({error['stage']}): {error['message']}"
+                for error in unique_errors[-3:]
+            )
+            if history_status:
+                history_status += " "
+            history_status += (
+                "Some detector errors were recorded; remaining models continued "
+                "where possible. Check the Ensemble Configuration panel. "
+                + error_summary
+            )
         yield (master_s, pdf_s, caps, sums, caps[0] if caps else None,
                gr.update(choices=classes, value="All"),
                gr.update(choices=classes, value="All"),
@@ -11092,7 +11266,9 @@ def build_ui():
                 with gr.Row(elem_classes=["aee-analysis-options"]):
                     high_accuracy = gr.Checkbox(
                         label="Enhanced accuracy (slower)", value=False,
-                        info="Use test-time augmentation on supported models for difficult or small objects.")
+                        info=("Standard uses the two smallest models at 512px; enhanced "
+                              "mode uses all available models and test-time augmentation "
+                              "for difficult or small objects."))
                     analysis_speed = gr.Dropdown(
                         choices=[
                             ("Balanced · 1 sample/sec", "balanced"),
