@@ -825,10 +825,10 @@ _REALTIME_MODEL_URL = (
     "AI_Evidence_Extractor_Realtime_Weapons.pt"
 )
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
-_REALTIME_BALANCED_CONFIDENCE = 0.25
+_REALTIME_BALANCED_CONFIDENCE = 0.45
 _REALTIME_IMAGE_SIZE = 640
 _REALTIME_FAST_IMAGE_SIZE = 512
-_REALTIME_STREAM_INTERVAL = 0.1
+_REALTIME_STREAM_INTERVAL = 0.05
 _REALTIME_MODEL_LOCK = threading.RLock()
 _REALTIME_MODEL = None
 _REALTIME_MODEL_ERROR = None
@@ -989,7 +989,7 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
             result = model.predict(
                 source=model_image, conf=_REALTIME_BALANCED_CONFIDENCE,
                 imgsz=image_size,
-                iou=0.5, verbose=False, device=device, half=half,
+                iou=0.5, max_det=20, verbose=False, device=device, half=half,
             )[0]
         boxes_payload = []
         boxes = result.boxes
@@ -1006,7 +1006,10 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
                 raise ValueError("The live detection model returned malformed boxes.")
             names = model.names
             for x1, y1, x2, y2, score, raw_class_id in detection_rows:
-                if not np.isfinite((score, raw_class_id)).all():
+                if (
+                    not np.isfinite((score, raw_class_id)).all()
+                    or score < _REALTIME_BALANCED_CONFIDENCE
+                ):
                     continue
                 class_id = int(raw_class_id)
                 raw_name = (
@@ -2926,7 +2929,7 @@ body.aee-access-required #aee-detection-back{display:none!important;}
 #aee-realtime-camera img,#aee-realtime-camera video[data-testid="webcam-video"]{
   width:100%!important;max-height:min(62vh,680px)!important;
   object-fit:contain!important;}
-.aee-realtime-overlay{position:absolute;z-index:5;pointer-events:none;}
+.aee-realtime-overlay{position:fixed;z-index:9999;pointer-events:none;}
 .aee-realtime-camera-toolbar{display:flex;align-items:center;gap:12px;margin:0 0 14px;}
 .aee-realtime-camera-toolbar .aee-realtime-panel-icon{width:42px;height:42px;}
 .aee-realtime-camera-title{min-width:0;flex:1;}
@@ -7077,18 +7080,18 @@ _JS_HEAD = r"""
   }
   const realtimeOverlayState = {
     camera:null, video:null, parent:null, canvas:null, payload:null,
-    cameraObserver:null, dataObserver:null, resizeObserver:null,
-    parentPosition:null, positionAdjusted:false
+    cameraObserver:null, dataObserver:null, resizeObserver:null
   };
   function drawAeeRealtimeOverlay(){
     const state = realtimeOverlayState;
     if (!state.video || !state.canvas || !state.parent) return;
     const video = state.video;
-    const width = video.offsetWidth;
-    const height = video.offsetHeight;
+    const videoRect = video.getBoundingClientRect();
+    const width = videoRect.width;
+    const height = videoRect.height;
     if (width <= 0 || height <= 0) return;
-    state.canvas.style.left = `${video.offsetLeft}px`;
-    state.canvas.style.top = `${video.offsetTop}px`;
+    state.canvas.style.left = `${videoRect.left}px`;
+    state.canvas.style.top = `${videoRect.top}px`;
     state.canvas.style.width = `${width}px`;
     state.canvas.style.height = `${height}px`;
     const deviceScale = Math.min(window.devicePixelRatio || 1, 2);
@@ -7097,13 +7100,17 @@ _JS_HEAD = r"""
     if (state.canvas.width !== canvasWidth) state.canvas.width = canvasWidth;
     if (state.canvas.height !== canvasHeight) state.canvas.height = canvasHeight;
     const videoStyle = window.getComputedStyle(video);
-    const videoTransform = videoStyle.transform;
-    const transformMatrix = videoTransform && videoTransform !== 'none'
-      ? new DOMMatrixReadOnly(videoTransform) : null;
-    const mirrored = Boolean(transformMatrix &&
-      transformMatrix.a < 0 &&
-      Math.abs(transformMatrix.b) < 0.001 &&
-      Math.abs(transformMatrix.c) < 0.001);
+    let mirrored = false;
+    for (let element = video; element && element !== document.body;
+         element = element.parentElement){
+      const transform = window.getComputedStyle(element).transform;
+      if (!transform || transform === 'none') continue;
+      const matrix = new DOMMatrixReadOnly(transform);
+      if (Math.abs(matrix.b) < 0.001 && Math.abs(matrix.c) < 0.001 &&
+          matrix.a < 0){
+        mirrored = !mirrored;
+      }
+    }
     const context = state.canvas.getContext('2d');
     if (!context) return;
     context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
@@ -7206,19 +7213,10 @@ _JS_HEAD = r"""
       state.video.removeEventListener('loadedmetadata', drawAeeRealtimeOverlay);
       state.video.removeEventListener('resize', drawAeeRealtimeOverlay);
     }
-    if (state.positionAdjusted && state.parent){
-      state.parent.style.position = state.parentPosition;
-    }
-    state.positionAdjusted = false;
     state.video = video || null;
-    state.parent = video && video.parentElement;
+    state.parent = document.body;
     state.canvas = null;
     if (!video || !state.parent) return;
-    if (window.getComputedStyle(state.parent).position === 'static'){
-      state.parentPosition = state.parent.style.position;
-      state.positionAdjusted = true;
-      state.parent.style.position = 'relative';
-    }
     const canvas = document.createElement('canvas');
     canvas.className = 'aee-realtime-overlay';
     canvas.setAttribute('aria-hidden', 'true');
@@ -7248,6 +7246,9 @@ _JS_HEAD = r"""
     readAeeRealtimeOverlay();
     syncAeeRealtimeOverlay();
     window.addEventListener('resize', drawAeeRealtimeOverlay, {passive:true});
+    window.addEventListener('scroll', drawAeeRealtimeOverlay, {
+      passive:true, capture:true
+    });
   }
   function stopAeeRealtimeOverlay(){
     const state = realtimeOverlayState;
@@ -7259,17 +7260,13 @@ _JS_HEAD = r"""
       state.video.removeEventListener('loadedmetadata', drawAeeRealtimeOverlay);
       state.video.removeEventListener('resize', drawAeeRealtimeOverlay);
     }
-    if (state.positionAdjusted && state.parent){
-      state.parent.style.position = state.parentPosition;
-    }
     window.removeEventListener('resize', drawAeeRealtimeOverlay);
+    window.removeEventListener('scroll', drawAeeRealtimeOverlay, true);
     state.camera = null;
     state.video = null;
     state.parent = null;
     state.canvas = null;
     state.payload = null;
-    state.parentPosition = null;
-    state.positionAdjusted = false;
   }
   function stopAeeRealtimeCamera(){
     clearAeeRealtimeCameraStart();
@@ -7670,7 +7667,7 @@ _JS_HEAD = r"""
     'Fast mode analyzes half as many frames, which can miss brief events.':'يحلل الوضع السريع نصف عدد الإطارات، وقد يفوّت الأحداث القصيرة.',
     'Choose fewer sampled frames for faster review, or keep balanced coverage.':'اختر إطارات أقل لتسريع المراجعة، أو احتفظ بالتغطية المتوازنة.',
     'Live camera':'الكاميرا المباشرة',
-    'Confidence · 0.25':'الثقة · 0.25',
+    'Confidence · 0.45':'الثقة · 0.45',
     'Live detection speed':'سرعة الاكتشاف المباشر',
     'Balanced · 640 px':'متوازن · 640 بكسل',
     'Fast · 512 px':'سريع · 512 بكسل',
@@ -11788,7 +11785,7 @@ def build_ui():
                                 <span>Bounding boxes are drawn directly on the video.</span>
                               </div>
                               <span class="aee-realtime-balanced-badge">
-                                Confidence · 0.25</span>
+                                Confidence · 0.45</span>
                               <button type="button" class="aee-realtime-enable"
                                 data-aee-realtime-enable data-state="ready"
                                 aria-label="Enable live camera" aria-pressed="false">
@@ -11806,7 +11803,7 @@ def build_ui():
                                     ("Balanced · 640 px", "balanced"),
                                     ("Fast · 512 px", "fast"),
                                 ],
-                                value="balanced",
+                                value="fast",
                                 label="Live detection speed",
                                 info=(
                                     "Balanced uses 640-pixel input for more detail; "

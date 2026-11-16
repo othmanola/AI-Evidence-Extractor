@@ -36,7 +36,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(source.count('data-aee-detection-mode="'), 2)
         self.assertIn("aee-realtime-detection-window", source)
         self.assertIn("Live camera", source)
-        self.assertIn("Confidence · 0.25", source)
+        self.assertIn("Confidence · 0.45", source)
         self.assertIn("Balanced · 640 px", source)
         self.assertIn("Fast · 512 px", source)
         self.assertIn("Live detection speed", source)
@@ -54,10 +54,11 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("inputs=[realtime_camera, realtime_speed_mode]", source)
         self.assertIn('visible="hidden"', source)
         self.assertIn("_REALTIME_STREAM_INTERVAL", source)
-        self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.1)
+        self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.05)
         self.assertIn("data-aee-realtime-overlay", app._JS_HEAD)
         self.assertIn("data-testid=\"webcam-video\"", app._JS_HEAD)
         application_source = Path(app.__file__).read_text(encoding="utf-8")
+        self.assertIn('value="fast"', application_source)
         image_config = application_source.split(
             "realtime_camera = gr.Image(", 1
         )[1].split(")", 1)[0]
@@ -88,7 +89,10 @@ class AccountUiTests(unittest.TestCase):
         frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
         frame[0, 0] = [11, 22, 33]
         boxes = SimpleNamespace(
-            data=app.np.array([[2, 3, 25, 27, 0.91, 0]], dtype=app.np.float32)
+            data=app.np.array([
+                [2, 3, 25, 27, 0.91, 0],
+                [0, 0, 15, 20, 0.39, 0],
+            ], dtype=app.np.float32)
         )
         model = SimpleNamespace(
             names={0: "Blunt_Weapon"},
@@ -107,6 +111,7 @@ class AccountUiTests(unittest.TestCase):
         ).group(1)
         payload = json.loads(html.unescape(payload_text))
         self.assertEqual((payload["width"], payload["height"]), (32, 32))
+        self.assertEqual(len(payload["boxes"]), 1)
         self.assertEqual(payload["boxes"][0]["coordinates"], [2, 3, 25, 27])
         self.assertEqual(payload["boxes"][0]["label"], "Blunt")
         self.assertAlmostEqual(payload["boxes"][0]["confidence"], 0.91)
@@ -118,14 +123,18 @@ class AccountUiTests(unittest.TestCase):
         ))
         self.assertEqual(inference["conf"], app._REALTIME_BALANCED_CONFIDENCE)
         self.assertEqual(inference["imgsz"], app._REALTIME_IMAGE_SIZE)
+        self.assertEqual(inference["max_det"], 20)
         self.assertEqual(inference["iou"], 0.5)
-        self.assertIn("offsetWidth", app._JS_HEAD)
-        self.assertIn("offsetLeft", app._JS_HEAD)
+        self.assertIn("getBoundingClientRect()", app._JS_HEAD)
+        self.assertIn("appendChild(canvas)", app._JS_HEAD)
+        self.assertIn("state.parent = document.body", app._JS_HEAD)
         self.assertIn("dataContainer", app._JS_HEAD)
         self.assertIn("contentWidth", app._JS_HEAD)
-        self.assertIn("const mirrored = Boolean(transformMatrix", app._JS_HEAD)
+        self.assertIn("for (let element = video;", app._JS_HEAD)
+        self.assertIn("mirrored = !mirrored", app._JS_HEAD)
         self.assertIn("payload.width - x2 : x1", app._JS_HEAD)
         self.assertNotIn("state.canvas.style.transform =", app._JS_HEAD)
+        self.assertEqual(app._REALTIME_BALANCED_CONFIDENCE, 0.45)
         self.assertEqual(
             app._realtime_checkpoint_hash(
                 Path(app.__file__).resolve().parent

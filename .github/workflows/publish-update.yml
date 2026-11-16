@@ -85,11 +85,10 @@ jobs:
             $utf8NoBom
           )
           @"
-          Aligns live detection boxes to mirrored and letterboxed webcam video without
-          mirroring their labels. The verified user-supplied model remains in use.
-          Balanced and optional fast inference settings retain the same threshold.
-          Samples the latest frame every 0.1 seconds; box refresh speed depends on the
-          camera and local inference hardware.
+          Places the box overlay outside mirrored webcam transforms, enables 512-pixel
+          fast mode by default, filters lower-confidence detections, and samples frames
+          every 0.05 seconds. Sub-millisecond detection refresh is not possible; actual
+          detection rate still depends on inference hardware.
           The supplied model is included in new installers and released as a separately
           checksum-verified download for existing installations. Its embedded metadata
           identifies the model license as AGPL-3.0; see MODEL_LICENSES.md in the source.
