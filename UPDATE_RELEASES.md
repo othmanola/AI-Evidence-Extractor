@@ -1,5 +1,8 @@
 # Publishing app updates
 
+Version 1.2.108 automatically restarts into the prepared CUDA runtime after
+live GPU setup succeeds, removing the need to manually close and reopen the app.
+
 Version 1.2.107 fixes live detection to always use Fast 512 px processing and a
 constant 0.30 confidence threshold. The interface displays both settings and
 removes controls that could change them.

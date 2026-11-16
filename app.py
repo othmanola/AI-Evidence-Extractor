@@ -12268,10 +12268,21 @@ def build_ui():
                     except Exception as exc:
                         log.exception("Could not set up live NVIDIA GPU inference")
                         return f"GPU setup failed: {exc}"
+                    try:
+                        _update_client.restart_app()
+                    except Exception as exc:
+                        log.exception(
+                            "GPU setup succeeded, but the app could not restart in CUDA mode"
+                        )
+                        return (
+                            f"GPU setup verified: {result['gpu']} with PyTorch "
+                            f"{result['torch']}, but automatic restart failed: {exc}. "
+                            "Close and reopen the app to start live detection on the GPU."
+                        )
                     return (
                         f"GPU setup verified: {result['gpu']} with PyTorch "
-                        f"{result['torch']}. Close and reopen the app to start "
-                        "live detection on the GPU."
+                        f"{result['torch']}. Restarting now to start live "
+                        "detection on the GPU."
                     )
 
                 realtime_gpu_setup.click(

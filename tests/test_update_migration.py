@@ -157,6 +157,28 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertEqual(command, [str(pythonw.resolve()), str(launcher.resolve())])
         self.assertEqual(cwd, runtime_dir)
 
+    def test_restart_prefers_prepared_cuda_runtime(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "app"
+            data_dir = root / "data"
+            runtime_dir = app_dir / "runtime"
+            standard_pythonw = data_dir / "runtimeenv" / "Scripts" / "pythonw.exe"
+            cuda_venv = data_dir / "runtimeenv_cuda2"
+            cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
+            launcher = app_dir / "desktop_launcher.py"
+            runtime_dir.mkdir(parents=True)
+            standard_pythonw.parent.mkdir(parents=True)
+            cuda_pythonw.parent.mkdir(parents=True)
+            for path in (standard_pythonw, cuda_pythonw, launcher):
+                path.touch()
+            (cuda_venv / ".aee_cuda_ready").touch()
+
+            command, cwd = update_client._restart_command(data_dir, app_dir)
+
+        self.assertEqual(command, [str(cuda_pythonw.resolve()), str(launcher.resolve())])
+        self.assertEqual(cwd, runtime_dir)
+
     def test_restart_uses_bundled_python_when_user_runtime_environment_is_missing(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
