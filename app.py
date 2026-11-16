@@ -1091,8 +1091,10 @@ def _gpu_verification_code():
         "model.predict(source=np.zeros((512, 512, 3), dtype=np.uint8), "
         "imgsz=512, device=0, half=True, verbose=False); "
         "torch.cuda.synchronize(); "
-        "assert next(model.model.parameters()).is_cuda, "
-        "'The live detector did not remain on CUDA'; "
+        "assert model.predictor.model.device.type == 'cuda', "
+        "'The live detector predictor did not use CUDA'; "
+        "assert model.predictor.model.fp16, "
+        "'The live detector did not use FP16 on CUDA'; "
         "print(json.dumps({'torch': torch.__version__, "
         "'gpu': torch.cuda.get_device_name(0)}))"
     )

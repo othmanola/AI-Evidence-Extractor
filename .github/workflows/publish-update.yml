@@ -128,6 +128,10 @@ jobs:
           }
           if ($LASTEXITCODE -ne 0) { throw "Could not publish release $tag." }
 
+          git fetch origin main
+          if ($LASTEXITCODE -ne 0) { throw "Could not fetch the latest main branch." }
+          git switch --create publish-update-feed origin/main
+          if ($LASTEXITCODE -ne 0) { throw "Could not switch to the latest main branch." }
           Copy-Item .\dist\latest.json .\latest.json -Force
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

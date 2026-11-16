@@ -80,6 +80,20 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertTrue(defaults["project_url"].startswith("https://"))
         self.assertTrue(defaults["anon_key"].startswith("sb_publishable_"))
 
+    def test_release_feed_push_starts_from_the_latest_main_commit(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / ".github" / "workflows" / "publish-update.yml").read_text(
+            encoding="utf-8"
+        )
+        fetch = workflow.index("git fetch origin main")
+        switch = workflow.index("git switch --create publish-update-feed origin/main")
+        copy_feed = workflow.index("Copy-Item .\\dist\\latest.json .\\latest.json -Force")
+        push = workflow.index("git push origin HEAD:main")
+
+        self.assertLess(fetch, switch)
+        self.assertLess(switch, copy_feed)
+        self.assertLess(copy_feed, push)
+
     def test_update_package_embeds_connection_defaults_in_compatible_config_file(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)

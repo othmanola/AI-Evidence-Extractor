@@ -298,6 +298,11 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(model.predict.call_args.kwargs["device"], 0)
         self.assertTrue(model.predict.call_args.kwargs["half"])
 
+    def test_gpu_setup_verifies_ultralytics_predictor_device_before_activation(self):
+        verification = app._gpu_verification_code()
+        self.assertIn("model.predictor.model.device.type == 'cuda'", verification)
+        self.assertIn("model.predictor.model.fp16", verification)
+
     def test_realtime_detector_rejects_unsupported_camera_frame(self):
         frame = app.np.zeros((32, 32), dtype=app.np.uint8)
         with patch.object(app, "_load_realtime_model") as load_model:
