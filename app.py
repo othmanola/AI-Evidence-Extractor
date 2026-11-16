@@ -830,7 +830,9 @@ _REALTIME_MODEL_URL = (
     "AI_Evidence_Extractor_Realtime_Weapons.pt"
 )
 _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
-_REALTIME_BALANCED_CONFIDENCE = 0.45
+_REALTIME_CONFIDENCE_MIN = 0.1
+_REALTIME_CONFIDENCE_MAX = 0.75
+_REALTIME_CONFIDENCE_DEFAULT = 0.25
 _REALTIME_IMAGE_SIZE = 640
 _REALTIME_FAST_IMAGE_SIZE = 512
 _REALTIME_STREAM_INTERVAL = 0.05
@@ -968,6 +970,22 @@ def _realtime_image_size(speed_mode):
     if speed_mode == "fast":
         return _REALTIME_FAST_IMAGE_SIZE
     raise ValueError("Live detection speed must be either 'balanced' or 'fast'.")
+
+
+def _realtime_confidence(value):
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Detection sensitivity must be a number.") from exc
+    if (
+        not np.isfinite(confidence)
+        or not _REALTIME_CONFIDENCE_MIN <= confidence <= _REALTIME_CONFIDENCE_MAX
+    ):
+        raise ValueError(
+            "Detection sensitivity must be between "
+            f"{_REALTIME_CONFIDENCE_MIN:.2f} and {_REALTIME_CONFIDENCE_MAX:.2f}."
+        )
+    return confidence
 
 
 def _realtime_device_label(device, half):
@@ -1175,7 +1193,10 @@ def _install_realtime_gpu(progress=None):
     return {"gpu": verified_gpu, "torch": torch_version}
 
 
-def _realtime_detect_frame(frame, speed_mode="balanced"):
+def _realtime_detect_frame(
+    frame, speed_mode="balanced",
+    confidence=_REALTIME_CONFIDENCE_DEFAULT,
+):
     if frame is None:
         return (
             "Enable the camera to begin live detection.",
@@ -1191,6 +1212,7 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
             image = np.clip(image, 0, 255).astype(np.uint8)
         height, width = image.shape[:2]
         image_size = _realtime_image_size(speed_mode)
+        confidence = _realtime_confidence(confidence)
         model = _load_realtime_model()
         device, half = _resolve_inference_device()
         device_label = _realtime_device_label(device, half)
@@ -1198,7 +1220,7 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
         model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         with _REALTIME_MODEL_LOCK:
             result = model.predict(
-                source=model_image, conf=_REALTIME_BALANCED_CONFIDENCE,
+                source=model_image, conf=confidence,
                 imgsz=image_size,
                 iou=0.5, max_det=20, verbose=False, device=device, half=half,
             )[0]
@@ -1219,7 +1241,7 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
             for x1, y1, x2, y2, score, raw_class_id in detection_rows:
                 if (
                     not np.isfinite((score, raw_class_id)).all()
-                    or score < _REALTIME_BALANCED_CONFIDENCE
+                    or score < confidence
                 ):
                     continue
                 class_id = int(raw_class_id)
@@ -1249,20 +1271,25 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
                     "color": color,
                 })
         elapsed = max(time.perf_counter() - started, 0.001)
-        classes = ", ".join(sorted({
-            detection["label"] for detection in boxes_payload
-        })) or "none"
-        count_label = (
-            f"{len(boxes_payload)} detection"
-            f"{'s' if len(boxes_payload) != 1 else ''}"
-        )
         mode_label = (
             f"Fast · {image_size} px"
             if speed_mode == "fast" else f"Balanced · {image_size} px"
         )
+        if boxes_payload:
+            classes = ", ".join(sorted({
+                detection["label"] for detection in boxes_payload
+            }))
+            count_label = (
+                f"{len(boxes_payload)} detection"
+                f"{'s' if len(boxes_payload) != 1 else ''}"
+            )
+            result_label = f"{count_label} · Classes: {classes}"
+        else:
+            result_label = "No detections yet · adjust sensitivity or choose Balanced"
         status = (
-            f"**LIVE** · {device_label} · {mode_label} · {count_label} · "
-            f"Classes: {classes} · {elapsed * 1000:.0f} ms"
+            f"**LIVE** · {device_label} · {mode_label} · "
+            f"Confidence ≥ {confidence:.2f} · {result_label} · "
+            f"{elapsed * 1000:.0f} ms"
         )
         return status, _realtime_overlay_html(width, height, boxes_payload)
     except Exception as exc:
@@ -3279,9 +3306,22 @@ body.aee-access-required #aee-detection-back{display:none!important;}
 .aee-realtime-camera-title{min-width:0;flex:1;}
 .aee-realtime-camera-title strong{display:block;color:#e2e8f0;font-size:.95rem;font-weight:750;}
 .aee-realtime-camera-title span{display:block;margin-top:3px;color:#8291a7;font-size:.7rem;}
-.aee-realtime-balanced-badge{flex:none;padding:7px 10px;border:1px solid rgba(52,211,153,.22);
-  border-radius:999px;color:#a7f3d0;background:rgba(16,185,129,.08);
-  font-size:.66rem;font-weight:750;letter-spacing:.03em;}
+.aee-realtime-gpu-status{margin:12px 0!important;padding:12px 14px!important;
+  border:1px solid rgba(148,163,184,.18)!important;border-radius:13px!important;
+  color:#cbd5e1!important;background:rgba(15,23,42,.45)!important;
+  font-size:.74rem!important;line-height:1.55!important;}
+.aee-realtime-gpu-status.is-connected{border-color:rgba(52,211,153,.28)!important;
+  color:#a7f3d0!important;background:linear-gradient(110deg,
+  rgba(16,185,129,.12),rgba(15,23,42,.4))!important;}
+.aee-realtime-gpu-status.is-connected p:before{display:inline-block;width:8px;height:8px;
+  margin-right:9px;border-radius:50%;background:#34d399;
+  box-shadow:0 0 0 4px rgba(52,211,153,.12);content:"";}
+.aee-realtime-gpu-status.is-cpu{color:#cbd5e1!important;}
+.aee-realtime-sensitivity{margin:0 0 12px!important;padding:12px 14px!important;
+  border:1px solid rgba(148,163,184,.16)!important;border-radius:14px!important;
+  background:rgba(15,23,42,.35)!important;}
+.aee-realtime-sensitivity .label-wrap{color:#dbeafe!important;font-weight:650!important;}
+.aee-realtime-sensitivity .info{color:#94a3b8!important;font-size:.7rem!important;}
 .aee-realtime-enable{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:8px;
   min-height:40px;padding:0 13px;border:1px solid rgba(96,165,250,.28);border-radius:12px;
   color:#dbeafe;background:linear-gradient(145deg,rgba(37,99,235,.2),rgba(79,70,229,.16));
@@ -3328,8 +3368,14 @@ html[data-theme="light"] .aee-realtime-panel .aee-realtime-status{color:#334155;
   border-color:rgba(100,116,139,.16);background:rgba(241,245,249,.8);}
 html[data-theme="light"] .aee-realtime-camera-title strong{color:#1e293b;}
 html[data-theme="light"] .aee-realtime-camera-title span{color:#64748b;}
-html[data-theme="light"] .aee-realtime-balanced-badge{color:#047857;
-  border-color:rgba(5,150,105,.2);background:rgba(16,185,129,.07);}
+html[data-theme="light"] .aee-realtime-gpu-status{color:#334155!important;
+  border-color:rgba(100,116,139,.18)!important;background:rgba(248,250,252,.9)!important;}
+html[data-theme="light"] .aee-realtime-gpu-status.is-connected{color:#047857!important;
+  border-color:rgba(5,150,105,.22)!important;background:#ecfdf5!important;}
+html[data-theme="light"] .aee-realtime-sensitivity{
+  border-color:rgba(100,116,139,.18)!important;background:rgba(248,250,252,.8)!important;}
+html[data-theme="light"] .aee-realtime-sensitivity .label-wrap{color:#1e293b!important;}
+html[data-theme="light"] .aee-realtime-sensitivity .info{color:#64748b!important;}
 html[data-theme="light"] .aee-realtime-enable{color:#1d4ed8;background:#eff6ff;
   border-color:rgba(59,130,246,.23);}
 html[data-theme="light"] .aee-realtime-enable[data-state="active"]{color:#047857;
@@ -3362,7 +3408,6 @@ html[data-theme="light"] .aee-realtime-notice strong{color:#1d4ed8;}
   .aee-realtime-panel{padding:13px;border-radius:17px;}
   .aee-realtime-camera-toolbar{align-items:flex-start;flex-wrap:wrap;}
   .aee-realtime-camera-title{flex:1 1 calc(100% - 60px);}
-  .aee-realtime-balanced-badge{margin-left:54px;}
   .aee-realtime-enable{margin-left:auto;}
 }
 .aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
@@ -8011,12 +8056,13 @@ _JS_HEAD = r"""
     'Fast mode analyzes half as many frames, which can miss brief events.':'يحلل الوضع السريع نصف عدد الإطارات، وقد يفوّت الأحداث القصيرة.',
     'Choose fewer sampled frames for faster review, or keep balanced coverage.':'اختر إطارات أقل لتسريع المراجعة، أو احتفظ بالتغطية المتوازنة.',
     'Live camera':'الكاميرا المباشرة',
-    'Confidence · 0.45':'الثقة · 0.45',
+    'Detection sensitivity':'حساسية الكشف',
+    'Lower values show more candidates but may increase false positives.':'تُظهر القيم الأقل نتائج محتملة أكثر، لكنها قد تزيد النتائج الإيجابية الخاطئة.',
     'Live detection speed':'سرعة الاكتشاف المباشر',
     'Balanced · 640 px':'متوازن · 640 بكسل',
     'Fast · 512 px':'سريع · 512 بكسل',
     'Balanced uses 640-pixel input for more detail; Fast uses 512 pixels to reduce processing time but can miss small objects.':'يستخدم الوضع المتوازن دقة 640 بكسل لتفاصيل أكثر؛ ويستخدم السريع 512 بكسل لتقليل وقت المعالجة وقد يفوّت الأجسام الصغيرة.',
-    'Set up NVIDIA GPU acceleration':'إعداد تسريع GPU من NVIDIA',
+    'Retry GPU connection':'إعادة محاولة الاتصال بوحدة GPU',
     'Enable live camera':'تشغيل الكاميرا المباشرة',
     'Connecting to camera…':'جارٍ الاتصال بالكاميرا…',
     'Live camera active':'الكاميرا المباشرة نشطة',
@@ -12167,8 +12213,6 @@ def build_ui():
                                 <strong>Live camera</strong>
                                 <span>Bounding boxes are drawn directly on the video.</span>
                               </div>
-                              <span class="aee-realtime-balanced-badge">
-                                Confidence · 0.45</span>
                               <button type="button" class="aee-realtime-enable"
                                 data-aee-realtime-enable data-state="ready"
                                 aria-label="Enable live camera" aria-pressed="false">
@@ -12196,6 +12240,19 @@ def build_ui():
                                 elem_id="aee-realtime-speed-mode",
                                 elem_classes=["aee-realtime-speed-mode"],
                             )
+                            realtime_sensitivity = gr.Slider(
+                                minimum=_REALTIME_CONFIDENCE_MIN,
+                                maximum=_REALTIME_CONFIDENCE_MAX,
+                                step=0.05,
+                                value=_REALTIME_CONFIDENCE_DEFAULT,
+                                label="Detection sensitivity",
+                                info=(
+                                    "Lower values show more candidates but may "
+                                    "increase false positives."
+                                ),
+                                elem_id="aee-realtime-sensitivity",
+                                elem_classes=["aee-realtime-sensitivity"],
+                            )
                             realtime_camera = gr.Image(
                                 label="Live camera", show_label=False,
                                 sources=["webcam"], image_mode="RGB",
@@ -12210,22 +12267,36 @@ def build_ui():
                                     realtime_device, realtime_half
                                 )
                                 gpu_status_initial = (
-                                    f"**GPU acceleration active:** {gpu_name}"
+                                    f"**GPU connected** · "
+                                    f"{gpu_name.removeprefix('GPU · ')}"
                                 )
+                                gpu_status_classes = [
+                                    "aee-realtime-gpu-status", "is-connected",
+                                ]
+                            elif os.environ.get("AEE_GPU_AUTOCONNECT_ERROR"):
+                                gpu_status_initial = (
+                                    "**GPU auto-connect failed.** CPU inference "
+                                    "remains active; retry the connection below. "
+                                    "Details are recorded in `desktop.log`."
+                                )
+                                gpu_status_classes = [
+                                    "aee-realtime-gpu-status", "is-cpu",
+                                ]
                             else:
                                 gpu_status_initial = (
-                                    "**CPU inference is active.** Set up an isolated "
-                                    "NVIDIA runtime to run live detection on the GPU. "
-                                    "This downloads CUDA-enabled PyTorch packages, "
-                                    "requires an internet connection and a compatible "
-                                    "NVIDIA driver, and needs an app restart afterward."
+                                    "**CPU inference is active.** Compatible NVIDIA "
+                                    "GPUs are connected automatically at startup; "
+                                    "retry below if the GPU is not detected."
                                 )
+                                gpu_status_classes = [
+                                    "aee-realtime-gpu-status", "is-cpu",
+                                ]
                             realtime_gpu_status = gr.Markdown(
                                 gpu_status_initial,
-                                elem_classes=["aee-realtime-gpu-status"],
+                                elem_classes=gpu_status_classes,
                             )
                             realtime_gpu_setup = gr.Button(
-                                "Set up NVIDIA GPU acceleration",
+                                "Retry GPU connection",
                                 visible=not gpu_available,
                                 variant="secondary",
                                 elem_classes=["aee-realtime-gpu-setup"],
@@ -12250,7 +12321,10 @@ def build_ui():
                     </p>''')
                 realtime_camera.stream(
                     fn=_realtime_detect_frame,
-                    inputs=[realtime_camera, realtime_speed_mode],
+                    inputs=[
+                        realtime_camera, realtime_speed_mode,
+                        realtime_sensitivity,
+                    ],
                     outputs=[realtime_status, realtime_overlay_data],
                     stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")

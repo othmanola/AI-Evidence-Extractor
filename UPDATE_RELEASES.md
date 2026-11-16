@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.106 improves live detection recall with an adjustable sensitivity
+control, automatically connects supported NVIDIA GPUs on startup, and reports
+the connected device with a clearer status.
+
 Version 1.2.89 restores Google sign-in after an in-app update by carrying the
 public Supabase connection settings inside the already-allowlisted
 `update_config.json` file.

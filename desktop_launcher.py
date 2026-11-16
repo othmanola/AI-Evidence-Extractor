@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import ctypes
+import json
 import logging
 import os
 import subprocess
@@ -200,8 +201,111 @@ def show_error(message: str) -> None:
         log.error("Unable to display error dialog: %s", message)
 
 
+def _update_startup_gpu_status(window, message: str) -> None:
+    try:
+        window.evaluate_js(
+            "(function(){var status=document.getElementById('startup-status');"
+            "if(status)status.textContent=" + json.dumps(message) + ";})();"
+        )
+    except Exception as exc:
+        log.debug("Could not update GPU setup splash status: %s", exc)
+
+
+def _launch_prepared_cuda_runtime(window=None) -> bool:
+    if sys.platform != "win32":
+        return False
+
+    cuda_venv = APP_DATA / "runtimeenv_cuda2"
+    cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
+    if not (cuda_venv / ".aee_cuda_ready").is_file() or not cuda_pythonw.is_file():
+        return False
+    if os.path.normcase(str(Path(sys.executable).resolve())) == os.path.normcase(
+        str(cuda_pythonw.resolve())
+    ):
+        return False
+
+    launcher = APP_DIR / "desktop_launcher.py"
+    if not launcher.is_file():
+        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = (
+            "The installed desktop launcher was not found."
+        )
+        log.error("Could not restart in CUDA mode: %s is missing", launcher)
+        return False
+    env = os.environ.copy()
+    env.update({
+        "AEE_APP_DIR": str(APP_DIR),
+        "AEE_DATA_DIR": str(APP_DATA),
+        "AEE_SOURCE_MODE": "1",
+        "YOLO_AUTOINSTALL": "false",
+    })
+    try:
+        process = subprocess.Popen(
+            [str(cuda_pythonw.resolve()), str(launcher.resolve())],
+            cwd=str(APP_DIR),
+            env=env,
+            close_fds=True,
+        )
+    except OSError as exc:
+        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
+        log.exception("Could not restart the app in its prepared CUDA runtime")
+        return False
+
+    log.info("Restarting desktop window in the CUDA runtime, pid=%s", process.pid)
+    if window is not None:
+        try:
+            window.destroy()
+        except Exception:
+            log.exception("Could not close the CPU startup window after GPU launch")
+    return True
+
+
+def _auto_connect_gpu(application, window) -> bool:
+    if sys.platform != "win32" or application._resolve_inference_device()[0] != "cpu":
+        return False
+
+    try:
+        gpu_name = application._nvidia_gpu_name()
+    except RuntimeError as exc:
+        log.info("Automatic GPU connection skipped: %s", exc)
+        return False
+
+    log.info("Automatically connecting NVIDIA GPU: %s", gpu_name)
+
+    def report_progress(fraction, description):
+        percentage = int(max(0.0, min(1.0, float(fraction))) * 100)
+        _update_startup_gpu_status(
+            window, f"{description} · {percentage}%"
+        )
+
+    try:
+        result = application._install_realtime_gpu(progress=report_progress)
+    except Exception as exc:
+        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
+        log.exception("Automatic NVIDIA GPU connection failed")
+        _update_startup_gpu_status(
+            window, "GPU setup failed. Starting in CPU mode."
+        )
+        return False
+
+    log.info(
+        "Automatic GPU setup verified %s with PyTorch %s",
+        result["gpu"], result["torch"],
+    )
+    _update_startup_gpu_status(window, "GPU verified. Restarting in GPU mode…")
+    if _launch_prepared_cuda_runtime(window):
+        return True
+
+    os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = (
+        "The verified GPU runtime could not be started."
+    )
+    log.error("The verified CUDA runtime could not be launched")
+    return False
+
+
 def main() -> None:
     set_windows_app_identity()
+    if _launch_prepared_cuda_runtime():
+        return
     if getattr(sys, "frozen", False):
         os.environ["YOLO_AUTOINSTALL"] = "false"
     import webview
@@ -222,8 +326,10 @@ def main() -> None:
       border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;
       animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
       </style></head><body><main><h1>AI Evidence Extractor</h1>
-      <div class="spinner"></div><p>Loading AI models. The app window will be ready shortly.</p>
-      <p style="margin-top:10px;font-size:13px">First startup can take up to a minute.</p>
+      <div class="spinner"></div><p id="startup-status">Checking your GPU connection.</p>
+      <p style="margin-top:10px;font-size:13px">
+      Compatible NVIDIA GPUs connect automatically on first launch. This one-time
+      setup downloads CUDA components; CPU mode remains available if setup fails.</p>
       </main></body></html>"""
 
     window = webview.create_window(
@@ -256,6 +362,9 @@ def main() -> None:
             _migrate_legacy_shortcuts(APP_DIR)
             import gradio as gr
             import app as application
+
+            if _auto_connect_gpu(application, window):
+                return
 
             updater = application._update_client
             log.info(

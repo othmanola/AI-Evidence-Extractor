@@ -1,15 +1,113 @@
 import base64
+import os
 import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 from urllib.error import URLError
 
 import desktop_launcher
 
 
 class DesktopLauncherTests(unittest.TestCase):
+    def test_auto_connects_and_restarts_in_cuda_runtime_when_nvidia_is_available(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "app"
+            data_dir = root / "data"
+            launcher = app_dir / "desktop_launcher.py"
+            launcher.parent.mkdir(parents=True)
+            launcher.touch()
+            cuda_pythonw = (
+                data_dir / "runtimeenv_cuda2" / "Scripts" / "pythonw.exe"
+            )
+            window = MagicMock()
+
+            def install(progress):
+                progress(0.5, "Installing CUDA runtime")
+                cuda_pythonw.parent.mkdir(parents=True)
+                cuda_pythonw.touch()
+                (cuda_pythonw.parents[1] / ".aee_cuda_ready").write_text(
+                    '{"gpu":"NVIDIA GPU"}', encoding="utf-8"
+                )
+                return {"gpu": "NVIDIA GPU", "torch": "2.7.1+cu128"}
+
+            application = SimpleNamespace(
+                _resolve_inference_device=lambda: ("cpu", False),
+                _nvidia_gpu_name=lambda: "NVIDIA GPU",
+                _install_realtime_gpu=Mock(side_effect=install),
+            )
+            with (
+                patch.object(desktop_launcher.sys, "platform", "win32"),
+                patch.object(desktop_launcher, "APP_DIR", app_dir),
+                patch.object(desktop_launcher, "APP_DATA", data_dir),
+                patch.object(desktop_launcher.subprocess, "Popen") as popen,
+                patch.dict(os.environ, {}, clear=False),
+            ):
+                os.environ.pop("AEE_GPU_AUTOCONNECT_ERROR", None)
+                connected = desktop_launcher._auto_connect_gpu(
+                    application, window
+                )
+
+            self.assertTrue(connected)
+            application._install_realtime_gpu.assert_called_once()
+            self.assertIn("GPU verified", window.evaluate_js.call_args.args[0])
+            popen.assert_called_once()
+            self.assertEqual(popen.call_args.args[0][0], str(cuda_pythonw.resolve()))
+            self.assertEqual(
+                popen.call_args.kwargs["env"]["YOLO_AUTOINSTALL"], "false"
+            )
+            window.destroy.assert_called_once()
+
+    def test_auto_connect_falls_back_to_cpu_if_gpu_setup_fails(self):
+        application = SimpleNamespace(
+            _resolve_inference_device=lambda: ("cpu", False),
+            _nvidia_gpu_name=lambda: "NVIDIA GPU",
+            _install_realtime_gpu=MagicMock(
+                side_effect=RuntimeError("CUDA package installation failed")
+            ),
+        )
+        with (
+            patch.object(desktop_launcher.sys, "platform", "win32"),
+            patch.dict(os.environ, {}, clear=False),
+        ):
+            os.environ.pop("AEE_GPU_AUTOCONNECT_ERROR", None)
+            connected = desktop_launcher._auto_connect_gpu(
+                application, MagicMock()
+            )
+            setup_error = os.environ.get("AEE_GPU_AUTOCONNECT_ERROR")
+
+        self.assertFalse(connected)
+        self.assertEqual(setup_error, "CUDA package installation failed")
+
+    def test_cpu_launcher_restarts_in_a_prepared_cuda_runtime(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            app_dir = root / "app"
+            data_dir = root / "data"
+            launcher = app_dir / "desktop_launcher.py"
+            launcher.parent.mkdir(parents=True)
+            launcher.touch()
+            cuda_pythonw = (
+                data_dir / "runtimeenv_cuda2" / "Scripts" / "pythonw.exe"
+            )
+            cuda_pythonw.parent.mkdir(parents=True)
+            cuda_pythonw.touch()
+            (cuda_pythonw.parents[1] / ".aee_cuda_ready").touch()
+            with (
+                patch.object(desktop_launcher.sys, "platform", "win32"),
+                patch.object(desktop_launcher, "APP_DIR", app_dir),
+                patch.object(desktop_launcher, "APP_DATA", data_dir),
+                patch.object(desktop_launcher.subprocess, "Popen") as popen,
+            ):
+                relaunched = desktop_launcher._launch_prepared_cuda_runtime()
+
+        self.assertTrue(relaunched)
+        popen.assert_called_once()
+        self.assertEqual(popen.call_args.args[0][0], str(cuda_pythonw.resolve()))
+
     def test_migrates_legacy_shortcuts_to_the_installed_source_launcher(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)

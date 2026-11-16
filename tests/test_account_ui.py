@@ -144,22 +144,23 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(ensemble.errors[-1]["stage"], "inference")
 
     def test_detection_mode_picker_preserves_the_existing_upload_workspace(self):
-        source = "\n".join(
-            value for value in _nested_code_constants(app.build_ui.__code__)
-            if isinstance(value, str)
-        )
+        source = Path(app.__file__).read_text(encoding="utf-8")
         self.assertIn("Choose Your Detection Mode", source)
         self.assertIn(
             "Select how you want to analyze and detect potential evidence.", source
         )
-        self.assertEqual(source.count('data-aee-detection-mode="'), 2)
+        self.assertEqual(
+            source.count('<button type="button" class="aee-detection-card"'), 2
+        )
         self.assertIn("aee-realtime-detection-window", source)
         self.assertIn("Live camera", source)
-        self.assertIn("Confidence · 0.45", source)
+        self.assertIn("Detection sensitivity", source)
         self.assertIn("Balanced · 640 px", source)
         self.assertIn("Fast · 512 px", source)
         self.assertIn("Live detection speed", source)
-        self.assertIn("Set up NVIDIA GPU acceleration", source)
+        self.assertIn("Retry GPU connection", source)
+        self.assertIn("GPU connected", source)
+        self.assertIn("GPUs are connected automatically at startup;", source)
         self.assertIn("data-aee-realtime-enable", source)
         self.assertIn("Bounding-box colors", source)
         self.assertIn("watchAeeRealtimeOverlay", app._JS_HEAD)
@@ -171,11 +172,11 @@ class AccountUiTests(unittest.TestCase):
         self.assertNotIn('data-aee-realtime-feed-badge">Output', source)
         self.assertIn("outputs=[realtime_status, realtime_overlay_data]", source)
         self.assertNotIn("outputs=[realtime_camera", source)
-        self.assertIn("inputs=[realtime_camera, realtime_speed_mode]", source)
+        self.assertIn("realtime_sensitivity,", source)
         self.assertIn('visible="hidden"', source)
         self.assertIn("_REALTIME_STREAM_INTERVAL", source)
         self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.05)
-        self.assertIn("data-aee-realtime-overlay", app._JS_HEAD)
+        self.assertIn("aee-realtime-overlay", app._JS_HEAD)
         self.assertIn("data-testid=\"webcam-video\"", app._JS_HEAD)
         application_source = Path(app.__file__).read_text(encoding="utf-8")
         self.assertIn("def _install_realtime_gpu", application_source)
@@ -213,6 +214,7 @@ class AccountUiTests(unittest.TestCase):
             data=app.np.array([
                 [2, 3, 25, 27, 0.91, 0],
                 [0, 0, 15, 20, 0.39, 0],
+                [1, 1, 12, 14, 0.2, 0],
             ], dtype=app.np.float32)
         )
         model = SimpleNamespace(
@@ -224,7 +226,8 @@ class AccountUiTests(unittest.TestCase):
             patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
         ):
             status, overlay_html = app._realtime_detect_frame(frame)
-        self.assertIn("1 detection", status)
+        self.assertIn("2 detections", status)
+        self.assertIn("Confidence ≥ 0.25", status)
         self.assertIn("Blunt", status)
         self.assertIn("ms", status)
         payload_text = re.search(
@@ -232,7 +235,7 @@ class AccountUiTests(unittest.TestCase):
         ).group(1)
         payload = json.loads(html.unescape(payload_text))
         self.assertEqual((payload["width"], payload["height"]), (32, 32))
-        self.assertEqual(len(payload["boxes"]), 1)
+        self.assertEqual(len(payload["boxes"]), 2)
         self.assertEqual(payload["boxes"][0]["coordinates"], [2, 3, 25, 27])
         self.assertEqual(payload["boxes"][0]["label"], "Blunt")
         self.assertAlmostEqual(payload["boxes"][0]["confidence"], 0.91)
@@ -242,7 +245,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(app.np.array_equal(
             inference["source"][0, 0], [33, 22, 11]
         ))
-        self.assertEqual(inference["conf"], app._REALTIME_BALANCED_CONFIDENCE)
+        self.assertEqual(inference["conf"], app._REALTIME_CONFIDENCE_DEFAULT)
         self.assertEqual(inference["imgsz"], app._REALTIME_IMAGE_SIZE)
         self.assertEqual(inference["max_det"], 20)
         self.assertEqual(inference["iou"], 0.5)
@@ -255,7 +258,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("mirrored = !mirrored", app._JS_HEAD)
         self.assertIn("payload.width - x2 : x1", app._JS_HEAD)
         self.assertNotIn("state.canvas.style.transform =", app._JS_HEAD)
-        self.assertEqual(app._REALTIME_BALANCED_CONFIDENCE, 0.45)
+        self.assertEqual(app._REALTIME_CONFIDENCE_DEFAULT, 0.25)
         self.assertEqual(
             app._realtime_checkpoint_hash(
                 Path(app.__file__).resolve().parent
@@ -271,6 +274,35 @@ class AccountUiTests(unittest.TestCase):
             fast_status, _ = app._realtime_detect_frame(frame, "fast")
         self.assertIn("Fast · 512 px", fast_status)
         self.assertEqual(model.predict.call_args.kwargs["imgsz"], 512)
+
+    def test_realtime_sensitivity_controls_the_minimum_detection_score(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        boxes = SimpleNamespace(
+            data=app.np.array([[2, 3, 25, 27, 0.3, 0]], dtype=app.np.float32)
+        )
+        model = SimpleNamespace(
+            names={0: "Firearm"},
+            predict=Mock(return_value=[SimpleNamespace(boxes=boxes)]),
+        )
+        with (
+            patch.object(app, "_load_realtime_model", return_value=model),
+            patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
+        ):
+            status, overlay_html = app._realtime_detect_frame(
+                frame, confidence=0.4
+            )
+
+        self.assertIn("No detections yet", status)
+        self.assertIn("Confidence ≥ 0.40", status)
+        self.assertEqual(model.predict.call_args.kwargs["conf"], 0.4)
+        self.assertIn('"boxes":[]', html.unescape(overlay_html))
+
+    def test_realtime_sensitivity_rejects_values_outside_the_slider_range(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        with patch.object(app, "_load_realtime_model") as load_model:
+            status, _ = app._realtime_detect_frame(frame, confidence=0.9)
+        self.assertIn("between 0.10 and 0.75", status)
+        load_model.assert_not_called()
 
     def test_realtime_image_size_rejects_unknown_speed_mode(self):
         self.assertEqual(app._realtime_image_size("balanced"), 640)
