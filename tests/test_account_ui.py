@@ -154,10 +154,11 @@ class AccountUiTests(unittest.TestCase):
         )
         self.assertIn("aee-realtime-detection-window", source)
         self.assertIn("Live camera", source)
-        self.assertIn("Detection sensitivity", source)
-        self.assertIn("Balanced · 640 px", source)
+        self.assertNotIn("Detection sensitivity", source)
+        self.assertNotIn("Balanced · 640 px", source)
         self.assertIn("Fast · 512 px", source)
-        self.assertIn("Live detection speed", source)
+        self.assertIn("Confidence · 0.30", source)
+        self.assertNotIn("Live detection speed", source)
         self.assertIn("Retry GPU connection", source)
         self.assertIn("GPU connected", source)
         self.assertIn("GPUs are connected automatically at startup;", source)
@@ -172,7 +173,9 @@ class AccountUiTests(unittest.TestCase):
         self.assertNotIn('data-aee-realtime-feed-badge">Output', source)
         self.assertIn("outputs=[realtime_status, realtime_overlay_data]", source)
         self.assertNotIn("outputs=[realtime_camera", source)
-        self.assertIn("realtime_sensitivity,", source)
+        self.assertNotIn("realtime_sensitivity", source)
+        self.assertNotIn("realtime_speed_mode", source)
+        self.assertIn("inputs=[realtime_camera]", source)
         self.assertIn('visible="hidden"', source)
         self.assertIn("_REALTIME_STREAM_INTERVAL", source)
         self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.05)
@@ -180,7 +183,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("data-testid=\"webcam-video\"", app._JS_HEAD)
         application_source = Path(app.__file__).read_text(encoding="utf-8")
         self.assertIn("def _install_realtime_gpu", application_source)
-        self.assertIn('value="fast"', application_source)
         image_config = application_source.split(
             "realtime_camera = gr.Image(", 1
         )[1].split(")", 1)[0]
@@ -213,7 +215,8 @@ class AccountUiTests(unittest.TestCase):
         boxes = SimpleNamespace(
             data=app.np.array([
                 [2, 3, 25, 27, 0.91, 0],
-                [0, 0, 15, 20, 0.39, 0],
+                [0, 0, 15, 20, 0.32, 0],
+                [1, 1, 12, 14, 0.28, 0],
                 [1, 1, 12, 14, 0.2, 0],
             ], dtype=app.np.float32)
         )
@@ -227,7 +230,8 @@ class AccountUiTests(unittest.TestCase):
         ):
             status, overlay_html = app._realtime_detect_frame(frame)
         self.assertIn("2 detections", status)
-        self.assertIn("Confidence ≥ 0.25", status)
+        self.assertIn("Fast · 512 px", status)
+        self.assertIn("Confidence ≥ 0.30", status)
         self.assertIn("Blunt", status)
         self.assertIn("ms", status)
         payload_text = re.search(
@@ -245,8 +249,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertTrue(app.np.array_equal(
             inference["source"][0, 0], [33, 22, 11]
         ))
-        self.assertEqual(inference["conf"], app._REALTIME_CONFIDENCE_DEFAULT)
-        self.assertEqual(inference["imgsz"], app._REALTIME_IMAGE_SIZE)
+        self.assertEqual(inference["conf"], 0.30)
+        self.assertEqual(inference["imgsz"], 512)
         self.assertEqual(inference["max_det"], 20)
         self.assertEqual(inference["iou"], 0.5)
         self.assertIn("getBoundingClientRect()", app._JS_HEAD)
@@ -258,7 +262,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("mirrored = !mirrored", app._JS_HEAD)
         self.assertIn("payload.width - x2 : x1", app._JS_HEAD)
         self.assertNotIn("state.canvas.style.transform =", app._JS_HEAD)
-        self.assertEqual(app._REALTIME_CONFIDENCE_DEFAULT, 0.25)
         self.assertEqual(
             app._realtime_checkpoint_hash(
                 Path(app.__file__).resolve().parent
@@ -267,48 +270,6 @@ class AccountUiTests(unittest.TestCase):
             ),
             app._REALTIME_MODEL_SHA256,
         )
-        with (
-            patch.object(app, "_load_realtime_model", return_value=model),
-            patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
-        ):
-            fast_status, _ = app._realtime_detect_frame(frame, "fast")
-        self.assertIn("Fast · 512 px", fast_status)
-        self.assertEqual(model.predict.call_args.kwargs["imgsz"], 512)
-
-    def test_realtime_sensitivity_controls_the_minimum_detection_score(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-        boxes = SimpleNamespace(
-            data=app.np.array([[2, 3, 25, 27, 0.3, 0]], dtype=app.np.float32)
-        )
-        model = SimpleNamespace(
-            names={0: "Firearm"},
-            predict=Mock(return_value=[SimpleNamespace(boxes=boxes)]),
-        )
-        with (
-            patch.object(app, "_load_realtime_model", return_value=model),
-            patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
-        ):
-            status, overlay_html = app._realtime_detect_frame(
-                frame, confidence=0.4
-            )
-
-        self.assertIn("No detections yet", status)
-        self.assertIn("Confidence ≥ 0.40", status)
-        self.assertEqual(model.predict.call_args.kwargs["conf"], 0.4)
-        self.assertIn('"boxes":[]', html.unescape(overlay_html))
-
-    def test_realtime_sensitivity_rejects_values_outside_the_slider_range(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-        with patch.object(app, "_load_realtime_model") as load_model:
-            status, _ = app._realtime_detect_frame(frame, confidence=0.9)
-        self.assertIn("between 0.10 and 0.75", status)
-        load_model.assert_not_called()
-
-    def test_realtime_image_size_rejects_unknown_speed_mode(self):
-        self.assertEqual(app._realtime_image_size("balanced"), 640)
-        self.assertEqual(app._realtime_image_size("fast"), 512)
-        with self.assertRaisesRegex(ValueError, "Live detection speed"):
-            app._realtime_image_size("unknown")
 
     def test_realtime_detector_uses_cuda_and_reports_the_active_gpu(self):
         frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)

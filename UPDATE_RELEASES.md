@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.107 fixes live detection to always use Fast 512 px processing and a
+constant 0.30 confidence threshold. The interface displays both settings and
+removes controls that could change them.
+
 Version 1.2.106 improves live detection recall with an adjustable sensitivity
 control, automatically connects supported NVIDIA GPUs on startup, and reports
 the connected device with a clearer status.
