@@ -833,10 +833,6 @@ _REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
 _REALTIME_CONFIDENCE = 0.30
 _REALTIME_IMAGE_SIZE = 512
 _REALTIME_STREAM_INTERVAL = 0.05
-_REALTIME_MODEL_LOCK = threading.RLock()
-_REALTIME_MODEL = None
-_REALTIME_MODEL_ERROR = None
-_REALTIME_MODEL_RETRY_AFTER = 0.0
 
 
 def _realtime_checkpoint_hash(path):
@@ -845,94 +841,6 @@ def _realtime_checkpoint_hash(path):
         for chunk in iter(lambda: checkpoint.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _realtime_checkpoint_path():
-    bundled_path = Path(__file__).resolve().parent / "assets" / _REALTIME_MODEL_FILE
-    cached_path = MODEL_DIR / _REALTIME_MODEL_FILE
-    path = bundled_path if bundled_path.is_file() else cached_path
-    if path.is_file():
-        if path.stat().st_size > _REALTIME_MODEL_MAX_BYTES:
-            raise RuntimeError("The live detection checkpoint is larger than expected.")
-        if _realtime_checkpoint_hash(path) != _REALTIME_MODEL_SHA256:
-            raise RuntimeError("The live detection checkpoint failed its integrity check.")
-        return path
-
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    partial_path = MODEL_DIR / (
-        f".{_REALTIME_MODEL_FILE}.{uuid.uuid4().hex}.part"
-    )
-    digest = hashlib.sha256()
-    total = 0
-    request = urllib.request.Request(
-        _REALTIME_MODEL_URL,
-        headers={"User-Agent": "AI-Evidence-Extractor/Realtime-Model"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            if not response.geturl().lower().startswith("https://"):
-                raise RuntimeError("The live detection model download is not secure.")
-            content_length = response.headers.get("Content-Length")
-            if content_length and int(content_length) > _REALTIME_MODEL_MAX_BYTES:
-                raise RuntimeError("The live detection checkpoint is larger than expected.")
-            with partial_path.open("wb") as checkpoint:
-                while True:
-                    chunk = response.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if total > _REALTIME_MODEL_MAX_BYTES:
-                        raise RuntimeError(
-                            "The live detection checkpoint is larger than expected."
-                        )
-                    digest.update(chunk)
-                    checkpoint.write(chunk)
-        if digest.hexdigest() != _REALTIME_MODEL_SHA256:
-            raise RuntimeError("The downloaded live detection checkpoint failed verification.")
-        os.replace(partial_path, cached_path)
-        return cached_path
-    except (OSError, urllib.error.URLError, TimeoutError, ValueError) as exc:
-        partial_path.unlink(missing_ok=True)
-        log.warning("Could not download the live detection checkpoint: %s", exc)
-        raise RuntimeError(
-            "The live detection model is not installed and could not be downloaded. "
-            "Check your internet connection and try again."
-        ) from None
-    except Exception:
-        partial_path.unlink(missing_ok=True)
-        raise
-
-
-def _load_realtime_model():
-    global _REALTIME_MODEL, _REALTIME_MODEL_ERROR, _REALTIME_MODEL_RETRY_AFTER
-    with _REALTIME_MODEL_LOCK:
-        if _REALTIME_MODEL is not None:
-            return _REALTIME_MODEL
-        if _REALTIME_MODEL_ERROR and time.monotonic() < _REALTIME_MODEL_RETRY_AFTER:
-            raise RuntimeError(_REALTIME_MODEL_ERROR)
-        try:
-            checkpoint = _realtime_checkpoint_path()
-            model = YOLO(str(checkpoint))
-            names = model.names.values() if isinstance(model.names, dict) else model.names
-            expected_classes = {
-                "Blunt_Weapon", "Explosive", "Fire_Smoke", "Firearm",
-                "Melee_Weapon", "Person", "Tool",
-            }
-            if {str(name) for name in names} != expected_classes:
-                raise RuntimeError(
-                    "The installed live detection checkpoint has unexpected classes."
-                )
-        except Exception as exc:
-            _REALTIME_MODEL_ERROR = (
-                f"The live detection model could not be loaded: {exc}"
-            )
-            _REALTIME_MODEL_RETRY_AFTER = time.monotonic() + 30
-            log.exception("Could not load live detection checkpoint")
-            raise RuntimeError(_REALTIME_MODEL_ERROR) from exc
-        _REALTIME_MODEL_ERROR = None
-        _REALTIME_MODEL_RETRY_AFTER = 0.0
-        _REALTIME_MODEL = model
-        return model
 
 
 def _realtime_box_coordinates(image, coordinates):
@@ -961,16 +869,304 @@ def _realtime_overlay_html(width, height, boxes):
     )
 
 
+class RealtimeDetectionPipeline:
+    """Owns the live model, device choice, inference lock, and frame errors."""
+
+    _EXPECTED_CLASSES = {
+        "Blunt_Weapon", "Explosive", "Fire_Smoke", "Firearm",
+        "Melee_Weapon", "Person", "Tool",
+    }
+    _LABELS = {
+        "blunt_weapon": "Blunt",
+        "fire_smoke": "Fire/Smoke",
+        "melee_weapon": "Knife",
+    }
+    _COLORS = {
+        "Firearm": "#f43f5e",
+        "Explosive": "#ef4444",
+        "Fire/Smoke": "#f97316",
+        "Knife": "#f59e0b",
+        "Blunt": "#eab308",
+        "Person": "#3b82f6",
+        "Tool": "#14b8a6",
+    }
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._model = None
+        self._model_error = None
+        self._model_retry_after = 0.0
+        self._last_frame_error = None
+        self._last_frame_error_at = 0.0
+        self._last_cuda_error = None
+        self._last_cuda_error_at = 0.0
+        self._last_device_name_error = None
+        self._last_device_name_error_at = 0.0
+
+    def checkpoint_path(self):
+        bundled_path = (
+            Path(__file__).resolve().parent / "assets" / _REALTIME_MODEL_FILE
+        )
+        cached_path = MODEL_DIR / _REALTIME_MODEL_FILE
+        path = bundled_path if bundled_path.is_file() else cached_path
+        if path.is_file():
+            if path.stat().st_size > _REALTIME_MODEL_MAX_BYTES:
+                raise RuntimeError(
+                    "The live detection checkpoint is larger than expected."
+                )
+            if _realtime_checkpoint_hash(path) != _REALTIME_MODEL_SHA256:
+                raise RuntimeError(
+                    "The live detection checkpoint failed its integrity check."
+                )
+            return path
+
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        partial_path = MODEL_DIR / (
+            f".{_REALTIME_MODEL_FILE}.{uuid.uuid4().hex}.part"
+        )
+        digest = hashlib.sha256()
+        total = 0
+        request = urllib.request.Request(
+            _REALTIME_MODEL_URL,
+            headers={"User-Agent": "AI-Evidence-Extractor/Realtime-Model"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                if not response.geturl().lower().startswith("https://"):
+                    raise RuntimeError(
+                        "The live detection model download is not secure."
+                    )
+                content_length = response.headers.get("Content-Length")
+                if content_length and int(content_length) > _REALTIME_MODEL_MAX_BYTES:
+                    raise RuntimeError(
+                        "The live detection checkpoint is larger than expected."
+                    )
+                with partial_path.open("wb") as checkpoint:
+                    while True:
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > _REALTIME_MODEL_MAX_BYTES:
+                            raise RuntimeError(
+                                "The live detection checkpoint is larger than expected."
+                            )
+                        digest.update(chunk)
+                        checkpoint.write(chunk)
+            if digest.hexdigest() != _REALTIME_MODEL_SHA256:
+                raise RuntimeError(
+                    "The downloaded live detection checkpoint failed verification."
+                )
+            os.replace(partial_path, cached_path)
+            return cached_path
+        except (OSError, urllib.error.URLError, TimeoutError, ValueError) as exc:
+            partial_path.unlink(missing_ok=True)
+            log.warning("Could not download the live detection checkpoint: %s", exc)
+            raise RuntimeError(
+                "The live detection model is not installed and could not be "
+                "downloaded. Check your internet connection and try again."
+            ) from None
+        except Exception:
+            partial_path.unlink(missing_ok=True)
+            raise
+
+    def load_model(self):
+        with self._lock:
+            if self._model is not None:
+                return self._model
+            if self._model_error and time.monotonic() < self._model_retry_after:
+                raise RuntimeError(self._model_error)
+            try:
+                checkpoint = self.checkpoint_path()
+                model = YOLO(str(checkpoint))
+                names = (
+                    model.names.values()
+                    if isinstance(model.names, dict) else model.names
+                )
+                if {str(name) for name in names} != self._EXPECTED_CLASSES:
+                    raise RuntimeError(
+                        "The installed live detection checkpoint has unexpected classes."
+                    )
+            except Exception as exc:
+                self._model_error = (
+                    f"The live detection model could not be loaded: {exc}"
+                )
+                self._model_retry_after = time.monotonic() + 30
+                log.exception("Could not load live detection checkpoint")
+                raise RuntimeError(self._model_error) from exc
+            self._model_error = None
+            self._model_retry_after = 0.0
+            self._model = model
+            return model
+
+    def resolve_device(self):
+        try:
+            if torch.cuda.is_available():
+                return 0, True
+        except Exception as exc:
+            now = time.monotonic()
+            message = str(exc)
+            if (
+                message != self._last_cuda_error
+                or now - self._last_cuda_error_at >= 30
+            ):
+                log.warning("Could not check CUDA for live detection: %s", exc)
+                self._last_cuda_error = message
+                self._last_cuda_error_at = now
+        return "cpu", False
+
+    def device_label(self, device, half):
+        if device == "cpu":
+            return "CPU"
+        try:
+            name = torch.cuda.get_device_name(device)
+        except Exception as exc:
+            now = time.monotonic()
+            message = str(exc)
+            if (
+                message != self._last_device_name_error
+                or now - self._last_device_name_error_at >= 30
+            ):
+                log.warning("Could not identify the live inference GPU: %s", exc)
+                self._last_device_name_error = message
+                self._last_device_name_error_at = now
+            name = "CUDA device"
+        precision = "FP16" if half else "FP32"
+        return f"GPU · {name} · {precision}"
+
+    @staticmethod
+    def _class_name(names, class_id):
+        if isinstance(names, dict):
+            return str(names.get(class_id, f"class {class_id}"))
+        if 0 <= class_id < len(names):
+            return str(names[class_id])
+        return f"class {class_id}"
+
+    def _log_frame_error(self, exc):
+        message = str(exc)
+        now = time.monotonic()
+        if (
+            message != self._last_frame_error
+            or now - self._last_frame_error_at >= 30
+        ):
+            log.exception(
+                "Live detection frame failed",
+                exc_info=(type(exc), exc, exc.__traceback__),
+            )
+            self._last_frame_error = message
+            self._last_frame_error_at = now
+
+    def detect(self, frame):
+        if frame is None:
+            return (
+                "Enable the camera to begin live detection.",
+                _realtime_overlay_html(0, 0, []),
+            )
+        try:
+            image = np.asarray(frame)
+            if image.ndim != 3 or image.shape[2] not in (3, 4):
+                raise ValueError("The camera returned an unsupported image format.")
+            if image.shape[2] == 4:
+                image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+            if image.dtype != np.uint8:
+                image = np.clip(image, 0, 255).astype(np.uint8)
+            image = np.ascontiguousarray(image)
+            height, width = image.shape[:2]
+            model = self.load_model()
+            device, half = self.resolve_device()
+            device_label = self.device_label(device, half)
+            started = time.perf_counter()
+            model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            with self._lock:
+                predictions = model.predict(
+                    source=model_image,
+                    conf=_REALTIME_CONFIDENCE,
+                    imgsz=_REALTIME_IMAGE_SIZE,
+                    iou=0.5,
+                    max_det=20,
+                    verbose=False,
+                    device=device,
+                    half=half,
+                )
+            if not predictions:
+                raise RuntimeError("The live detection model returned no results.")
+            result = predictions[0]
+            boxes_payload = []
+            boxes = result.boxes
+            if boxes is not None:
+                detection_rows = boxes.data[:, :6]
+                if hasattr(detection_rows, "detach"):
+                    detection_rows = detection_rows.detach()
+                if hasattr(detection_rows, "cpu"):
+                    detection_rows = detection_rows.cpu()
+                if hasattr(detection_rows, "numpy"):
+                    detection_rows = detection_rows.numpy()
+                detection_rows = np.asarray(detection_rows)
+                if detection_rows.ndim != 2 or detection_rows.shape[1] != 6:
+                    raise ValueError(
+                        "The live detection model returned malformed boxes."
+                    )
+                for x1, y1, x2, y2, score, raw_class_id in detection_rows:
+                    if (
+                        not np.isfinite((score, raw_class_id)).all()
+                        or score < _REALTIME_CONFIDENCE
+                    ):
+                        continue
+                    class_id = int(raw_class_id)
+                    raw_name = self._class_name(model.names, class_id)
+                    label = self._LABELS.get(raw_name.lower(), raw_name.title())
+                    coordinates = _realtime_box_coordinates(
+                        image, [x1, y1, x2, y2]
+                    )
+                    if coordinates is None:
+                        continue
+                    boxes_payload.append({
+                        "coordinates": coordinates,
+                        "label": label,
+                        "confidence": float(score),
+                        "color": self._COLORS.get(label, "#a855f7"),
+                    })
+            elapsed = max(time.perf_counter() - started, 0.001)
+            if boxes_payload:
+                classes = ", ".join(sorted({
+                    detection["label"] for detection in boxes_payload
+                }))
+                count_label = (
+                    f"{len(boxes_payload)} detection"
+                    f"{'s' if len(boxes_payload) != 1 else ''}"
+                )
+                result_label = f"{count_label} · Classes: {classes}"
+            else:
+                result_label = "No detections yet · check framing and lighting"
+            status = (
+                f"**LIVE** · {device_label} · Fast · {_REALTIME_IMAGE_SIZE} px · "
+                f"Confidence ≥ {_REALTIME_CONFIDENCE:.2f} · {result_label} · "
+                f"{elapsed * 1000:.0f} ms"
+            )
+            self._last_frame_error = None
+            self._last_frame_error_at = 0.0
+            return status, _realtime_overlay_html(width, height, boxes_payload)
+        except Exception as exc:
+            self._log_frame_error(exc)
+            return (
+                f"Live detection error: {_html.escape(str(exc))}",
+                _realtime_overlay_html(0, 0, []),
+            )
+
+
+_REALTIME_PIPELINE = RealtimeDetectionPipeline()
+
+
+def _realtime_checkpoint_path():
+    return _REALTIME_PIPELINE.checkpoint_path()
+
+
+def _load_realtime_model():
+    return _REALTIME_PIPELINE.load_model()
+
+
 def _realtime_device_label(device, half):
-    if device == "cpu":
-        return "CPU"
-    try:
-        name = torch.cuda.get_device_name(device)
-    except Exception as exc:
-        log.warning("Could not identify the live inference GPU: %s", exc)
-        name = "CUDA device"
-    precision = "FP16" if half else "FP32"
-    return f"GPU · {name} · {precision}"
+    return _REALTIME_PIPELINE.device_label(device, half)
 
 
 _GPU_TORCH_VERSION = "2.7.1+cu128"
@@ -1167,102 +1363,7 @@ def _install_realtime_gpu(progress=None):
 
 
 def _realtime_detect_frame(frame):
-    if frame is None:
-        return (
-            "Enable the camera to begin live detection.",
-            _realtime_overlay_html(0, 0, []),
-        )
-    try:
-        image = np.asarray(frame)
-        if image.ndim != 3 or image.shape[2] not in (3, 4):
-            raise ValueError("The camera returned an unsupported image format.")
-        if image.shape[2] == 4:
-            image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
-        if image.dtype != np.uint8:
-            image = np.clip(image, 0, 255).astype(np.uint8)
-        height, width = image.shape[:2]
-        model = _load_realtime_model()
-        device, half = _resolve_inference_device()
-        device_label = _realtime_device_label(device, half)
-        started = time.perf_counter()
-        model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        with _REALTIME_MODEL_LOCK:
-            result = model.predict(
-                source=model_image, conf=_REALTIME_CONFIDENCE,
-                imgsz=_REALTIME_IMAGE_SIZE,
-                iou=0.5, max_det=20, verbose=False, device=device, half=half,
-            )[0]
-        boxes_payload = []
-        boxes = result.boxes
-        if boxes is not None:
-            detection_rows = boxes.data[:, :6]
-            if hasattr(detection_rows, "detach"):
-                detection_rows = detection_rows.detach()
-            if hasattr(detection_rows, "cpu"):
-                detection_rows = detection_rows.cpu()
-            if hasattr(detection_rows, "numpy"):
-                detection_rows = detection_rows.numpy()
-            detection_rows = np.asarray(detection_rows)
-            if detection_rows.ndim != 2 or detection_rows.shape[1] != 6:
-                raise ValueError("The live detection model returned malformed boxes.")
-            names = model.names
-            for x1, y1, x2, y2, score, raw_class_id in detection_rows:
-                if (
-                    not np.isfinite((score, raw_class_id)).all()
-                    or score < _REALTIME_CONFIDENCE
-                ):
-                    continue
-                class_id = int(raw_class_id)
-                raw_name = (
-                    names.get(class_id, f"class {class_id}")
-                    if isinstance(names, dict) else names[class_id]
-                )
-                label = norm(raw_name)
-                coordinates = _realtime_box_coordinates(
-                    image, [x1, y1, x2, y2]
-                )
-                if coordinates is None:
-                    continue
-                color = {
-                    "Firearm": "#f43f5e",
-                    "Explosive": "#ef4444",
-                    "Fire/Smoke": "#f97316",
-                    "Knife": "#f59e0b",
-                    "Blunt": "#eab308",
-                    "Person": "#3b82f6",
-                    "Tool": "#14b8a6",
-                }.get(label, "#a855f7")
-                boxes_payload.append({
-                    "coordinates": coordinates,
-                    "label": label,
-                    "confidence": float(score),
-                    "color": color,
-                })
-        elapsed = max(time.perf_counter() - started, 0.001)
-        if boxes_payload:
-            classes = ", ".join(sorted({
-                detection["label"] for detection in boxes_payload
-            }))
-            count_label = (
-                f"{len(boxes_payload)} detection"
-                f"{'s' if len(boxes_payload) != 1 else ''}"
-            )
-            result_label = f"{count_label} · Classes: {classes}"
-        else:
-            result_label = "No detections yet · check framing and lighting"
-        status = (
-            f"**LIVE** · {device_label} · Fast · {_REALTIME_IMAGE_SIZE} px · "
-            f"Confidence ≥ {_REALTIME_CONFIDENCE:.2f} · {result_label} · "
-            f"{elapsed * 1000:.0f} ms"
-        )
-        return status, _realtime_overlay_html(width, height, boxes_payload)
-    except Exception as exc:
-        if str(exc) != _REALTIME_MODEL_ERROR:
-            log.exception("Live detection frame failed")
-        return (
-            f"Live detection error: {_html.escape(str(exc))}",
-            _realtime_overlay_html(0, 0, []),
-        )
+    return _REALTIME_PIPELINE.detect(frame)
 
 
 def threat_score(d, tracker=None, video_name=None):
@@ -12195,7 +12296,9 @@ def build_ui():
                                 height=520,
                                 elem_id="aee-realtime-camera",
                                 elem_classes=["aee-realtime-camera"])
-                            realtime_device, realtime_half = _resolve_inference_device()
+                            realtime_device, realtime_half = (
+                                _REALTIME_PIPELINE.resolve_device()
+                            )
                             gpu_available = realtime_device != "cpu"
                             if gpu_available:
                                 gpu_name = _realtime_device_label(

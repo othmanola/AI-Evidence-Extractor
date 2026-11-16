@@ -227,8 +227,11 @@ class AccountUiTests(unittest.TestCase):
             predict=Mock(return_value=[SimpleNamespace(boxes=boxes)]),
         )
         with (
-            patch.object(app, "_load_realtime_model", return_value=model),
-            patch.object(app, "_resolve_inference_device", return_value=("cpu", False)),
+            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
+            patch.object(
+                app._REALTIME_PIPELINE, "resolve_device",
+                return_value=("cpu", False),
+            ),
         ):
             status, overlay_html = app._realtime_detect_frame(frame)
         self.assertIn("2 detections", status)
@@ -280,12 +283,36 @@ class AccountUiTests(unittest.TestCase):
             predict=Mock(return_value=[SimpleNamespace(boxes=None)]),
         )
         with (
-            patch.object(app, "_load_realtime_model", return_value=model),
-            patch.object(app, "_resolve_inference_device", return_value=(0, True)),
+            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
+            patch.object(
+                app._REALTIME_PIPELINE, "resolve_device",
+                return_value=(0, True),
+            ),
             patch.object(
                 app.torch.cuda, "get_device_name",
                 return_value="NVIDIA GeForce GTX 1050 Ti",
             ),
+        ):
+            status, _ = app._realtime_detect_frame(frame)
+
+        self.assertIn("GPU · NVIDIA GeForce GTX 1050 Ti · FP16", status)
+        self.assertEqual(model.predict.call_args.kwargs["device"], 0)
+        self.assertTrue(model.predict.call_args.kwargs["half"])
+
+    def test_realtime_gpu_selection_is_independent_of_batch_device_setting(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        model = SimpleNamespace(
+            names={0: "Firearm"},
+            predict=Mock(return_value=[SimpleNamespace(boxes=None)]),
+        )
+        with (
+            patch.object(app.CFG, "INFERENCE_DEVICE", "cpu"),
+            patch.object(app.torch.cuda, "is_available", return_value=True),
+            patch.object(
+                app.torch.cuda, "get_device_name",
+                return_value="NVIDIA GeForce GTX 1050 Ti",
+            ),
+            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
         ):
             status, _ = app._realtime_detect_frame(frame)
 
@@ -300,11 +327,26 @@ class AccountUiTests(unittest.TestCase):
 
     def test_realtime_detector_rejects_unsupported_camera_frame(self):
         frame = app.np.zeros((32, 32), dtype=app.np.uint8)
-        with patch.object(app, "_load_realtime_model") as load_model:
+        with patch.object(app._REALTIME_PIPELINE, "load_model") as load_model:
             status, overlay_html = app._realtime_detect_frame(frame)
         self.assertIn("unsupported image format", status)
         self.assertIn('"width":0,"height":0,"boxes":[]', html.unescape(overlay_html))
         load_model.assert_not_called()
+
+    def test_realtime_detector_reports_empty_model_results(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        model = SimpleNamespace(names={0: "Firearm"}, predict=Mock(return_value=[]))
+        with (
+            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
+            patch.object(
+                app._REALTIME_PIPELINE, "resolve_device",
+                return_value=("cpu", False),
+            ),
+        ):
+            status, overlay_html = app._realtime_detect_frame(frame)
+
+        self.assertIn("model returned no results", status)
+        self.assertIn('"width":0,"height":0,"boxes":[]', html.unescape(overlay_html))
 
     def test_analysis_speed_modes_preserve_balanced_default_and_record_tradeoff(self):
         self.assertEqual(app._analysis_sampling_fps("balanced"), app.CFG.FPS)

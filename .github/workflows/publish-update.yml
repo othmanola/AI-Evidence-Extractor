@@ -87,7 +87,9 @@ jobs:
           @"
           Adds one-click NVIDIA GPU setup using an isolated, pinned CUDA-enabled
           PyTorch runtime. The setup verifies the live detector checkpoint on the GPU
-          before activation, and the live status reports the actual inference device.
+          before activation. Live detection now runs through a dedicated inference
+          pipeline that selects its GPU independently from batch-analysis settings.
+          The live status reports the actual inference device.
           Internet access, a compatible NVIDIA GPU, a working driver, and an app
           restart are required. CPU inference remains available as a fallback.
           The supplied model is included in new installers and released as a separately
