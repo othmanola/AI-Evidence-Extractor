@@ -1,5 +1,9 @@
 # Publishing app updates
 
+Version 1.2.109 prepares and verifies NVIDIA CUDA before opening the desktop
+app, so live detection starts directly on the GPU without restarting an open
+window. GPU setup retries automatically on the next launch if it fails.
+
 Version 1.2.108 automatically restarts into the prepared CUDA runtime after
 live GPU setup succeeds, removing the need to manually close and reopen the app.
 

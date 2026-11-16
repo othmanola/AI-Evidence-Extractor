@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import ctypes
-import json
 import logging
 import os
 import subprocess
@@ -59,7 +58,7 @@ def _migrate_legacy_shortcuts(app_dir: Path) -> None:
         return
 
     data_dir = Path(os.environ.get("AEE_DATA_DIR", str(APP_DATA)))
-    shortcut_marker = data_dir / "source_launcher_shortcuts_v1"
+    shortcut_marker = data_dir / "source_launcher_shortcuts_v2"
     if shortcut_marker.is_file():
         return
 
@@ -83,6 +82,7 @@ def _migrate_legacy_shortcuts(app_dir: Path) -> None:
 $ErrorActionPreference = 'Stop'
 $shell = New-Object -ComObject WScript.Shell
 $oldTarget = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_OLD_TARGET)
+$oldLauncher = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_OLD_LAUNCHER)
 $newTarget = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_NEW_TARGET)
 $launcher = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_LAUNCHER)
 $appDir = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_APP_DIR)
@@ -97,9 +97,13 @@ foreach ($root in $roots) {
   Get-ChildItem -LiteralPath $root -Filter '*.lnk' -File |
     ForEach-Object {
       $shortcut = $shell.CreateShortcut($_.FullName)
-      if ($shortcut.TargetPath -and
-          [IO.Path]::GetFullPath($shortcut.TargetPath).Equals(
-            $oldTarget, [StringComparison]::OrdinalIgnoreCase)) {
+      $targetIsOldApp = $shortcut.TargetPath -and
+        [IO.Path]::GetFullPath($shortcut.TargetPath).Equals(
+          $oldTarget, [StringComparison]::OrdinalIgnoreCase)
+      $argumentsAreOldLauncher = $shortcut.Arguments -and
+        $shortcut.Arguments.IndexOf(
+          $oldLauncher, [StringComparison]::OrdinalIgnoreCase) -ge 0
+      if ($targetIsOldApp -or $argumentsAreOldLauncher) {
         $shortcut.TargetPath = $newTarget
         $shortcut.Arguments = '"' + $launcher + '"'
         $shortcut.WorkingDirectory = $appDir
@@ -112,8 +116,9 @@ foreach ($root in $roots) {
     env = os.environ.copy()
     env.update({
         "AEE_SHORTCUT_OLD_TARGET": str(app_dir / "AI Evidence Extractor.exe"),
+        "AEE_SHORTCUT_OLD_LAUNCHER": str(app_dir / "desktop_launcher.py"),
         "AEE_SHORTCUT_NEW_TARGET": str(pythonw),
-        "AEE_SHORTCUT_LAUNCHER": str(app_dir / "desktop_launcher.py"),
+        "AEE_SHORTCUT_LAUNCHER": str(app_dir / "desktop_entry.py"),
         "AEE_SHORTCUT_APP_DIR": str(app_dir),
     })
     encoded_script = base64.b64encode(script.encode("utf-16le")).decode("ascii")
@@ -169,6 +174,49 @@ def free_local_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _prepare_gpu_before_window() -> bool:
+    if sys.platform != "win32":
+        return False
+
+    try:
+        from desktop_entry import _prepare_cuda_runtime
+
+        if not _prepare_cuda_runtime(APP_DIR, APP_DATA):
+            return False
+    except Exception as exc:
+        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
+        log.exception("Could not prepare the NVIDIA GPU before opening the app")
+        return False
+
+    cuda_pythonw = APP_DATA / "runtimeenv_cuda2" / "Scripts" / "pythonw.exe"
+    if not cuda_pythonw.is_file() or os.path.normcase(
+        str(Path(sys.executable).resolve())
+    ) == os.path.normcase(str(cuda_pythonw.resolve())):
+        return False
+
+    env = os.environ.copy()
+    env.update({
+        "AEE_APP_DIR": str(APP_DIR),
+        "AEE_DATA_DIR": str(APP_DATA),
+        "AEE_SOURCE_MODE": "1",
+        "YOLO_AUTOINSTALL": "false",
+    })
+    try:
+        process = subprocess.Popen(
+            [str(cuda_pythonw.resolve()), str((APP_DIR / "desktop_launcher.py").resolve())],
+            cwd=str(APP_DIR),
+            env=env,
+            close_fds=True,
+        )
+    except OSError as exc:
+        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
+        log.exception("Could not start the app in its prepared CUDA runtime")
+        return False
+
+    log.info("Prepared CUDA runtime will open the desktop window, pid=%s", process.pid)
+    return True
+
+
 def wait_for_server(url: str, thread: threading.Thread,
                     startup_error: list[BaseException], timeout: float = 120.0) -> None:
     deadline = time.monotonic() + timeout
@@ -201,110 +249,9 @@ def show_error(message: str) -> None:
         log.error("Unable to display error dialog: %s", message)
 
 
-def _update_startup_gpu_status(window, message: str) -> None:
-    try:
-        window.evaluate_js(
-            "(function(){var status=document.getElementById('startup-status');"
-            "if(status)status.textContent=" + json.dumps(message) + ";})();"
-        )
-    except Exception as exc:
-        log.debug("Could not update GPU setup splash status: %s", exc)
-
-
-def _launch_prepared_cuda_runtime(window=None) -> bool:
-    if sys.platform != "win32":
-        return False
-
-    cuda_venv = APP_DATA / "runtimeenv_cuda2"
-    cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
-    if not (cuda_venv / ".aee_cuda_ready").is_file() or not cuda_pythonw.is_file():
-        return False
-    if os.path.normcase(str(Path(sys.executable).resolve())) == os.path.normcase(
-        str(cuda_pythonw.resolve())
-    ):
-        return False
-
-    launcher = APP_DIR / "desktop_launcher.py"
-    if not launcher.is_file():
-        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = (
-            "The installed desktop launcher was not found."
-        )
-        log.error("Could not restart in CUDA mode: %s is missing", launcher)
-        return False
-    env = os.environ.copy()
-    env.update({
-        "AEE_APP_DIR": str(APP_DIR),
-        "AEE_DATA_DIR": str(APP_DATA),
-        "AEE_SOURCE_MODE": "1",
-        "YOLO_AUTOINSTALL": "false",
-    })
-    try:
-        process = subprocess.Popen(
-            [str(cuda_pythonw.resolve()), str(launcher.resolve())],
-            cwd=str(APP_DIR),
-            env=env,
-            close_fds=True,
-        )
-    except OSError as exc:
-        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
-        log.exception("Could not restart the app in its prepared CUDA runtime")
-        return False
-
-    log.info("Restarting desktop window in the CUDA runtime, pid=%s", process.pid)
-    if window is not None:
-        try:
-            window.destroy()
-        except Exception:
-            log.exception("Could not close the CPU startup window after GPU launch")
-    return True
-
-
-def _auto_connect_gpu(application, window) -> bool:
-    if sys.platform != "win32" or application._resolve_inference_device()[0] != "cpu":
-        return False
-
-    try:
-        gpu_name = application._nvidia_gpu_name()
-    except RuntimeError as exc:
-        log.info("Automatic GPU connection skipped: %s", exc)
-        return False
-
-    log.info("Automatically connecting NVIDIA GPU: %s", gpu_name)
-
-    def report_progress(fraction, description):
-        percentage = int(max(0.0, min(1.0, float(fraction))) * 100)
-        _update_startup_gpu_status(
-            window, f"{description} · {percentage}%"
-        )
-
-    try:
-        result = application._install_realtime_gpu(progress=report_progress)
-    except Exception as exc:
-        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
-        log.exception("Automatic NVIDIA GPU connection failed")
-        _update_startup_gpu_status(
-            window, "GPU setup failed. Starting in CPU mode."
-        )
-        return False
-
-    log.info(
-        "Automatic GPU setup verified %s with PyTorch %s",
-        result["gpu"], result["torch"],
-    )
-    _update_startup_gpu_status(window, "GPU verified. Restarting in GPU mode…")
-    if _launch_prepared_cuda_runtime(window):
-        return True
-
-    os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = (
-        "The verified GPU runtime could not be started."
-    )
-    log.error("The verified CUDA runtime could not be launched")
-    return False
-
-
 def main() -> None:
     set_windows_app_identity()
-    if _launch_prepared_cuda_runtime():
+    if _prepare_gpu_before_window():
         return
     if getattr(sys, "frozen", False):
         os.environ["YOLO_AUTOINSTALL"] = "false"
@@ -326,10 +273,10 @@ def main() -> None:
       border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;
       animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
       </style></head><body><main><h1>AI Evidence Extractor</h1>
-      <div class="spinner"></div><p id="startup-status">Checking your GPU connection.</p>
+      <div class="spinner"></div><p id="startup-status">Starting your workspace.</p>
       <p style="margin-top:10px;font-size:13px">
-      Compatible NVIDIA GPUs connect automatically on first launch. This one-time
-      setup downloads CUDA components; CPU mode remains available if setup fails.</p>
+      Your NVIDIA GPU is prepared before the app opens. CPU mode remains available
+      if GPU setup is unavailable.</p>
       </main></body></html>"""
 
     window = webview.create_window(
@@ -362,9 +309,6 @@ def main() -> None:
             _migrate_legacy_shortcuts(APP_DIR)
             import gradio as gr
             import app as application
-
-            if _auto_connect_gpu(application, window):
-                return
 
             updater = application._update_client
             log.info(

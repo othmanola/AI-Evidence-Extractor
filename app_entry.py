@@ -18,12 +18,8 @@ def main() -> int:
     os.environ["AEE_APP_DIR"] = str(app_dir)
     os.environ["AEE_DATA_DIR"] = str(data_dir)
     try:
-        if getattr(sys, "frozen", False):
-            from desktop_entry import main as launch_source_app
-            return launch_source_app()
-        from desktop_launcher import main as launch_desktop
-        launch_desktop()
-        return 0
+        from desktop_entry import main as launch_source_app
+        return launch_source_app()
     except Exception:
         (data_dir / "desktop.log").open("a", encoding="utf-8").write(
             "".join(traceback.format_exc())

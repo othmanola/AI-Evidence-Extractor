@@ -8022,7 +8022,6 @@ _JS_HEAD = r"""
     'Live camera':'الكاميرا المباشرة',
     'Fast · 512 px':'سريع · 512 بكسل',
     'Confidence · 0.30':'الثقة · 0.30',
-    'Retry GPU connection':'إعادة محاولة الاتصال بوحدة GPU',
     'Enable live camera':'تشغيل الكاميرا المباشرة',
     'Connecting to camera…':'جارٍ الاتصال بالكاميرا…',
     'Live camera active':'الكاميرا المباشرة نشطة',
@@ -12212,8 +12211,9 @@ def build_ui():
                             elif os.environ.get("AEE_GPU_AUTOCONNECT_ERROR"):
                                 gpu_status_initial = (
                                     "**GPU auto-connect failed.** CPU inference "
-                                    "remains active; retry the connection below. "
-                                    "Details are recorded in `desktop.log`."
+                                    "remains active; setup will retry the next time "
+                                    "you open the app. Details are recorded in "
+                                    "`startup.log`."
                                 )
                                 gpu_status_classes = [
                                     "aee-realtime-gpu-status", "is-cpu",
@@ -12221,8 +12221,8 @@ def build_ui():
                             else:
                                 gpu_status_initial = (
                                     "**CPU inference is active.** Compatible NVIDIA "
-                                    "GPUs are connected automatically at startup; "
-                                    "retry below if the GPU is not detected."
+                                    "GPUs are connected automatically when the app "
+                                    "opens."
                                 )
                                 gpu_status_classes = [
                                     "aee-realtime-gpu-status", "is-cpu",
@@ -12230,12 +12230,6 @@ def build_ui():
                             realtime_gpu_status = gr.Markdown(
                                 gpu_status_initial,
                                 elem_classes=gpu_status_classes,
-                            )
-                            realtime_gpu_setup = gr.Button(
-                                "Retry GPU connection",
-                                visible=not gpu_available,
-                                variant="secondary",
-                                elem_classes=["aee-realtime-gpu-setup"],
                             )
                             realtime_status = gr.Markdown(
                                 "Enable the camera to begin live detection.",
@@ -12261,37 +12255,6 @@ def build_ui():
                     outputs=[realtime_status, realtime_overlay_data],
                     stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")
-
-                def setup_realtime_gpu(progress=gr.Progress()):
-                    try:
-                        result = _install_realtime_gpu(progress=progress)
-                    except Exception as exc:
-                        log.exception("Could not set up live NVIDIA GPU inference")
-                        return f"GPU setup failed: {exc}"
-                    try:
-                        _update_client.restart_app()
-                    except Exception as exc:
-                        log.exception(
-                            "GPU setup succeeded, but the app could not restart in CUDA mode"
-                        )
-                        return (
-                            f"GPU setup verified: {result['gpu']} with PyTorch "
-                            f"{result['torch']}, but automatic restart failed: {exc}. "
-                            "Close and reopen the app to start live detection on the GPU."
-                        )
-                    return (
-                        f"GPU setup verified: {result['gpu']} with PyTorch "
-                        f"{result['torch']}. Restarting now to start live "
-                        "detection on the GPU."
-                    )
-
-                realtime_gpu_setup.click(
-                    fn=setup_realtime_gpu,
-                    inputs=[],
-                    outputs=[realtime_gpu_status],
-                    concurrency_limit=1,
-                    show_progress="full",
-                )
 
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM

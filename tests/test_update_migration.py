@@ -145,7 +145,7 @@ class UpdateMigrationTests(unittest.TestCase):
             data_dir = root / "data"
             runtime_dir = app_dir / "runtime"
             pythonw = data_dir / "runtimeenv" / "Scripts" / "pythonw.exe"
-            launcher = app_dir / "desktop_launcher.py"
+            launcher = app_dir / "desktop_entry.py"
             executable = app_dir / "AI Evidence Extractor.exe"
             for path in (runtime_dir, pythonw.parent):
                 path.mkdir(parents=True, exist_ok=True)
@@ -166,7 +166,7 @@ class UpdateMigrationTests(unittest.TestCase):
             standard_pythonw = data_dir / "runtimeenv" / "Scripts" / "pythonw.exe"
             cuda_venv = data_dir / "runtimeenv_cuda2"
             cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
-            launcher = app_dir / "desktop_launcher.py"
+            launcher = app_dir / "desktop_entry.py"
             runtime_dir.mkdir(parents=True)
             standard_pythonw.parent.mkdir(parents=True)
             cuda_pythonw.parent.mkdir(parents=True)
@@ -186,7 +186,7 @@ class UpdateMigrationTests(unittest.TestCase):
             data_dir = root / "data"
             runtime_dir = app_dir / "runtime"
             pythonw = runtime_dir / "pythonw.exe"
-            launcher = app_dir / "desktop_launcher.py"
+            launcher = app_dir / "desktop_entry.py"
             executable = app_dir / "AI Evidence Extractor.exe"
             runtime_dir.mkdir(parents=True)
             for path in (pythonw, launcher, executable):
