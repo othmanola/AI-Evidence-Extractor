@@ -85,10 +85,11 @@ jobs:
             $utf8NoBom
           )
           @"
-          Places the box overlay outside mirrored webcam transforms, enables 512-pixel
-          fast mode by default, filters lower-confidence detections, and samples frames
-          every 0.05 seconds. Sub-millisecond detection refresh is not possible; actual
-          detection rate still depends on inference hardware.
+          Adds one-click NVIDIA GPU setup using an isolated, pinned CUDA-enabled
+          PyTorch runtime. The setup verifies the live detector checkpoint on the GPU
+          before activation, and the live status reports the actual inference device.
+          Internet access, a compatible NVIDIA GPU, a working driver, and an app
+          restart are required. CPU inference remains available as a fallback.
           The supplied model is included in new installers and released as a separately
           checksum-verified download for existing installations. Its embedded metadata
           identifies the model license as AGPL-3.0; see MODEL_LICENSES.md in the source.

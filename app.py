@@ -1,7 +1,7 @@
 # AI Evidence Extractor — canvas-drawn heatmap + reliable upload progress.
 # -*- coding: utf-8 -*-
 """AI Evidence Extractor — video evidence triage with visual, audio, and contextual analysis."""
-import os, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, hashlib
+import os, sys, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, hashlib
 import queue, threading, csv, io, base64, html as _html
 import uuid
 import zipfile
@@ -970,6 +970,209 @@ def _realtime_image_size(speed_mode):
     raise ValueError("Live detection speed must be either 'balanced' or 'fast'.")
 
 
+def _realtime_device_label(device, half):
+    if device == "cpu":
+        return "CPU"
+    try:
+        name = torch.cuda.get_device_name(device)
+    except Exception as exc:
+        log.warning("Could not identify the live inference GPU: %s", exc)
+        name = "CUDA device"
+    precision = "FP16" if half else "FP32"
+    return f"GPU · {name} · {precision}"
+
+
+_GPU_TORCH_VERSION = "2.7.1+cu128"
+_GPU_TORCHVISION_VERSION = "0.22.1+cu128"
+_GPU_PYTORCH_INDEX = "https://download.pytorch.org/whl/cu128"
+
+
+def _gpu_progress(progress, fraction, description):
+    if progress is not None:
+        progress(fraction, desc=description)
+
+
+def _gpu_run(command, description):
+    log.info("%s: %s", description, command[0])
+    try:
+        process = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except OSError as exc:
+        raise RuntimeError(f"{description} could not start: {exc}") from exc
+
+    output = []
+    assert process.stdout is not None
+    for line in process.stdout:
+        line = line.rstrip()
+        if not line:
+            continue
+        log.info("%s", line)
+        output.append(line)
+        if len(output) > 40:
+            del output[:-40]
+    return_code = process.wait()
+    if return_code:
+        detail = "\n".join(output[-12:])
+        raise RuntimeError(
+            f"{description} failed with exit code {return_code}."
+            + (f"\n{detail}" if detail else "")
+        )
+    return "\n".join(output)
+
+
+def _nvidia_gpu_name():
+    nvidia_smi = shutil.which("nvidia-smi")
+    if not nvidia_smi:
+        raise RuntimeError(
+            "NVIDIA GPU setup requires an installed NVIDIA driver with nvidia-smi. "
+            "Install or update the driver, then try again."
+        )
+    result = subprocess.run(
+        [nvidia_smi, "--query-gpu=name", "--format=csv,noheader"],
+        capture_output=True, check=False, text=True, encoding="utf-8",
+        errors="replace",
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(
+            "The NVIDIA driver could not query the GPU."
+            + (f" {detail}" if detail else "")
+        )
+    names = [name.strip() for name in result.stdout.splitlines() if name.strip()]
+    if not names:
+        raise RuntimeError("The NVIDIA driver did not report an available GPU.")
+    return names[0]
+
+
+def _gpu_base_python():
+    candidates = [
+        Path(sys.base_prefix) / "python.exe",
+        Path(__file__).resolve().parent / "runtime" / "python.exe",
+        Path(os.environ.get("LOCALAPPDATA", Path.home()))
+        / "Programs" / "AI Evidence Extractor" / "runtime" / "python.exe",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise RuntimeError(
+        "The app's private Python runtime was not found. Repair or reinstall "
+        "AI Evidence Extractor, then try again."
+    )
+
+
+def _gpu_shared_site_packages():
+    candidates = [
+        Path(sys.prefix) / "Lib" / "site-packages",
+        APP_DATA / "runtimeenv" / "Lib" / "site-packages",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir() and candidate.resolve().parent.name.lower() == "lib":
+            return candidate.resolve()
+    raise RuntimeError(
+        "The app's installed Python dependencies could not be located. "
+        "Repair or reinstall AI Evidence Extractor."
+    )
+
+
+def _gpu_verification_code():
+    return (
+        "import json, sys; "
+        "import numpy as np; "
+        "import torch; "
+        "from ultralytics import YOLO; "
+        "assert torch.cuda.is_available(), 'CUDA is not available in this runtime'; "
+        "torch.rand((64, 64), device='cuda:0'); "
+        "torch.cuda.synchronize(); "
+        "model = YOLO(sys.argv[1]); "
+        "model.predict(source=np.zeros((512, 512, 3), dtype=np.uint8), "
+        "imgsz=512, device=0, half=True, verbose=False); "
+        "torch.cuda.synchronize(); "
+        "assert next(model.model.parameters()).is_cuda, "
+        "'The live detector did not remain on CUDA'; "
+        "print(json.dumps({'torch': torch.__version__, "
+        "'gpu': torch.cuda.get_device_name(0)}))"
+    )
+
+
+def _install_realtime_gpu(progress=None):
+    if os.name != "nt":
+        raise RuntimeError("NVIDIA GPU setup is supported on Windows only.")
+
+    _gpu_progress(progress, 0.02, "Checking NVIDIA driver")
+    gpu_name = _nvidia_gpu_name()
+    runtime_dir = APP_DATA / "runtimeenv_cuda2"
+    runtime_python = runtime_dir / "Scripts" / "python.exe"
+    marker = runtime_dir / ".aee_cuda_ready"
+    marker.unlink(missing_ok=True)
+    if not runtime_python.is_file():
+        _gpu_progress(progress, 0.08, "Preparing isolated GPU runtime")
+        _gpu_run(
+            [str(_gpu_base_python()), "-m", "venv", str(runtime_dir)],
+            "Preparing the GPU runtime",
+        )
+    if not runtime_python.is_file():
+        raise RuntimeError("The isolated GPU Python environment was not created.")
+
+    cuda_site = runtime_dir / "Lib" / "site-packages"
+    if not cuda_site.is_dir():
+        raise RuntimeError("The isolated GPU runtime has no site-packages directory.")
+    shared_path_file = cuda_site / "aee_shared_runtime.pth"
+    shared_path_file.write_text(
+        str(_gpu_shared_site_packages()) + "\n", encoding="utf-8"
+    )
+
+    _gpu_progress(progress, 0.12, "Installing CUDA-enabled PyTorch")
+    _gpu_run(
+        [
+            str(runtime_python), "-m", "pip", "install",
+            "--disable-pip-version-check", "--no-cache-dir",
+            "--index-url", "https://pypi.org/simple",
+            "--extra-index-url", _GPU_PYTORCH_INDEX,
+            f"torch=={_GPU_TORCH_VERSION}",
+            f"torchvision=={_GPU_TORCHVISION_VERSION}",
+        ],
+        "Installing CUDA-enabled PyTorch",
+    )
+
+    model_path = _realtime_checkpoint_path()
+    _gpu_progress(progress, 0.88, "Verifying the live detector on the GPU")
+    verification = _gpu_run(
+        [
+            str(runtime_python), "-c", _gpu_verification_code(), str(model_path),
+        ],
+        "Verifying live GPU inference",
+    )
+    try:
+        result = json.loads(verification.splitlines()[-1])
+        torch_version = str(result["torch"])
+        verified_gpu = str(result["gpu"])
+    except (IndexError, KeyError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            "GPU verification completed without returning its device details."
+        ) from exc
+    if verified_gpu != gpu_name:
+        raise RuntimeError(
+            "The GPU used by PyTorch does not match the GPU reported by the driver."
+        )
+
+    temporary_marker = marker.with_name(marker.name + ".tmp")
+    temporary_marker.write_text(
+        json.dumps({
+            "torch": torch_version,
+            "gpu": verified_gpu,
+            "verified_model": model_path.name,
+        }, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary_marker, marker)
+    _gpu_progress(progress, 1.0, "GPU acceleration is ready")
+    return {"gpu": verified_gpu, "torch": torch_version}
+
+
 def _realtime_detect_frame(frame, speed_mode="balanced"):
     if frame is None:
         return (
@@ -988,6 +1191,7 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
         image_size = _realtime_image_size(speed_mode)
         model = _load_realtime_model()
         device, half = _resolve_inference_device()
+        device_label = _realtime_device_label(device, half)
         started = time.perf_counter()
         model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         with _REALTIME_MODEL_LOCK:
@@ -1055,8 +1259,8 @@ def _realtime_detect_frame(frame, speed_mode="balanced"):
             if speed_mode == "fast" else f"Balanced · {image_size} px"
         )
         status = (
-            f"**LIVE** · {mode_label} · {count_label} · Classes: {classes} · "
-            f"{elapsed * 1000:.0f} ms"
+            f"**LIVE** · {device_label} · {mode_label} · {count_label} · "
+            f"Classes: {classes} · {elapsed * 1000:.0f} ms"
         )
         return status, _realtime_overlay_html(width, height, boxes_payload)
     except Exception as exc:
@@ -7810,6 +8014,7 @@ _JS_HEAD = r"""
     'Balanced · 640 px':'متوازن · 640 بكسل',
     'Fast · 512 px':'سريع · 512 بكسل',
     'Balanced uses 640-pixel input for more detail; Fast uses 512 pixels to reduce processing time but can miss small objects.':'يستخدم الوضع المتوازن دقة 640 بكسل لتفاصيل أكثر؛ ويستخدم السريع 512 بكسل لتقليل وقت المعالجة وقد يفوّت الأجسام الصغيرة.',
+    'Set up NVIDIA GPU acceleration':'إعداد تسريع GPU من NVIDIA',
     'Enable live camera':'تشغيل الكاميرا المباشرة',
     'Connecting to camera…':'جارٍ الاتصال بالكاميرا…',
     'Live camera active':'الكاميرا المباشرة نشطة',
@@ -11996,6 +12201,33 @@ def build_ui():
                                 height=520,
                                 elem_id="aee-realtime-camera",
                                 elem_classes=["aee-realtime-camera"])
+                            realtime_device, realtime_half = _resolve_inference_device()
+                            gpu_available = realtime_device != "cpu"
+                            if gpu_available:
+                                gpu_name = _realtime_device_label(
+                                    realtime_device, realtime_half
+                                )
+                                gpu_status_initial = (
+                                    f"**GPU acceleration active:** {gpu_name}"
+                                )
+                            else:
+                                gpu_status_initial = (
+                                    "**CPU inference is active.** Set up an isolated "
+                                    "NVIDIA runtime to run live detection on the GPU. "
+                                    "This downloads CUDA-enabled PyTorch packages, "
+                                    "requires an internet connection and a compatible "
+                                    "NVIDIA driver, and needs an app restart afterward."
+                                )
+                            realtime_gpu_status = gr.Markdown(
+                                gpu_status_initial,
+                                elem_classes=["aee-realtime-gpu-status"],
+                            )
+                            realtime_gpu_setup = gr.Button(
+                                "Set up NVIDIA GPU acceleration",
+                                visible=not gpu_available,
+                                variant="secondary",
+                                elem_classes=["aee-realtime-gpu-setup"],
+                            )
                             realtime_status = gr.Markdown(
                                 "Enable the camera to begin live detection.",
                                 elem_classes=["aee-realtime-status"],
@@ -12020,6 +12252,26 @@ def build_ui():
                     outputs=[realtime_status, realtime_overlay_data],
                     stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
                     trigger_mode="always_last", show_progress="hidden")
+
+                def setup_realtime_gpu(progress=gr.Progress()):
+                    try:
+                        result = _install_realtime_gpu(progress=progress)
+                    except Exception as exc:
+                        log.exception("Could not set up live NVIDIA GPU inference")
+                        return f"GPU setup failed: {exc}"
+                    return (
+                        f"GPU setup verified: {result['gpu']} with PyTorch "
+                        f"{result['torch']}. Close and reopen the app to start "
+                        "live detection on the GPU."
+                    )
+
+                realtime_gpu_setup.click(
+                    fn=setup_realtime_gpu,
+                    inputs=[],
+                    outputs=[realtime_gpu_status],
+                    concurrency_limit=1,
+                    show_progress="full",
+                )
 
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM

@@ -159,6 +159,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Balanced · 640 px", source)
         self.assertIn("Fast · 512 px", source)
         self.assertIn("Live detection speed", source)
+        self.assertIn("Set up NVIDIA GPU acceleration", source)
+        self.assertIn("_install_realtime_gpu", source)
         self.assertIn("data-aee-realtime-enable", source)
         self.assertIn("Bounding-box colors", source)
         self.assertIn("watchAeeRealtimeOverlay", app._JS_HEAD)
@@ -275,6 +277,26 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(app._realtime_image_size("fast"), 512)
         with self.assertRaisesRegex(ValueError, "Live detection speed"):
             app._realtime_image_size("unknown")
+
+    def test_realtime_detector_uses_cuda_and_reports_the_active_gpu(self):
+        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
+        model = SimpleNamespace(
+            names={0: "Firearm"},
+            predict=Mock(return_value=[SimpleNamespace(boxes=None)]),
+        )
+        with (
+            patch.object(app, "_load_realtime_model", return_value=model),
+            patch.object(app, "_resolve_inference_device", return_value=(0, True)),
+            patch.object(
+                app.torch.cuda, "get_device_name",
+                return_value="NVIDIA GeForce GTX 1050 Ti",
+            ),
+        ):
+            status, _ = app._realtime_detect_frame(frame)
+
+        self.assertIn("GPU · NVIDIA GeForce GTX 1050 Ti · FP16", status)
+        self.assertEqual(model.predict.call_args.kwargs["device"], 0)
+        self.assertTrue(model.predict.call_args.kwargs["half"])
 
     def test_realtime_detector_rejects_unsupported_camera_frame(self):
         frame = app.np.zeros((32, 32), dtype=app.np.uint8)
