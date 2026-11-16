@@ -160,7 +160,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("Fast · 512 px", source)
         self.assertIn("Live detection speed", source)
         self.assertIn("Set up NVIDIA GPU acceleration", source)
-        self.assertIn("_install_realtime_gpu", source)
         self.assertIn("data-aee-realtime-enable", source)
         self.assertIn("Bounding-box colors", source)
         self.assertIn("watchAeeRealtimeOverlay", app._JS_HEAD)
@@ -179,6 +178,7 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("data-aee-realtime-overlay", app._JS_HEAD)
         self.assertIn("data-testid=\"webcam-video\"", app._JS_HEAD)
         application_source = Path(app.__file__).read_text(encoding="utf-8")
+        self.assertIn("def _install_realtime_gpu", application_source)
         self.assertIn('value="fast"', application_source)
         image_config = application_source.split(
             "realtime_camera = gr.Image(", 1
