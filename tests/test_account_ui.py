@@ -189,10 +189,11 @@ class AccountUiTests(unittest.TestCase):
             "realtime_camera = gr.Image(", 1
         )[1].split(")", 1)[0]
         self.assertNotIn("stream_every=", image_config)
-        self.assertIn("Analysis speed", source)
-        self.assertIn("Fast · 0.5 samples/sec", source)
+        self.assertIn("Sampling rate · 0.1 frames/sec", source)
+        self.assertIn("Frames are sampled about once every 10 seconds.", source)
         self.assertIn("aee-analysis-options", source)
         self.assertIn("analysis_speed", source)
+        self.assertIn('analysis_speed = gr.State(value="fixed")', source)
         self.assertIn("Back to Detection Modes", source)
         self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
         self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
@@ -348,13 +349,25 @@ class AccountUiTests(unittest.TestCase):
         self.assertIn("model returned no results", status)
         self.assertIn('"width":0,"height":0,"boxes":[]', html.unescape(overlay_html))
 
-    def test_analysis_speed_modes_preserve_balanced_default_and_record_tradeoff(self):
-        self.assertEqual(app._analysis_sampling_fps("balanced"), app.CFG.FPS)
-        self.assertEqual(
-            app._analysis_sampling_fps("fast"), app.CFG.FPS / 2.0
-        )
+    def test_uploaded_video_sampling_is_fixed_at_tenth_fps(self):
+        for mode in ("balanced", "fast", "fixed"):
+            self.assertEqual(app._analysis_sampling_fps(mode), 0.1)
         with self.assertRaisesRegex(ValueError, "Analysis speed"):
             app._analysis_sampling_fps("unknown")
+
+    def test_tracker_allows_association_across_ten_second_sample_interval(self):
+        tracker = app.Tracker(sampling_fps=0.1)
+        first = {
+            "bbox": [10, 10, 30, 30],
+            "label": "Firearm",
+            "confidence": 0.9,
+        }
+        second = dict(first)
+
+        tracker.update([first], 0.0, 0, "sample.mp4")
+        tracker.update([second], 10.0, 1, "sample.mp4")
+
+        self.assertEqual(first["track_id"], second["track_id"])
 
     def test_realtime_box_clips_coordinates_and_skips_degenerate_boxes(self):
         frame = app.np.zeros((40, 48, 3), dtype=app.np.uint8)
@@ -958,7 +971,8 @@ class AccountUiTests(unittest.TestCase):
 
     def test_batch_pipeline_returns_visible_errors_when_every_video_fails(self):
         class FailedProcessor:
-            def __init__(self):
+            def __init__(self, sampling_fps=None):
+                self.sampling_fps = sampling_fps
                 self.tracker = SimpleNamespace(
                     summaries=lambda: [],
                     panel_html=lambda: "No tracks",
@@ -1301,7 +1315,8 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(history), 101)
         self.assertEqual(len(choices), 101)
         self.assertEqual(selected, "history-100")
-        self.assertEqual(history.iloc[-1]["Mode"], "Standard · Fast (0.5 fps)")
+        self.assertEqual(history.iloc[-1]["Mode"], "Standard")
+        self.assertEqual(history.iloc[-1]["Sampling rate"], "0.5 fps")
         self.assertIn(".aee-history-detail", app.CSS)
 
     def test_history_zip_contains_analysis_details_and_generated_files(self):
@@ -1407,7 +1422,7 @@ class AccountUiTests(unittest.TestCase):
             ):
                 warnings = app._record_analysis_history(
                     [result], str(master), str(report), "case-1",
-                    analysis_speed="fast", sampling_fps=0.5,
+                    analysis_speed="fixed", sampling_fps=0.1,
                     case_meta={"examiner": "Analyst"}, case_notes="Case notes",
                     tracker_rows=[{"Video": "sample.mp4", "Track": 4}],
                     cam_items=[{"video": "sample.mp4", "heat": str(heat),
@@ -1420,9 +1435,10 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertEqual(warnings, [])
         self.assertEqual(saved_entries[0]["source_path"], str(source_video))
-        self.assertEqual(saved_entries[0]["analysis_speed"], "fast")
-        self.assertEqual(saved_entries[0]["sampling_fps"], 0.5)
+        self.assertEqual(saved_entries[0]["analysis_speed"], "fixed")
+        self.assertEqual(saved_entries[0]["sampling_fps"], 0.1)
         self.assertEqual(saved_entries[0]["details"]["case_notes"], "Case notes")
+        self.assertIn("0.1 frames/sec", detail[0])
         self.assertEqual(len(saved_entries[0]["details"]["captures"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["highlights"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["heatmaps"]), 2)
@@ -1452,6 +1468,9 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertIn("Master summary video was not saved", warnings[0])
         self.assertIn("PDF report was not saved", warnings[1])
+        self.assertEqual(entry["analysis_speed"], "fixed")
+        self.assertEqual(entry["sampling_fps"], 0.1)
+        self.assertIn("0.1 frames/sec", detail[0])
         self.assertIn("Some files were not saved", detail[0])
 
     def test_supabase_setup_sql_is_safe_to_rerun(self):

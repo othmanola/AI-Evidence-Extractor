@@ -93,6 +93,9 @@ jobs:
           The analysis archive now opens the newest saved results after analysis,
           shows partial or failed video-processing errors, and reports missing
           generated video and PDF outputs.
+          Uploaded-video analysis now uses a fixed 0.1 frames-per-second sampling
+          rate (about one frame every 10 seconds). This reduces inference work but
+          may miss brief events, so review the original footage for important evidence.
           Internet access, a compatible NVIDIA GPU, a working driver, and an app
           restart are required. CPU inference remains available as a fallback.
           The supplied model is included in new installers and released as a separately

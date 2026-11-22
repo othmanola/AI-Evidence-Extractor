@@ -32,7 +32,10 @@ MODEL_DIR = APP_DATA / "models"
 OUTPUT_DIR = APP_DATA / "outputs"
 HISTORY_FILE = APP_DATA / "analysis_history.json"
 HISTORY_DIR = OUTPUT_DIR / "history"
-HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
+HISTORY_COLUMNS = [
+    "Analyzed at", "Video", "Duration (s)", "Detections", "Mode",
+    "Sampling rate", "Case",
+]
 _ANALYSIS_UI_UPDATE_INTERVAL = 0.75
 _HISTORY_LOCK = threading.Lock()
 _FEEDBACK_LOCK = threading.Lock()
@@ -106,17 +109,18 @@ def _history_dataframe():
             analyzed_label = analyzed.astimezone().strftime("%Y-%m-%d %H:%M:%S")
         except (TypeError, ValueError):
             analyzed_label = str(entry.get("analyzed_at", ""))
+        sampling_fps = _history_sampling_fps(entry)
         rows.append({
             "Analyzed at": analyzed_label,
             "Video": str(entry.get("video", "")),
             "Duration (s)": round(float(entry.get("duration_seconds", 0) or 0), 2),
             "Detections": int(entry.get("detections", 0) or 0),
             "Mode": (
-                ("Enhanced" if entry.get("high_accuracy") else "Standard")
-                + (
-                    " · Fast (0.5 fps)"
-                    if entry.get("analysis_speed") == "fast" else ""
-                )
+                "Enhanced" if entry.get("high_accuracy") else "Standard"
+            ),
+            "Sampling rate": (
+                f"{sampling_fps:g} fps"
+                if sampling_fps is not None else "Unavailable"
             ),
             "Case": str(entry.get("case", "")),
         })
@@ -345,11 +349,16 @@ def _history_detail_ui(entry_id):
     except (TypeError, ValueError):
         analyzed = str(entry.get("analyzed_at") or "Date unavailable")
     case_details = details.get("case_details") if isinstance(details.get("case_details"), dict) else {}
+    sampling_fps = _history_sampling_fps(entry)
     rows = [
         ("Analyzed", analyzed),
         ("Duration", f"{float(entry.get('duration_seconds', 0) or 0):.2f} seconds"),
         ("Detections", str(entry.get("detections", 0))),
         ("Mode", "Enhanced accuracy" if entry.get("high_accuracy") else "Standard"),
+        ("Sampling rate", (
+            f"{sampling_fps:g} frames/sec"
+            if sampling_fps is not None else "Unavailable"
+        )),
         ("Case", str(entry.get("case") or "Not specified")),
         ("Original video", source_path or "Path unavailable (original video was not copied)"),
         ("Resolution", f"{details.get('width', '—')} × {details.get('height', '—')}"),
@@ -632,7 +641,7 @@ def _history_json_default(value):
 
 
 def _record_analysis_history(results, master_path, report_path, case_number=None,
-                             high_accuracy=False, *, analysis_speed="balanced",
+                             high_accuracy=False, *, analysis_speed="fixed",
                              sampling_fps=None, case_meta=None, case_notes="",
                              tracker_rows=None, cam_items=None, work_root=None):
     if not results:
@@ -718,7 +727,8 @@ def _record_analysis_history(results, master_path, report_path, case_number=None
             "high_accuracy": bool(high_accuracy),
             "analysis_speed": analysis_speed,
             "sampling_fps": float(
-                CFG.FPS if sampling_fps is None else sampling_fps
+                _UPLOAD_VIDEO_SAMPLE_FPS
+                if sampling_fps is None else sampling_fps
             ),
             "case": (case_number or "").strip(),
             "master_video": saved_master,
@@ -789,9 +799,11 @@ class CFG:
     }
 
 
+_UPLOAD_VIDEO_SAMPLE_FPS = 0.1
 _ANALYSIS_SPEED_FPS = {
-    "balanced": CFG.FPS,
-    "fast": CFG.FPS / 2.0,
+    "balanced": _UPLOAD_VIDEO_SAMPLE_FPS,
+    "fast": _UPLOAD_VIDEO_SAMPLE_FPS,
+    "fixed": _UPLOAD_VIDEO_SAMPLE_FPS,
 }
 
 
@@ -800,8 +812,23 @@ def _analysis_sampling_fps(analysis_speed):
         return _ANALYSIS_SPEED_FPS[analysis_speed]
     except (KeyError, TypeError):
         raise ValueError(
-            "Analysis speed must be either 'balanced' or 'fast'."
+            "Analysis speed must be 'balanced', 'fast', or 'fixed'."
         ) from None
+
+
+def _history_sampling_fps(entry):
+    sampling_fps = entry.get("sampling_fps")
+    if sampling_fps is None:
+        sampling_fps = {
+            "balanced": CFG.FPS,
+            "fast": CFG.FPS / 2.0,
+            "fixed": _UPLOAD_VIDEO_SAMPLE_FPS,
+        }.get(entry.get("analysis_speed"))
+    try:
+        sampling_fps = float(sampling_fps)
+    except (TypeError, ValueError):
+        return None
+    return sampling_fps if math.isfinite(sampling_fps) and sampling_fps > 0 else None
 
 
 CMAP = {"gun":"Firearm","pistol":"Firearm","handgun":"Firearm","firearm":"Firearm",
@@ -1762,7 +1789,10 @@ class Ensemble:
 
 
 class Tracker:
-    def __init__(self):
+    def __init__(self, sampling_fps=None):
+        self.sampling_fps = max(
+            float(sampling_fps if sampling_fps is not None else CFG.FPS), 0.1
+        )
         self.tracks = {}; self.frames = 0; self.reid_events = []
         self._last_timestamp_seen = {}; self._next_id = 1
 
@@ -1773,7 +1803,7 @@ class Tracker:
         not exist. Associate detections across sampled frames here instead.
         """
         self.frames += 1
-        max_gap = max(3.0, 3.0 / max(float(CFG.FPS), 0.1))
+        max_gap = max(3.0, 3.0 / self.sampling_fps)
         candidates = []
         for d_idx, d in enumerate(dets):
             box = d.get("bbox")
@@ -1818,7 +1848,7 @@ class Tracker:
                     "max_conf":0.0,"history":[]}
             tr = self.tracks[key]
             prev = self._last_timestamp_seen.get(key)
-            if prev is not None and (t-prev) > max(1.0, 1.25/max(float(CFG.FPS), 0.1)):
+            if prev is not None and (t-prev) > max(1.0, 1.25/self.sampling_fps):
                 self.reid_events.append({"video":video_name,"track_id":tr["track_id"],
                     "label":d["label"],"at":t,"gap_sec":t-prev})
             tr["last_seen"] = t; tr["frames"] += 1
@@ -2274,9 +2304,9 @@ class Result:
 
 
 class Processor:
-    def __init__(self):
+    def __init__(self, sampling_fps=None):
         self.ens = Ensemble.get()
-        self.tracker = Tracker()
+        self.tracker = Tracker(sampling_fps=sampling_fps)
         self.camcache = CAMCache()
         self.warnings = []
 
@@ -2337,7 +2367,7 @@ class Processor:
 
     def process_stream(
         self, vp, root, cancel_event=None, high_accuracy=False,
-        analysis_speed="balanced",
+        analysis_speed="fixed",
     ):
         sample_fps = _analysis_sampling_fps(analysis_speed)
         video = Path(vp)
@@ -4782,6 +4812,8 @@ html[data-theme="light"] .aee-up-progress.error{
 }
 .aee-analysis-options>.block{min-width:0!important;margin:0!important;}
 .aee-analysis-options .info{color:var(--text-subtle)!important;font-size:.73rem!important;}
+.aee-analysis-notice{display:flex;flex-direction:column;gap:6px;color:var(--text-subtle);font-size:.82rem;}
+.aee-analysis-notice strong{color:var(--text);font-size:.9rem;}
 html[data-theme="light"] .aee-analysis-options{
   background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(248,231,200,.58));
   border-color:rgba(121,98,83,.2)!important;
@@ -8159,11 +8191,8 @@ _JS_HEAD = r"""
     'Agreement':'توافق النماذج','models':'نماذج','fusion':'دمج',
     'Analysis workflow':'خطوات التحليل','Add video':'إضافة فيديو',
     'Configure':'الإعدادات','Analyze':'تحليل','Review & export':'مراجعة وتصدير',
-    'Analysis speed':'سرعة التحليل',
-    'Balanced · 1 sample/sec':'متوازن · عينة واحدة/ثانية',
-    'Fast · 0.5 samples/sec':'سريع · 0.5 عينة/ثانية',
-    'Fast mode analyzes half as many frames, which can miss brief events.':'يحلل الوضع السريع نصف عدد الإطارات، وقد يفوّت الأحداث القصيرة.',
-    'Choose fewer sampled frames for faster review, or keep balanced coverage.':'اختر إطارات أقل لتسريع المراجعة، أو احتفظ بالتغطية المتوازنة.',
+    'Sampling rate · 0.1 frames/sec':'معدل أخذ العينات · 0.1 إطار/ثانية',
+    'Frames are sampled about once every 10 seconds. Brief events may be missed.':'يتم أخذ عينة إطار كل 10 ثوانٍ تقريباً، وقد لا تُلتقط الأحداث القصيرة.',
     'Live camera':'الكاميرا المباشرة',
     'Fast · 512 px':'سريع · 512 بكسل',
     'Confidence · 0.30':'الثقة · 0.30',
@@ -9995,7 +10024,7 @@ def _build_master(results, out, work):
 
 
 def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes,
-                  high_accuracy=False, analysis_speed="balanced",
+                  high_accuracy=False, analysis_speed="fixed",
                   progress=gr.Progress()):
     sample_fps = _analysis_sampling_fps(analysis_speed)
     EMPTY_DF = _det_df([])
@@ -10082,7 +10111,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
         root = Path(tempfile.mkdtemp(prefix="aee_")); t0 = time.time()
         results, errs = [], []
         q = queue.Queue(); stop = threading.Event()
-        proc = Processor()
+        proc = Processor(sampling_fps=sample_fps)
 
         def worker():
             try:
@@ -11664,15 +11693,13 @@ def build_ui():
                         info=("Standard uses the two smallest models at 512px; enhanced "
                               "mode uses all available models and test-time augmentation "
                               "for difficult or small objects."))
-                    analysis_speed = gr.Dropdown(
-                        choices=[
-                            ("Balanced · 1 sample/sec", "balanced"),
-                            ("Fast · 0.5 samples/sec", "fast"),
-                        ],
-                        value="balanced",
-                        label="Analysis speed",
-                        info="Choose fewer sampled frames for faster review, or keep balanced coverage.",
+                    gr.HTML(
+                        '<div class="aee-analysis-notice">'
+                        '<strong>Sampling rate · 0.1 frames/sec</strong>'
+                        '<span>Frames are sampled about once every 10 seconds. '
+                        'Brief events may be missed.</span></div>'
                     )
+                    analysis_speed = gr.State(value="fixed")
 
                 with gr.Row(elem_classes="aee-actions"):
                     reset_btn = gr.Button("← Reset", size="sm",
@@ -11777,7 +11804,7 @@ def build_ui():
                 history_refresh = gr.Button("Refresh history", size="sm")
                 history_table = gr.Dataframe(
                     value=_history_dataframe(), headers=HISTORY_COLUMNS,
-                    datatype=["str", "str", "number", "number", "str", "str"],
+                    datatype=["str", "str", "number", "number", "str", "str", "str"],
                     interactive=False, wrap=True, show_row_numbers=True)
 
         history_items = _history_list_items()
