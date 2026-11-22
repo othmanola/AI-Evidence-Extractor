@@ -85,22 +85,12 @@ jobs:
             $utf8NoBom
           )
           @"
-          Adds one-click NVIDIA GPU setup using an isolated, pinned CUDA-enabled
-          PyTorch runtime. The setup verifies the live detector checkpoint on the GPU
-          before activation. Live detection now runs through a dedicated inference
-          pipeline that selects its GPU independently from batch-analysis settings.
-          The live status reports the actual inference device.
-          The analysis archive now opens the newest saved results after analysis,
-          shows partial or failed video-processing errors, and reports missing
-          generated video and PDF outputs.
-          Uploaded-video analysis now uses a fixed 0.1 frames-per-second sampling
-          rate (about one frame every 10 seconds). This reduces inference work but
-          may miss brief events, so review the original footage for important evidence.
-          Internet access, a compatible NVIDIA GPU, a working driver, and an app
-          restart are required. CPU inference remains available as a fallback.
-          The supplied model is included in new installers and released as a separately
-          checksum-verified download for existing installations. Its embedded metadata
-          identifies the model license as AGPL-3.0; see MODEL_LICENSES.md in the source.
+          Version 1.2.113 restores the application behavior from v1.2.92 while
+          retaining the current release process, so newer installations can receive
+          the rollback through the in-app updater.
+          This intentionally removes features introduced after v1.2.92, including
+          live camera detection, automatic CUDA setup, and 0.1 fps uploaded-video
+          sampling.
 
           Existing users can use the in-app updater. The setup installer is for new installations and recovery.
           "@ | Set-Content .\dist\release-notes.md -Encoding utf8
@@ -113,14 +103,16 @@ jobs:
           $ErrorActionPreference = "Stop"
           $version = (Get-Content -Raw .\version.txt).Trim()
           $tag = "v$version"
-          Copy-Item .\assets\realtime_weapons.pt `
-            .\dist\AI_Evidence_Extractor_Realtime_Weapons.pt -Force
           $assets = @(
             ".\dist\AI_Evidence_Extractor_Setup.exe",
             ".\dist\AI_Evidence_Extractor_Update.zip",
-            ".\dist\latest.json",
-            ".\dist\AI_Evidence_Extractor_Realtime_Weapons.pt"
+            ".\dist\latest.json"
           )
+          if (Test-Path .\assets\realtime_weapons.pt) {
+            Copy-Item .\assets\realtime_weapons.pt `
+              .\dist\AI_Evidence_Extractor_Realtime_Weapons.pt -Force
+            $assets += ".\dist\AI_Evidence_Extractor_Realtime_Weapons.pt"
+          }
           gh release view $tag --repo othmanola/AI-Evidence-Extractor *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag @assets --repo othmanola/AI-Evidence-Extractor --clobber

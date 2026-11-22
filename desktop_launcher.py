@@ -58,7 +58,7 @@ def _migrate_legacy_shortcuts(app_dir: Path) -> None:
         return
 
     data_dir = Path(os.environ.get("AEE_DATA_DIR", str(APP_DATA)))
-    shortcut_marker = data_dir / "source_launcher_shortcuts_v2"
+    shortcut_marker = data_dir / "source_launcher_shortcuts_v1"
     if shortcut_marker.is_file():
         return
 
@@ -82,7 +82,6 @@ def _migrate_legacy_shortcuts(app_dir: Path) -> None:
 $ErrorActionPreference = 'Stop'
 $shell = New-Object -ComObject WScript.Shell
 $oldTarget = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_OLD_TARGET)
-$oldLauncher = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_OLD_LAUNCHER)
 $newTarget = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_NEW_TARGET)
 $launcher = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_LAUNCHER)
 $appDir = [IO.Path]::GetFullPath($env:AEE_SHORTCUT_APP_DIR)
@@ -97,13 +96,9 @@ foreach ($root in $roots) {
   Get-ChildItem -LiteralPath $root -Filter '*.lnk' -File |
     ForEach-Object {
       $shortcut = $shell.CreateShortcut($_.FullName)
-      $targetIsOldApp = $shortcut.TargetPath -and
-        [IO.Path]::GetFullPath($shortcut.TargetPath).Equals(
-          $oldTarget, [StringComparison]::OrdinalIgnoreCase)
-      $argumentsAreOldLauncher = $shortcut.Arguments -and
-        $shortcut.Arguments.IndexOf(
-          $oldLauncher, [StringComparison]::OrdinalIgnoreCase) -ge 0
-      if ($targetIsOldApp -or $argumentsAreOldLauncher) {
+      if ($shortcut.TargetPath -and
+          [IO.Path]::GetFullPath($shortcut.TargetPath).Equals(
+            $oldTarget, [StringComparison]::OrdinalIgnoreCase)) {
         $shortcut.TargetPath = $newTarget
         $shortcut.Arguments = '"' + $launcher + '"'
         $shortcut.WorkingDirectory = $appDir
@@ -116,9 +111,8 @@ foreach ($root in $roots) {
     env = os.environ.copy()
     env.update({
         "AEE_SHORTCUT_OLD_TARGET": str(app_dir / "AI Evidence Extractor.exe"),
-        "AEE_SHORTCUT_OLD_LAUNCHER": str(app_dir / "desktop_launcher.py"),
         "AEE_SHORTCUT_NEW_TARGET": str(pythonw),
-        "AEE_SHORTCUT_LAUNCHER": str(app_dir / "desktop_entry.py"),
+        "AEE_SHORTCUT_LAUNCHER": str(app_dir / "desktop_launcher.py"),
         "AEE_SHORTCUT_APP_DIR": str(app_dir),
     })
     encoded_script = base64.b64encode(script.encode("utf-16le")).decode("ascii")
@@ -174,49 +168,6 @@ def free_local_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _prepare_gpu_before_window() -> bool:
-    if sys.platform != "win32":
-        return False
-
-    try:
-        from desktop_entry import _prepare_cuda_runtime
-
-        if not _prepare_cuda_runtime(APP_DIR, APP_DATA):
-            return False
-    except Exception as exc:
-        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
-        log.exception("Could not prepare the NVIDIA GPU before opening the app")
-        return False
-
-    cuda_pythonw = APP_DATA / "runtimeenv_cuda2" / "Scripts" / "pythonw.exe"
-    if not cuda_pythonw.is_file() or os.path.normcase(
-        str(Path(sys.executable).resolve())
-    ) == os.path.normcase(str(cuda_pythonw.resolve())):
-        return False
-
-    env = os.environ.copy()
-    env.update({
-        "AEE_APP_DIR": str(APP_DIR),
-        "AEE_DATA_DIR": str(APP_DATA),
-        "AEE_SOURCE_MODE": "1",
-        "YOLO_AUTOINSTALL": "false",
-    })
-    try:
-        process = subprocess.Popen(
-            [str(cuda_pythonw.resolve()), str((APP_DIR / "desktop_launcher.py").resolve())],
-            cwd=str(APP_DIR),
-            env=env,
-            close_fds=True,
-        )
-    except OSError as exc:
-        os.environ["AEE_GPU_AUTOCONNECT_ERROR"] = str(exc)
-        log.exception("Could not start the app in its prepared CUDA runtime")
-        return False
-
-    log.info("Prepared CUDA runtime will open the desktop window, pid=%s", process.pid)
-    return True
-
-
 def wait_for_server(url: str, thread: threading.Thread,
                     startup_error: list[BaseException], timeout: float = 120.0) -> None:
     deadline = time.monotonic() + timeout
@@ -251,8 +202,6 @@ def show_error(message: str) -> None:
 
 def main() -> None:
     set_windows_app_identity()
-    if _prepare_gpu_before_window():
-        return
     if getattr(sys, "frozen", False):
         os.environ["YOLO_AUTOINSTALL"] = "false"
     import webview
@@ -273,10 +222,8 @@ def main() -> None:
       border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;
       animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
       </style></head><body><main><h1>AI Evidence Extractor</h1>
-      <div class="spinner"></div><p id="startup-status">Starting your workspace.</p>
-      <p style="margin-top:10px;font-size:13px">
-      Your NVIDIA GPU is prepared before the app opens. CPU mode remains available
-      if GPU setup is unavailable.</p>
+      <div class="spinner"></div><p>Loading AI models. The app window will be ready shortly.</p>
+      <p style="margin-top:10px;font-size:13px">First startup can take up to a minute.</p>
       </main></body></html>"""
 
     window = webview.create_window(

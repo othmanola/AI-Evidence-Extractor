@@ -80,7 +80,7 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertTrue(defaults["project_url"].startswith("https://"))
         self.assertTrue(defaults["anon_key"].startswith("sb_publishable_"))
 
-    def test_release_feed_push_starts_from_the_latest_main_commit(self):
+    def test_rollback_release_notes_and_optional_model_asset(self):
         root = Path(__file__).resolve().parents[1]
         workflow = (root / ".github" / "workflows" / "publish-update.yml").read_text(
             encoding="utf-8"
@@ -89,10 +89,19 @@ class UpdateMigrationTests(unittest.TestCase):
         switch = workflow.index("git switch --create publish-update-feed origin/main")
         copy_feed = workflow.index("Copy-Item .\\dist\\latest.json .\\latest.json -Force")
         push = workflow.index("git push origin HEAD:main")
+        asset_guard = workflow.index("if (Test-Path .\\assets\\realtime_weapons.pt)")
+        asset_copy = workflow.index("Copy-Item .\\assets\\realtime_weapons.pt", asset_guard)
+        asset_append = workflow.index(
+            '$assets += ".\\dist\\AI_Evidence_Extractor_Realtime_Weapons.pt"',
+            asset_copy,
+        )
 
         self.assertLess(fetch, switch)
         self.assertLess(switch, copy_feed)
         self.assertLess(copy_feed, push)
+        self.assertLess(asset_guard, asset_copy)
+        self.assertLess(asset_copy, asset_append)
+        self.assertIn("restores the application behavior from v1.2.92", workflow)
 
     def test_update_package_embeds_connection_defaults_in_compatible_config_file(self):
         with TemporaryDirectory() as temp:
@@ -145,7 +154,7 @@ class UpdateMigrationTests(unittest.TestCase):
             data_dir = root / "data"
             runtime_dir = app_dir / "runtime"
             pythonw = data_dir / "runtimeenv" / "Scripts" / "pythonw.exe"
-            launcher = app_dir / "desktop_entry.py"
+            launcher = app_dir / "desktop_launcher.py"
             executable = app_dir / "AI Evidence Extractor.exe"
             for path in (runtime_dir, pythonw.parent):
                 path.mkdir(parents=True, exist_ok=True)
@@ -157,28 +166,6 @@ class UpdateMigrationTests(unittest.TestCase):
         self.assertEqual(command, [str(pythonw.resolve()), str(launcher.resolve())])
         self.assertEqual(cwd, runtime_dir)
 
-    def test_restart_prefers_prepared_cuda_runtime(self):
-        with TemporaryDirectory() as temp:
-            root = Path(temp)
-            app_dir = root / "app"
-            data_dir = root / "data"
-            runtime_dir = app_dir / "runtime"
-            standard_pythonw = data_dir / "runtimeenv" / "Scripts" / "pythonw.exe"
-            cuda_venv = data_dir / "runtimeenv_cuda2"
-            cuda_pythonw = cuda_venv / "Scripts" / "pythonw.exe"
-            launcher = app_dir / "desktop_entry.py"
-            runtime_dir.mkdir(parents=True)
-            standard_pythonw.parent.mkdir(parents=True)
-            cuda_pythonw.parent.mkdir(parents=True)
-            for path in (standard_pythonw, cuda_pythonw, launcher):
-                path.touch()
-            (cuda_venv / ".aee_cuda_ready").touch()
-
-            command, cwd = update_client._restart_command(data_dir, app_dir)
-
-        self.assertEqual(command, [str(cuda_pythonw.resolve()), str(launcher.resolve())])
-        self.assertEqual(cwd, runtime_dir)
-
     def test_restart_uses_bundled_python_when_user_runtime_environment_is_missing(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
@@ -186,7 +173,7 @@ class UpdateMigrationTests(unittest.TestCase):
             data_dir = root / "data"
             runtime_dir = app_dir / "runtime"
             pythonw = runtime_dir / "pythonw.exe"
-            launcher = app_dir / "desktop_entry.py"
+            launcher = app_dir / "desktop_launcher.py"
             executable = app_dir / "AI Evidence Extractor.exe"
             runtime_dir.mkdir(parents=True)
             for path in (pythonw, launcher, executable):

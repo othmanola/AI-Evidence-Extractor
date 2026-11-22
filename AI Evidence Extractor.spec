@@ -28,7 +28,6 @@ source_modules = [
 
 datas = [
     ("assets", "assets"),
-    ("MODEL_LICENSES.md", "."),
     ("version.txt", "."),
     ("update_config.json", "."),
 ] + [(name, ".") for name in source_modules] + gradio_datas + webview_datas + safehttpx_datas + groovy_datas + psutil_datas + collect_data_files("ultralytics")

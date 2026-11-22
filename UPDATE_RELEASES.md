@@ -1,5 +1,11 @@
 # Publishing app updates
 
+Version 1.2.113 restores the app behavior from v1.2.92 and is published as a
+higher version so installations on newer releases can receive the rollback
+through the in-app updater. This intentionally removes later additions,
+including live camera detection, automatic CUDA setup, and sparse 0.1 fps
+uploaded-video sampling.
+
 Version 1.2.109 prepares and verifies NVIDIA CUDA before opening the desktop
 app, so live detection starts directly on the GPU without restarting an open
 window. GPU setup retries automatically on the next launch if it fails.

@@ -1,12 +1,10 @@
 # AI Evidence Extractor — canvas-drawn heatmap + reliable upload progress.
 # -*- coding: utf-8 -*-
 """AI Evidence Extractor — video evidence triage with visual, audio, and contextual analysis."""
-import os, sys, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, hashlib
+import os, json, time, tempfile, shutil, subprocess, logging, re, pickle, math, hashlib
 import queue, threading, csv, io, base64, html as _html
 import uuid
 import zipfile
-import urllib.error
-import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -18,10 +16,6 @@ except ImportError:
 import numpy as np, pandas as pd, cv2, soundfile as sf, gradio as gr
 import torch
 from ultralytics import YOLO
-try:
-    from ultralytics import RTDETR
-except ImportError:
-    RTDETR = None
 import account_client as _account_client
 import update_client as _update_client
 
@@ -32,11 +26,7 @@ MODEL_DIR = APP_DATA / "models"
 OUTPUT_DIR = APP_DATA / "outputs"
 HISTORY_FILE = APP_DATA / "analysis_history.json"
 HISTORY_DIR = OUTPUT_DIR / "history"
-HISTORY_COLUMNS = [
-    "Analyzed at", "Video", "Duration (s)", "Detections", "Mode",
-    "Sampling rate", "Case",
-]
-_ANALYSIS_UI_UPDATE_INTERVAL = 0.75
+HISTORY_COLUMNS = ["Analyzed at", "Video", "Duration (s)", "Detections", "Mode", "Case"]
 _HISTORY_LOCK = threading.Lock()
 _FEEDBACK_LOCK = threading.Lock()
 _FEEDBACK_LAST_SENT = {}
@@ -109,19 +99,12 @@ def _history_dataframe():
             analyzed_label = analyzed.astimezone().strftime("%Y-%m-%d %H:%M:%S")
         except (TypeError, ValueError):
             analyzed_label = str(entry.get("analyzed_at", ""))
-        sampling_fps = _history_sampling_fps(entry)
         rows.append({
             "Analyzed at": analyzed_label,
             "Video": str(entry.get("video", "")),
             "Duration (s)": round(float(entry.get("duration_seconds", 0) or 0), 2),
             "Detections": int(entry.get("detections", 0) or 0),
-            "Mode": (
-                "Enhanced" if entry.get("high_accuracy") else "Standard"
-            ),
-            "Sampling rate": (
-                f"{sampling_fps:g} fps"
-                if sampling_fps is not None else "Unavailable"
-            ),
+            "Mode": "Enhanced" if entry.get("high_accuracy") else "Standard",
             "Case": str(entry.get("case", "")),
         })
     return pd.DataFrame(rows, columns=HISTORY_COLUMNS)
@@ -349,16 +332,11 @@ def _history_detail_ui(entry_id):
     except (TypeError, ValueError):
         analyzed = str(entry.get("analyzed_at") or "Date unavailable")
     case_details = details.get("case_details") if isinstance(details.get("case_details"), dict) else {}
-    sampling_fps = _history_sampling_fps(entry)
     rows = [
         ("Analyzed", analyzed),
         ("Duration", f"{float(entry.get('duration_seconds', 0) or 0):.2f} seconds"),
         ("Detections", str(entry.get("detections", 0))),
         ("Mode", "Enhanced accuracy" if entry.get("high_accuracy") else "Standard"),
-        ("Sampling rate", (
-            f"{sampling_fps:g} frames/sec"
-            if sampling_fps is not None else "Unavailable"
-        )),
         ("Case", str(entry.get("case") or "Not specified")),
         ("Original video", source_path or "Path unavailable (original video was not copied)"),
         ("Resolution", f"{details.get('width', '—')} × {details.get('height', '—')}"),
@@ -613,12 +591,6 @@ def _history_refresh_ui(refresh_count=0):
     return refresh_count + 1
 
 
-def _history_refresh_latest_ui(refresh_count=0):
-    items = _history_list_items()
-    entry_id = items[0]["id"] if items else None
-    return refresh_count + 1, *_history_detail_ui(entry_id)
-
-
 def _copy_history_artifact(source, destination):
     if not source:
         return ""
@@ -641,8 +613,7 @@ def _history_json_default(value):
 
 
 def _record_analysis_history(results, master_path, report_path, case_number=None,
-                             high_accuracy=False, *, analysis_speed="fixed",
-                             sampling_fps=None, case_meta=None, case_notes="",
+                             high_accuracy=False, *, case_meta=None, case_notes="",
                              tracker_rows=None, cam_items=None, work_root=None):
     if not results:
         return []
@@ -656,10 +627,6 @@ def _record_analysis_history(results, master_path, report_path, case_number=None
             master_path, shared_dir / Path(master_path).name) if master_path else ""
         saved_report = _copy_history_artifact(
             report_path, shared_dir / Path(report_path).name) if report_path else ""
-        if not saved_master:
-            storage_warnings.append("Master summary video was not saved.")
-        if not saved_report:
-            storage_warnings.append("PDF report was not saved.")
     except OSError as exc:
         log.exception("Could not save shared history report artifacts")
         storage_warnings.append(f"Report artifact copy failed: {exc}")
@@ -725,11 +692,6 @@ def _record_analysis_history(results, master_path, report_path, case_number=None
             "duration_seconds": round(float(result.metadata.duration or 0), 2),
             "detections": len(result.detections),
             "high_accuracy": bool(high_accuracy),
-            "analysis_speed": analysis_speed,
-            "sampling_fps": float(
-                _UPLOAD_VIDEO_SAMPLE_FPS
-                if sampling_fps is None else sampling_fps
-            ),
             "case": (case_number or "").strip(),
             "master_video": saved_master,
             "report_pdf": saved_report,
@@ -780,7 +742,6 @@ class CFG:
     INFERENCE_DEVICE = "auto"  # "auto", "cpu", or "cuda"
     INFERENCE_HALF = True      # use FP16 on CUDA when enabled
     MAX_ACTIVE_MODELS = 0      # 0 = all; otherwise use first N manifest models
-    FAST_MODEL_COUNT = 2       # Standard mode uses the smallest enabled models
     CLIP_PAD, HL_PAD, HL_THRESH = 2.0, 5.0, 6
     W_WPN, W_MULTI, W_AUD = 15, 25, 6
     W_WPN_PERSON, W_WPN_FACE, W_PERSON_ONLY = 20, 15, -5
@@ -797,38 +758,6 @@ class CFG:
         "firearm_yolov8n": 0.75,
         "cypher_weapon":   {"__weapons__": 0.50},
     }
-
-
-_UPLOAD_VIDEO_SAMPLE_FPS = 0.1
-_ANALYSIS_SPEED_FPS = {
-    "balanced": _UPLOAD_VIDEO_SAMPLE_FPS,
-    "fast": _UPLOAD_VIDEO_SAMPLE_FPS,
-    "fixed": _UPLOAD_VIDEO_SAMPLE_FPS,
-}
-
-
-def _analysis_sampling_fps(analysis_speed):
-    try:
-        return _ANALYSIS_SPEED_FPS[analysis_speed]
-    except (KeyError, TypeError):
-        raise ValueError(
-            "Analysis speed must be 'balanced', 'fast', or 'fixed'."
-        ) from None
-
-
-def _history_sampling_fps(entry):
-    sampling_fps = entry.get("sampling_fps")
-    if sampling_fps is None:
-        sampling_fps = {
-            "balanced": CFG.FPS,
-            "fast": CFG.FPS / 2.0,
-            "fixed": _UPLOAD_VIDEO_SAMPLE_FPS,
-        }.get(entry.get("analysis_speed"))
-    try:
-        sampling_fps = float(sampling_fps)
-    except (TypeError, ValueError):
-        return None
-    return sampling_fps if math.isfinite(sampling_fps) and sampling_fps > 0 else None
 
 
 CMAP = {"gun":"Firearm","pistol":"Firearm","handgun":"Firearm","firearm":"Firearm",
@@ -856,551 +785,6 @@ THREAT_COLORS = {"critical":"#dc2626","high":"#ef4444","medium":"#f59e0b",
 def norm(r): return CMAP.get(str(r).lower().strip(), str(r).title())
 def icon_for(label): return WEAPON_ICONS.get(label, "◈")
 def color_for(label): return WEAPON_COLORS.get(label, "#8b5cf6")
-
-
-_REALTIME_MODEL_FILE = "realtime_weapons.pt"
-_REALTIME_MODEL_SHA256 = (
-    "c6d92f38686400b90c441f35d89fb855ad46296dd51a891ba0ec1cb384796576"
-)
-_REALTIME_MODEL_URL = (
-    "https://github.com/othmanola/AI-Evidence-Extractor/releases/latest/download/"
-    "AI_Evidence_Extractor_Realtime_Weapons.pt"
-)
-_REALTIME_MODEL_MAX_BYTES = 64 * 1024 * 1024
-_REALTIME_CONFIDENCE = 0.30
-_REALTIME_IMAGE_SIZE = 512
-_REALTIME_STREAM_INTERVAL = 0.05
-
-
-def _realtime_checkpoint_hash(path):
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as checkpoint:
-        for chunk in iter(lambda: checkpoint.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _realtime_box_coordinates(image, coordinates):
-    height, width = image.shape[:2]
-    if height < 1 or width < 1:
-        return None
-    values = np.asarray(coordinates, dtype=np.float64).reshape(-1)
-    if values.size != 4 or not np.isfinite(values).all():
-        return None
-    x1, y1, x2, y2 = np.rint(values).astype(int).tolist()
-    x1, x2 = sorted((max(0, min(width - 1, x1)), max(0, min(width - 1, x2))))
-    y1, y2 = sorted((max(0, min(height - 1, y1)), max(0, min(height - 1, y2))))
-    if x2 - x1 < 2 or y2 - y1 < 2:
-        return None
-    return [x1, y1, x2, y2]
-
-
-def _realtime_overlay_html(width, height, boxes):
-    payload = json.dumps(
-        {"width": width, "height": height, "boxes": boxes},
-        separators=(",", ":"), ensure_ascii=False,
-    )
-    return (
-        '<div data-aee-realtime-payload="'
-        f'{_html.escape(payload, quote=True)}"></div>'
-    )
-
-
-class RealtimeDetectionPipeline:
-    """Owns the live model, device choice, inference lock, and frame errors."""
-
-    _EXPECTED_CLASSES = {
-        "Blunt_Weapon", "Explosive", "Fire_Smoke", "Firearm",
-        "Melee_Weapon", "Person", "Tool",
-    }
-    _LABELS = {
-        "blunt_weapon": "Blunt",
-        "fire_smoke": "Fire/Smoke",
-        "melee_weapon": "Knife",
-    }
-    _COLORS = {
-        "Firearm": "#f43f5e",
-        "Explosive": "#ef4444",
-        "Fire/Smoke": "#f97316",
-        "Knife": "#f59e0b",
-        "Blunt": "#eab308",
-        "Person": "#3b82f6",
-        "Tool": "#14b8a6",
-    }
-
-    def __init__(self):
-        self._lock = threading.RLock()
-        self._model = None
-        self._model_error = None
-        self._model_retry_after = 0.0
-        self._last_frame_error = None
-        self._last_frame_error_at = 0.0
-        self._last_cuda_error = None
-        self._last_cuda_error_at = 0.0
-        self._last_device_name_error = None
-        self._last_device_name_error_at = 0.0
-
-    def checkpoint_path(self):
-        bundled_path = (
-            Path(__file__).resolve().parent / "assets" / _REALTIME_MODEL_FILE
-        )
-        cached_path = MODEL_DIR / _REALTIME_MODEL_FILE
-        path = bundled_path if bundled_path.is_file() else cached_path
-        if path.is_file():
-            if path.stat().st_size > _REALTIME_MODEL_MAX_BYTES:
-                raise RuntimeError(
-                    "The live detection checkpoint is larger than expected."
-                )
-            if _realtime_checkpoint_hash(path) != _REALTIME_MODEL_SHA256:
-                raise RuntimeError(
-                    "The live detection checkpoint failed its integrity check."
-                )
-            return path
-
-        MODEL_DIR.mkdir(parents=True, exist_ok=True)
-        partial_path = MODEL_DIR / (
-            f".{_REALTIME_MODEL_FILE}.{uuid.uuid4().hex}.part"
-        )
-        digest = hashlib.sha256()
-        total = 0
-        request = urllib.request.Request(
-            _REALTIME_MODEL_URL,
-            headers={"User-Agent": "AI-Evidence-Extractor/Realtime-Model"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=60) as response:
-                if not response.geturl().lower().startswith("https://"):
-                    raise RuntimeError(
-                        "The live detection model download is not secure."
-                    )
-                content_length = response.headers.get("Content-Length")
-                if content_length and int(content_length) > _REALTIME_MODEL_MAX_BYTES:
-                    raise RuntimeError(
-                        "The live detection checkpoint is larger than expected."
-                    )
-                with partial_path.open("wb") as checkpoint:
-                    while True:
-                        chunk = response.read(1024 * 1024)
-                        if not chunk:
-                            break
-                        total += len(chunk)
-                        if total > _REALTIME_MODEL_MAX_BYTES:
-                            raise RuntimeError(
-                                "The live detection checkpoint is larger than expected."
-                            )
-                        digest.update(chunk)
-                        checkpoint.write(chunk)
-            if digest.hexdigest() != _REALTIME_MODEL_SHA256:
-                raise RuntimeError(
-                    "The downloaded live detection checkpoint failed verification."
-                )
-            os.replace(partial_path, cached_path)
-            return cached_path
-        except (OSError, urllib.error.URLError, TimeoutError, ValueError) as exc:
-            partial_path.unlink(missing_ok=True)
-            log.warning("Could not download the live detection checkpoint: %s", exc)
-            raise RuntimeError(
-                "The live detection model is not installed and could not be "
-                "downloaded. Check your internet connection and try again."
-            ) from None
-        except Exception:
-            partial_path.unlink(missing_ok=True)
-            raise
-
-    def load_model(self):
-        with self._lock:
-            if self._model is not None:
-                return self._model
-            if self._model_error and time.monotonic() < self._model_retry_after:
-                raise RuntimeError(self._model_error)
-            try:
-                checkpoint = self.checkpoint_path()
-                model = YOLO(str(checkpoint))
-                names = (
-                    model.names.values()
-                    if isinstance(model.names, dict) else model.names
-                )
-                if {str(name) for name in names} != self._EXPECTED_CLASSES:
-                    raise RuntimeError(
-                        "The installed live detection checkpoint has unexpected classes."
-                    )
-            except Exception as exc:
-                self._model_error = (
-                    f"The live detection model could not be loaded: {exc}"
-                )
-                self._model_retry_after = time.monotonic() + 30
-                log.exception("Could not load live detection checkpoint")
-                raise RuntimeError(self._model_error) from exc
-            self._model_error = None
-            self._model_retry_after = 0.0
-            self._model = model
-            return model
-
-    def resolve_device(self):
-        try:
-            if torch.cuda.is_available():
-                return 0, True
-        except Exception as exc:
-            now = time.monotonic()
-            message = str(exc)
-            if (
-                message != self._last_cuda_error
-                or now - self._last_cuda_error_at >= 30
-            ):
-                log.warning("Could not check CUDA for live detection: %s", exc)
-                self._last_cuda_error = message
-                self._last_cuda_error_at = now
-        return "cpu", False
-
-    def device_label(self, device, half):
-        if device == "cpu":
-            return "CPU"
-        try:
-            name = torch.cuda.get_device_name(device)
-        except Exception as exc:
-            now = time.monotonic()
-            message = str(exc)
-            if (
-                message != self._last_device_name_error
-                or now - self._last_device_name_error_at >= 30
-            ):
-                log.warning("Could not identify the live inference GPU: %s", exc)
-                self._last_device_name_error = message
-                self._last_device_name_error_at = now
-            name = "CUDA device"
-        precision = "FP16" if half else "FP32"
-        return f"GPU · {name} · {precision}"
-
-    @staticmethod
-    def _class_name(names, class_id):
-        if isinstance(names, dict):
-            return str(names.get(class_id, f"class {class_id}"))
-        if 0 <= class_id < len(names):
-            return str(names[class_id])
-        return f"class {class_id}"
-
-    def _log_frame_error(self, exc):
-        message = str(exc)
-        now = time.monotonic()
-        if (
-            message != self._last_frame_error
-            or now - self._last_frame_error_at >= 30
-        ):
-            log.exception(
-                "Live detection frame failed",
-                exc_info=(type(exc), exc, exc.__traceback__),
-            )
-            self._last_frame_error = message
-            self._last_frame_error_at = now
-
-    def detect(self, frame):
-        if frame is None:
-            return (
-                "Enable the camera to begin live detection.",
-                _realtime_overlay_html(0, 0, []),
-            )
-        try:
-            image = np.asarray(frame)
-            if image.ndim != 3 or image.shape[2] not in (3, 4):
-                raise ValueError("The camera returned an unsupported image format.")
-            if image.shape[2] == 4:
-                image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
-            if image.dtype != np.uint8:
-                image = np.clip(image, 0, 255).astype(np.uint8)
-            image = np.ascontiguousarray(image)
-            height, width = image.shape[:2]
-            model = self.load_model()
-            device, half = self.resolve_device()
-            device_label = self.device_label(device, half)
-            started = time.perf_counter()
-            model_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            with self._lock:
-                predictions = model.predict(
-                    source=model_image,
-                    conf=_REALTIME_CONFIDENCE,
-                    imgsz=_REALTIME_IMAGE_SIZE,
-                    iou=0.5,
-                    max_det=20,
-                    verbose=False,
-                    device=device,
-                    half=half,
-                )
-            if not predictions:
-                raise RuntimeError("The live detection model returned no results.")
-            result = predictions[0]
-            boxes_payload = []
-            boxes = result.boxes
-            if boxes is not None:
-                detection_rows = boxes.data[:, :6]
-                if hasattr(detection_rows, "detach"):
-                    detection_rows = detection_rows.detach()
-                if hasattr(detection_rows, "cpu"):
-                    detection_rows = detection_rows.cpu()
-                if hasattr(detection_rows, "numpy"):
-                    detection_rows = detection_rows.numpy()
-                detection_rows = np.asarray(detection_rows)
-                if detection_rows.ndim != 2 or detection_rows.shape[1] != 6:
-                    raise ValueError(
-                        "The live detection model returned malformed boxes."
-                    )
-                for x1, y1, x2, y2, score, raw_class_id in detection_rows:
-                    if (
-                        not np.isfinite((score, raw_class_id)).all()
-                        or score < _REALTIME_CONFIDENCE
-                    ):
-                        continue
-                    class_id = int(raw_class_id)
-                    raw_name = self._class_name(model.names, class_id)
-                    label = self._LABELS.get(raw_name.lower(), raw_name.title())
-                    coordinates = _realtime_box_coordinates(
-                        image, [x1, y1, x2, y2]
-                    )
-                    if coordinates is None:
-                        continue
-                    boxes_payload.append({
-                        "coordinates": coordinates,
-                        "label": label,
-                        "confidence": float(score),
-                        "color": self._COLORS.get(label, "#a855f7"),
-                    })
-            elapsed = max(time.perf_counter() - started, 0.001)
-            if boxes_payload:
-                classes = ", ".join(sorted({
-                    detection["label"] for detection in boxes_payload
-                }))
-                count_label = (
-                    f"{len(boxes_payload)} detection"
-                    f"{'s' if len(boxes_payload) != 1 else ''}"
-                )
-                result_label = f"{count_label} · Classes: {classes}"
-            else:
-                result_label = "No detections yet · check framing and lighting"
-            status = (
-                f"**LIVE** · {device_label} · Fast · {_REALTIME_IMAGE_SIZE} px · "
-                f"Confidence ≥ {_REALTIME_CONFIDENCE:.2f} · {result_label} · "
-                f"{elapsed * 1000:.0f} ms"
-            )
-            self._last_frame_error = None
-            self._last_frame_error_at = 0.0
-            return status, _realtime_overlay_html(width, height, boxes_payload)
-        except Exception as exc:
-            self._log_frame_error(exc)
-            return (
-                f"Live detection error: {_html.escape(str(exc))}",
-                _realtime_overlay_html(0, 0, []),
-            )
-
-
-_REALTIME_PIPELINE = RealtimeDetectionPipeline()
-
-
-def _realtime_checkpoint_path():
-    return _REALTIME_PIPELINE.checkpoint_path()
-
-
-def _load_realtime_model():
-    return _REALTIME_PIPELINE.load_model()
-
-
-def _realtime_device_label(device, half):
-    return _REALTIME_PIPELINE.device_label(device, half)
-
-
-_GPU_TORCH_VERSION = "2.7.1+cu128"
-_GPU_TORCHVISION_VERSION = "0.22.1+cu128"
-_GPU_PYTORCH_INDEX = "https://download.pytorch.org/whl/cu128"
-
-
-def _gpu_progress(progress, fraction, description):
-    if progress is not None:
-        progress(fraction, desc=description)
-
-
-def _gpu_run(command, description):
-    log.info("%s: %s", description, command[0])
-    try:
-        process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace",
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except OSError as exc:
-        raise RuntimeError(f"{description} could not start: {exc}") from exc
-
-    output = []
-    assert process.stdout is not None
-    for line in process.stdout:
-        line = line.rstrip()
-        if not line:
-            continue
-        log.info("%s", line)
-        output.append(line)
-        if len(output) > 40:
-            del output[:-40]
-    return_code = process.wait()
-    if return_code:
-        detail = "\n".join(output[-12:])
-        raise RuntimeError(
-            f"{description} failed with exit code {return_code}."
-            + (f"\n{detail}" if detail else "")
-        )
-    return "\n".join(output)
-
-
-def _nvidia_gpu_name():
-    nvidia_smi = shutil.which("nvidia-smi")
-    if not nvidia_smi:
-        raise RuntimeError(
-            "NVIDIA GPU setup requires an installed NVIDIA driver with nvidia-smi. "
-            "Install or update the driver, then try again."
-        )
-    result = subprocess.run(
-        [nvidia_smi, "--query-gpu=name", "--format=csv,noheader"],
-        capture_output=True, check=False, text=True, encoding="utf-8",
-        errors="replace",
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-    )
-    if result.returncode:
-        detail = result.stderr.strip() or result.stdout.strip()
-        raise RuntimeError(
-            "The NVIDIA driver could not query the GPU."
-            + (f" {detail}" if detail else "")
-        )
-    names = [name.strip() for name in result.stdout.splitlines() if name.strip()]
-    if not names:
-        raise RuntimeError("The NVIDIA driver did not report an available GPU.")
-    return names[0]
-
-
-def _gpu_base_python():
-    candidates = [
-        Path(sys.base_prefix) / "python.exe",
-        Path(__file__).resolve().parent / "runtime" / "python.exe",
-        Path(os.environ.get("LOCALAPPDATA", Path.home()))
-        / "Programs" / "AI Evidence Extractor" / "runtime" / "python.exe",
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate.resolve()
-    raise RuntimeError(
-        "The app's private Python runtime was not found. Repair or reinstall "
-        "AI Evidence Extractor, then try again."
-    )
-
-
-def _gpu_shared_site_packages():
-    candidates = [
-        Path(sys.prefix) / "Lib" / "site-packages",
-        APP_DATA / "runtimeenv" / "Lib" / "site-packages",
-    ]
-    for candidate in candidates:
-        if candidate.is_dir() and candidate.resolve().parent.name.lower() == "lib":
-            return candidate.resolve()
-    raise RuntimeError(
-        "The app's installed Python dependencies could not be located. "
-        "Repair or reinstall AI Evidence Extractor."
-    )
-
-
-def _gpu_verification_code():
-    return (
-        "import json, sys; "
-        "import numpy as np; "
-        "import torch; "
-        "from ultralytics import YOLO; "
-        "assert torch.cuda.is_available(), 'CUDA is not available in this runtime'; "
-        "torch.rand((64, 64), device='cuda:0'); "
-        "torch.cuda.synchronize(); "
-        "model = YOLO(sys.argv[1]); "
-        "model.predict(source=np.zeros((512, 512, 3), dtype=np.uint8), "
-        "imgsz=512, device=0, half=True, verbose=False); "
-        "torch.cuda.synchronize(); "
-        "assert model.predictor.model.device.type == 'cuda', "
-        "'The live detector predictor did not use CUDA'; "
-        "assert model.predictor.model.fp16, "
-        "'The live detector did not use FP16 on CUDA'; "
-        "print(json.dumps({'torch': torch.__version__, "
-        "'gpu': torch.cuda.get_device_name(0)}))"
-    )
-
-
-def _install_realtime_gpu(progress=None):
-    if os.name != "nt":
-        raise RuntimeError("NVIDIA GPU setup is supported on Windows only.")
-
-    _gpu_progress(progress, 0.02, "Checking NVIDIA driver")
-    gpu_name = _nvidia_gpu_name()
-    runtime_dir = APP_DATA / "runtimeenv_cuda2"
-    runtime_python = runtime_dir / "Scripts" / "python.exe"
-    marker = runtime_dir / ".aee_cuda_ready"
-    marker.unlink(missing_ok=True)
-    if not runtime_python.is_file():
-        _gpu_progress(progress, 0.08, "Preparing isolated GPU runtime")
-        _gpu_run(
-            [str(_gpu_base_python()), "-m", "venv", str(runtime_dir)],
-            "Preparing the GPU runtime",
-        )
-    if not runtime_python.is_file():
-        raise RuntimeError("The isolated GPU Python environment was not created.")
-
-    cuda_site = runtime_dir / "Lib" / "site-packages"
-    if not cuda_site.is_dir():
-        raise RuntimeError("The isolated GPU runtime has no site-packages directory.")
-    shared_path_file = cuda_site / "aee_shared_runtime.pth"
-    shared_path_file.write_text(
-        str(_gpu_shared_site_packages()) + "\n", encoding="utf-8"
-    )
-
-    _gpu_progress(progress, 0.12, "Installing CUDA-enabled PyTorch")
-    _gpu_run(
-        [
-            str(runtime_python), "-m", "pip", "install",
-            "--disable-pip-version-check", "--no-cache-dir",
-            "--index-url", "https://pypi.org/simple",
-            "--extra-index-url", _GPU_PYTORCH_INDEX,
-            f"torch=={_GPU_TORCH_VERSION}",
-            f"torchvision=={_GPU_TORCHVISION_VERSION}",
-        ],
-        "Installing CUDA-enabled PyTorch",
-    )
-
-    model_path = _realtime_checkpoint_path()
-    _gpu_progress(progress, 0.88, "Verifying the live detector on the GPU")
-    verification = _gpu_run(
-        [
-            str(runtime_python), "-c", _gpu_verification_code(), str(model_path),
-        ],
-        "Verifying live GPU inference",
-    )
-    try:
-        result = json.loads(verification.splitlines()[-1])
-        torch_version = str(result["torch"])
-        verified_gpu = str(result["gpu"])
-    except (IndexError, KeyError, json.JSONDecodeError) as exc:
-        raise RuntimeError(
-            "GPU verification completed without returning its device details."
-        ) from exc
-    if verified_gpu != gpu_name:
-        raise RuntimeError(
-            "The GPU used by PyTorch does not match the GPU reported by the driver."
-        )
-
-    temporary_marker = marker.with_name(marker.name + ".tmp")
-    temporary_marker.write_text(
-        json.dumps({
-            "torch": torch_version,
-            "gpu": verified_gpu,
-            "verified_model": model_path.name,
-        }, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(temporary_marker, marker)
-    _gpu_progress(progress, 1.0, "GPU acceleration is ready")
-    return {"gpu": verified_gpu, "torch": torch_version}
-
-
-def _realtime_detect_frame(frame):
-    return _REALTIME_PIPELINE.detect(frame)
 
 
 def threat_score(d, tracker=None, video_name=None):
@@ -1494,11 +878,8 @@ def has_audio(p):
             "-show_entries","stream=codec_type","-of","csv=p=0",str(p)],
             capture_output=True, text=True, timeout=10,
             **_quiet_subprocess_kwargs())
-        if r.returncode:
-            raise RuntimeError(r.stderr[-300:])
         return "audio" in r.stdout.lower()
-    except Exception as exc:
-        log.warning("Audio stream probe failed for %s: %s", p, exc)
+    except Exception:
         return False
 
 def probe_dur(p):
@@ -1584,11 +965,8 @@ def _resolve_inference_device():
 
 class Ensemble:
     _i = None
-
     def __init__(self):
         self.models = []
-        self.errors = []
-        self._model_load_lock = threading.RLock()
         self.device, self.half = _resolve_inference_device()
         try:
             self.device_name = (
@@ -1599,106 +977,35 @@ class Ensemble:
             log.warning("Could not identify the inference device: %s", exc)
             self.device_name = str(self.device)
         if MANIFEST.exists():
-            try:
-                manifest_entries = json.loads(MANIFEST.read_text(encoding="utf-8"))
-                if not isinstance(manifest_entries, list):
-                    raise ValueError("model manifest must contain a list")
-            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
-                self._record_error("manifest", "load", exc)
-                manifest_entries = []
-            for entry in manifest_entries:
-                if not isinstance(entry, dict):
-                    self._record_error("manifest", "load",
-                                       ValueError("model entry must be an object"))
+            for e in json.loads(MANIFEST.read_text()):
+                model_path = _resolve_model_path(e["path"])
+                if not model_path.is_file():
+                    log.warning("model file is missing: %s", model_path)
                     continue
-                name = str(entry.get("name") or entry.get("path") or "unnamed model")
                 try:
-                    model_path = _resolve_model_path(entry["path"])
-                    if not model_path.is_file():
-                        raise FileNotFoundError(f"model file is missing: {model_path}")
-                    backend = str(entry.get("backend", "yolo")).strip().lower()
-                    model_class = self._model_class(backend)
-                    size_bytes = model_path.stat().st_size
+                    m = YOLO(str(model_path))
+                    size_mb = model_path.stat().st_size / 1e6
                     self.models.append({
-                        "model": None, "model_class": model_class,
-                        "backend": backend, "path": model_path,
-                        "name": name, "conf": entry.get("conf", 0.15),
-                        "base_conf": entry.get("conf", 0.15),
-                        "names": {}, "classes": [],
-                        "size_bytes": size_bytes,
-                        "size_mb": round(size_bytes / 1e6, 1),
-                        "source": entry.get("source", ""),
+                        "yolo": m, "name": e["name"],
+                        "conf": e.get("conf", 0.15),
+                        "base_conf": e.get("conf", 0.15),
+                        "names": m.names,
+                        "classes": list(m.names.values()) if isinstance(m.names, dict)
+                                   else list(m.names),
+                        "size_mb": round(size_mb, 1),
+                        "source": e.get("source", ""),
                         "enabled": True, "infer_ms": 0.0,
-                        "load_attempted": False, "error_count": 0,
-                        "last_error": None,
                     })
-                except (KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
-                    self._record_error(name, "load", exc)
+                except Exception as ex:
+                    log.warning("load %s: %s", e["name"], ex)
         model_limit = max(0, int(CFG.MAX_ACTIVE_MODELS))
         for index, model in enumerate(self.models):
             model["enabled"] = model_limit == 0 or index < model_limit
-        fast_models = self._selected_models(high_accuracy=False)
-        for model in fast_models:
-            self._load_model(model)
         active_count = sum(1 for model in self.models if model["enabled"])
         precision = "FP16" if self.half else "FP32"
-        log.info("Ensemble: %d fast / %d enabled models · device=%s (%s) · %s",
-                 len(fast_models), active_count, self.device_name,
+        log.info("Ensemble: %d/%d active models · device=%s (%s) · %s",
+                 active_count, len(self.models), self.device_name,
                  self.device, precision)
-
-    @staticmethod
-    def _model_class(backend):
-        if backend == "yolo":
-            return YOLO
-        if backend == "rtdetr":
-            if RTDETR is None:
-                raise RuntimeError(
-                    "RT-DETR requires a newer Ultralytics runtime."
-                )
-            return RTDETR
-        raise ValueError(f"Unsupported detector backend: {backend}")
-
-    def _record_error(self, name, stage, exc, model=None, log_error=True):
-        message = str(exc).strip() or type(exc).__name__
-        if model is not None:
-            model["error_count"] += 1
-            model["last_error"] = message[:400]
-        self.errors.append({
-            "model": str(name), "stage": str(stage), "message": message[:400],
-        })
-        del self.errors[:-50]
-        if log_error:
-            log.error("%s failed for %s: %s", stage, name, message,
-                      exc_info=(type(exc), exc, exc.__traceback__))
-
-    def _load_model(self, entry):
-        if entry["model"] is not None:
-            return True
-        with self._model_load_lock:
-            if entry["model"] is not None:
-                return True
-            if entry["load_attempted"]:
-                return False
-            entry["load_attempted"] = True
-            try:
-                model = entry["model_class"](str(entry["path"]))
-                names = model.names
-                entry["model"] = model
-                entry["names"] = names
-                entry["classes"] = (
-                    list(names.values()) if isinstance(names, dict) else list(names)
-                )
-                return True
-            except Exception as exc:
-                self._record_error(entry["name"], "model load", exc, entry)
-                return False
-
-    def _selected_models(self, high_accuracy):
-        enabled = [model for model in self.models if model.get("enabled", True)]
-        if high_accuracy:
-            return enabled
-        fast = sorted(enabled, key=lambda model: (model["size_bytes"], model["name"]))
-        return fast[:max(1, int(CFG.FAST_MODEL_COUNT))]
 
     @classmethod
     def get(cls):
@@ -1708,9 +1015,7 @@ class Ensemble:
     def reset(self):
         for m in self.models:
             try:
-                model = m["model"]
-                if model is None:
-                    continue
+                model = m["yolo"]
                 if hasattr(model, "predictor"):
                     model.predictor = None
             except Exception as e:
@@ -1722,77 +1027,52 @@ class Ensemble:
 
     def detect(self, frame, high_accuracy=False):
         out = []
-        selected_models = self._selected_models(high_accuracy)
-        image_size = CFG.IMG if high_accuracy else min(CFG.IMG, 512)
-        for e in selected_models:
-            if not self._load_model(e):
-                continue
+        for e in self.models:
+            if not e.get("enabled", True): continue
             t0 = time.perf_counter()
             try:
                 # The application assigns cross-model track IDs in Tracker below.
                 # Per-model Ultralytics tracking duplicates that work and its IDs
                 # are discarded when results from the ensemble are merged.
-                predictions = e["model"].predict(source=frame, conf=e["conf"], iou=CFG.IOU,
-                    imgsz=image_size, verbose=False,
+                r = e["yolo"].predict(source=frame, conf=e["conf"], iou=CFG.IOU,
+                    imgsz=CFG.IMG, verbose=False,
                     device=self.device, half=self.half,
-                    augment=bool(high_accuracy))
-                if not predictions:
-                    continue
-                r = predictions[0]
-                if r.boxes is None:
-                    continue
-                for b in r.boxes:
-                    cid = int(b.cls[0]); nm = e["names"]
-                    raw = nm.get(cid, cid) if isinstance(nm, dict) else nm[cid]
-                    label = norm(raw)
-                    conf = float(b.conf[0])
-                    gate = _resolve_conf_gate(e["name"], label)
-                    if gate is not None and conf < gate:
-                        continue
-                    out.append({"label": label, "confidence": conf,
-                        "bbox": tuple(map(int, b.xyxy[0].tolist())),
-                        "source": e["name"],
-                        "track_id": -1})
+                    augment=bool(high_accuracy))[0]
             except Exception as ex:
-                previous_error = e.get("last_error")
-                next_error_count = e["error_count"] + 1
-                should_log = (
-                    next_error_count == 1 or str(ex)[:400] != previous_error
-                    or next_error_count % 50 == 0
-                )
-                self._record_error(e["name"], "inference", ex, e,
-                                   log_error=should_log)
-            finally:
-                e["infer_ms"] = (time.perf_counter() - t0) * 1000.
+                log.debug("%s: %s", e["name"], ex); continue
+            e["infer_ms"] = (time.perf_counter() - t0) * 1000.
+            if r.boxes is None: continue
+            for b in r.boxes:
+                cid = int(b.cls[0]); nm = e["names"]
+                raw = nm.get(cid, cid) if isinstance(nm, dict) else nm[cid]
+                label = norm(raw)
+                conf = float(b.conf[0])
+                gate = _resolve_conf_gate(e["name"], label)
+                if gate is not None and conf < gate:
+                    continue
+                out.append({"label": label, "confidence": conf,
+                    "bbox": tuple(map(int, b.xyxy[0].tolist())),
+                    "source": e["name"],
+                    "track_id": -1})
         return out
 
     @property
     def info(self):
         active = [m for m in self.models if m.get("enabled", True)]
-        fast_models = self._selected_models(high_accuracy=False)
-        return {"loaded": any(m["model"] is not None for m in active),
-                "n_models": len(active), "n_total": len(self.models),
+        return {"loaded": bool(active), "n_models": len(active),
+                "n_total": len(self.models),
                 "device": self.device_name,
                 "precision": "FP16" if self.half else "FP32",
                 "names": [m["name"] for m in active],
-                "fast_models": [m["name"] for m in fast_models],
-                "errors": list(self.errors),
                 "classes": sorted({n for m in active for n in m["classes"]}),
                 "members": [{"name": m["name"], "enabled": m["enabled"],
                              "conf": m["conf"], "size_mb": m["size_mb"],
-                             "backend": m["backend"],
-                             "loaded": m["model"] is not None,
-                             "error_count": m["error_count"],
-                             "last_error": m["last_error"],
                              "classes": m["classes"], "source": m["source"],
                              "infer_ms": m["infer_ms"]} for m in self.models]}
 
 
 class Tracker:
-    def __init__(self, sampling_fps=None):
-        self.sampling_fps = max(
-            float(sampling_fps if sampling_fps is not None else CFG.FPS), 0.1
-        )
+    def __init__(self):
         self.tracks = {}; self.frames = 0; self.reid_events = []
         self._last_timestamp_seen = {}; self._next_id = 1
 
@@ -1803,7 +1083,7 @@ class Tracker:
         not exist. Associate detections across sampled frames here instead.
         """
         self.frames += 1
-        max_gap = max(3.0, 3.0 / self.sampling_fps)
+        max_gap = max(3.0, 3.0 / max(float(CFG.FPS), 0.1))
         candidates = []
         for d_idx, d in enumerate(dets):
             box = d.get("bbox")
@@ -1848,7 +1128,7 @@ class Tracker:
                     "max_conf":0.0,"history":[]}
             tr = self.tracks[key]
             prev = self._last_timestamp_seen.get(key)
-            if prev is not None and (t-prev) > max(1.0, 1.25/self.sampling_fps):
+            if prev is not None and (t-prev) > max(1.0, 1.25/max(float(CFG.FPS), 0.1)):
                 self.reid_events.append({"video":video_name,"track_id":tr["track_id"],
                     "label":d["label"],"at":t,"gap_sec":t-prev})
             tr["last_seen"] = t; tr["frames"] += 1
@@ -2082,15 +1362,6 @@ def grad_cam(model, frame, bbox=None):
     return None, None
 
 
-def _cam_model(ensemble, source=None):
-    for entry in ensemble.models:
-        if entry.get("backend") != "yolo" or entry.get("model") is None:
-            continue
-        if source is None or entry.get("name") == source:
-            return entry["model"]
-    return None
-
-
 class CAMCache:
     def __init__(self):
         self.items = []
@@ -2121,10 +1392,9 @@ class CAMCache:
                     '<div class="aee-empty-icon">🔍</div>'
                     '<div class="aee-empty-title">No CAM heatmaps yet</div>'
                     '<div class="aee-empty-sub">'
-                    'EigenCAM activation maps are generated for up to 48 weapon detections '
-                    'when a compatible YOLO detector is available. They appear here as '
-                    'soon as the pipeline finds a weapon and completes an activation pass.'
-                    '<br><br>'
+                    'EigenCAM activation maps are generated <b>per weapon detection</b> '
+                    'during analysis. They appear here as soon as the pipeline finds '
+                    'a weapon and completes one forward pass.<br><br>'
                     'If the pipeline ran but produced no heatmaps, verify that the '
                     'uploaded clip actually contains a detectable weapon — heavy '
                     'blur, motion blur, or extreme occlusion will yield no detections.'
@@ -2155,8 +1425,7 @@ def save_capture(frame, det, ens, out_dir, idx, explain=True, tracker=None,
     vis = frame.copy()
     if explain and ens.models:
         if cam_result is _CAM_RESULT_UNSET:
-            model = _cam_model(ens, det.get("source"))
-            cam_result = grad_cam(model, frame, det["bbox"]) if model else (None, None)
+            cam_result = grad_cam(ens.models[0]["yolo"], frame, det["bbox"])
         _, cam_blend = cam_result
         if cam_blend is not None:
             vis = cv2.addWeighted(cam_blend, 0.4, vis, 0.6, 0)
@@ -2185,8 +1454,7 @@ def save_capture(frame, det, ens, out_dir, idx, explain=True, tracker=None,
 
 
 def analyze_audio(p, dur):
-    if not p.exists():
-        raise FileNotFoundError(f"Extracted audio file is missing: {p}")
+    if not p.exists(): return []
     try:
         frame_length, hop_length = 2048, 512
         block_frames = 60 * 16000
@@ -2230,8 +1498,8 @@ def analyze_audio(p, dur):
         for e in ev:
             if not m or e["timestamp"]-m[-1]["timestamp"] > 2: m.append(e)
         return m
-    except Exception as exc:
-        raise RuntimeError(f"Audio analysis failed for {p}: {exc}") from exc
+    except Exception as e:
+        log.warning("audio: %s", e); return []
 
 
 def extract_clip(vp, s, e, out, cancel_event=None):
@@ -2304,11 +1572,10 @@ class Result:
 
 
 class Processor:
-    def __init__(self, sampling_fps=None):
+    def __init__(self):
         self.ens = Ensemble.get()
-        self.tracker = Tracker(sampling_fps=sampling_fps)
+        self.tracker = Tracker()
         self.camcache = CAMCache()
-        self.warnings = []
 
     @staticmethod
     def _prefetch_frames(capture, cancel_event=None, queue_size=4):
@@ -2365,11 +1632,7 @@ class Processor:
             stop_event.set()
             decoder.join()
 
-    def process_stream(
-        self, vp, root, cancel_event=None, high_accuracy=False,
-        analysis_speed="fixed",
-    ):
-        sample_fps = _analysis_sampling_fps(analysis_speed)
+    def process_stream(self, vp, root, cancel_event=None, high_accuracy=False):
         video = Path(vp)
         if video.suffix.lower() not in CFG.SUPPORTED:
             yield ("error", "Unsupported format"); return
@@ -2400,31 +1663,19 @@ class Processor:
         self.ens.reset()
         yield ("stage", "audio", 0.0, "Extracting audio")
         aud = out / "audio.wav"; aev = []
-        audio_error = None
-        audio_status = "No audio stream"
-        if has_audio(video):
-            try:
-                sh(["ffmpeg","-y","-i",str(video),"-vn","-ac","1","-ar","16000",
-                    "-f","wav",str(aud)], cancel_event=cancel_event)
-                if cancel_event is not None and cancel_event.is_set():
-                    yield ("cancelled", None); return
-                yield ("stage", "audio", 0.5, "Analyzing loudness")
-                aev = analyze_audio(aud, meta.duration)
-            except InterruptedError:
+        try:
+            sh(["ffmpeg","-y","-i",str(video),"-vn","-ac","1","-ar","16000",
+                "-f","wav",str(aud)], cancel_event=cancel_event)
+            if cancel_event is not None and cancel_event.is_set():
                 yield ("cancelled", None); return
-            except Exception as exc:
-                if cancel_event is not None and cancel_event.is_set():
-                    yield ("cancelled", None); return
-                audio_error = str(exc)[:300]
-                self.warnings.append(
-                    f"{name}: audio analysis unavailable: {audio_error}"
-                )
-                log.warning("Audio analysis failed for %s: %s", name, exc,
-                            exc_info=True)
-            audio_status = f"{len(aev)} audio events"
-        if audio_error:
-            audio_status += f" · audio unavailable: {audio_error}"
-        yield ("stage", "audio", 1.0, audio_status)
+            yield ("stage", "audio", 0.5, "Analyzing loudness")
+            aev = analyze_audio(aud, meta.duration)
+        except InterruptedError:
+            yield ("cancelled", None); return
+        except Exception:
+            if cancel_event is not None and cancel_event.is_set():
+                yield ("cancelled", None); return
+        yield ("stage", "audio", 1.0, f"{len(aev)} audio events")
 
         yield ("stage", "detect", 0.0, "Running ensemble tracking")
         caps_dir = out / "captures"; caps_dir.mkdir(exist_ok=True)
@@ -2436,13 +1687,12 @@ class Processor:
             cap.release()
             yield ("error", "Cannot reopen video for frame analysis")
             return
-        sample_period = 1.0 / max(sample_fps, 0.01)
+        sample_period = 1.0 / max(CFG.FPS, 0.01)
         total = max(1, int(math.ceil(meta.duration / sample_period)) + 1)
         idx = proc = 0
         t0 = time.time()
         fails = 0
         cam_count = 0
-        cam_attempts = 0
         next_sample_t = 0.0
         last_frame_t = -1.0
         try:
@@ -2482,30 +1732,24 @@ class Processor:
                         if d["label"] in WEAPONS:
                             yield ("detection", d)
                             need_capture = len(caps) < CFG.CAP_MAX
-                            cam_model = _cam_model(self.ens, d["source"])
-                            need_cam = (
-                                cam_count < CFG.CAM_MAX
-                                and cam_attempts < CFG.CAM_MAX
-                                and cam_model is not None
-                            )
+                            need_cam = cam_count < CFG.CAM_MAX and bool(self.ens.models)
                             cam_result = _CAM_RESULT_UNSET
-                            if need_cam:
-                                cam_attempts += 1
+                            if self.ens.models and (need_capture or need_cam):
                                 try:
-                                    cam_result = grad_cam(cam_model, fr, d["bbox"])
+                                    cam_result = grad_cam(
+                                        self.ens.models[0]["yolo"], fr, d["bbox"])
                                 except Exception as ce:
                                     log.warning("CAM inference failed: %s", ce)
                                     cam_result = (None, None)
                             if need_capture:
                                 cp = save_capture(fr, d, self.ens, caps_dir, len(caps),
-                                                  explain=need_cam,
                                                   tracker=self.tracker, video_name=name,
                                                   cam_result=cam_result)
                                 if cp: caps.append(cp)
                             if need_cam:
                                 try:
                                     rec = self.camcache.add(fr, d,
-                                        cam_model,
+                                        self.ens.models[0]["yolo"],
                                         cam_dir, name, cam_count,
                                         cam_result=cam_result)
                                     if rec:
@@ -2622,7 +1866,6 @@ def build_pdf(results, model_info, out_path, analyst_notes=None, tracker=None,
         from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
                                         Table, TableStyle, PageBreak)
     except Exception:
-        log.exception("PDF report dependencies could not be imported")
         return None
     try:
         styles = getSampleStyleSheet()
@@ -2754,9 +1997,8 @@ def build_pdf(results, model_info, out_path, analyst_notes=None, tracker=None,
                 st.append(tb)
         doc.build(st)
         return str(out_path) if out_path.exists() else None
-    except Exception:
-        log.exception("PDF report generation failed")
-        return None
+    except Exception as e:
+        log.warning("pdf: %s", e); return None
 
 
 # ============================================================
@@ -3311,212 +2553,6 @@ body.aee-access-required #aee-account-window .column.wrap>.aee-account-auth-form
 body.aee-access-required #aee-account-window .aee-account-auth-form .aee-account-intro{margin-bottom:42px;}
 body.aee-access-required .aee-navigation{display:none!important;}
 body.aee-access-required .aee-toolbar .aee-profile-tool{display:none!important;}
-#aee-detection-back{position:fixed;z-index:12010;top:20px;left:76px;display:none;
-  min-height:44px;align-items:center;gap:9px;padding:0 15px;
-  border:1px solid rgba(148,163,184,.22);border-radius:13px;
-  color:#e2e8f0;background:rgba(15,23,42,.92);font:650 .82rem Inter,system-ui,sans-serif;
-  cursor:pointer;box-shadow:0 12px 30px -18px rgba(2,6,23,.9);
-  backdrop-filter:blur(14px);transition:transform .18s,border-color .18s,background .18s;}
-#aee-detection-back svg{width:17px;height:17px;flex:none;}
-#aee-detection-back:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.5);
-  background:rgba(30,41,59,.97);}
-body.aee-detection-route-upload #aee-detection-back,
-body.aee-detection-route-realtime #aee-detection-back{display:inline-flex;}
-body.aee-access-required #aee-detection-back{display:none!important;}
-.aee-detection-mode-page{width:min(1080px,100%);margin:clamp(34px,8vh,92px) auto 60px;
-  padding:0 18px;box-sizing:border-box;}
-.aee-detection-mode-heading{text-align:center;margin:0 auto 34px;}
-.aee-detection-mode-eyebrow{display:inline-flex;align-items:center;gap:8px;
-  margin-bottom:13px;color:#93c5fd;font-size:.68rem;font-weight:750;
-  letter-spacing:.16em;text-transform:uppercase;}
-.aee-detection-mode-eyebrow:before{content:"";width:20px;height:1px;background:#60a5fa;}
-.aee-detection-mode-heading h1{margin:0;color:#f8fafc;font-size:clamp(2rem,4.7vw,3.35rem);
-  font-weight:750;letter-spacing:-.055em;line-height:1.08;}
-.aee-detection-mode-heading p{max-width:560px;margin:14px auto 0;color:#9aa9bd;
-  font-size:clamp(.9rem,1.8vw,1.03rem);line-height:1.65;}
-.aee-detection-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
-.aee-detection-card{position:relative;display:flex;width:100%;min-height:278px;
-  flex-direction:column;align-items:flex-start;overflow:hidden;padding:28px;
-  border:1px solid rgba(148,163,184,.18);border-radius:24px;color:#f8fafc;
-  text-align:left;background:linear-gradient(145deg,rgba(20,30,48,.96),rgba(12,18,30,.97));
-  box-shadow:0 22px 60px -42px rgba(0,0,0,.92);cursor:pointer;
-  transition:transform .22s,border-color .22s,box-shadow .22s;}
-.aee-detection-card:after{position:absolute;inset:auto -44px -92px auto;width:230px;height:230px;
-  border-radius:50%;content:"";background:var(--mode-glow);filter:blur(1px);opacity:.12;
-  transition:opacity .22s,transform .22s;}
-.aee-detection-card:hover{transform:translateY(-5px);border-color:var(--mode-border);
-  box-shadow:0 28px 64px -36px rgba(0,0,0,.85),0 0 0 1px var(--mode-border);}
-.aee-detection-card:hover:after{transform:scale(1.16);opacity:.2;}
-.aee-detection-card:focus-visible{outline:3px solid var(--mode-accent);outline-offset:3px;}
-.aee-detection-card[data-aee-detection-mode="realtime"]{--mode-accent:#34d399;
-  --mode-border:rgba(52,211,153,.48);--mode-glow:#10b981;}
-.aee-detection-card[data-aee-detection-mode="upload"]{--mode-accent:#60a5fa;
-  --mode-border:rgba(96,165,250,.48);--mode-glow:#3b82f6;}
-.aee-detection-card-icon{position:relative;z-index:1;width:54px;height:54px;
-  display:grid;place-items:center;margin-bottom:25px;border:1px solid var(--mode-border);
-  border-radius:17px;color:var(--mode-accent);background:rgba(148,163,184,.07);}
-.aee-detection-card-icon svg{width:25px;height:25px;}
-.aee-detection-card-copy{position:relative;z-index:1;flex:1;}
-.aee-detection-card-copy h2{margin:0 0 10px;color:#f8fafc;font-size:1.17rem;
-  font-weight:700;letter-spacing:-.025em;}
-.aee-detection-card-copy p{max-width:440px;margin:0;color:#9aa9bd;font-size:.87rem;line-height:1.68;}
-.aee-detection-card-footer{position:relative;z-index:1;display:flex;width:100%;
-  align-items:center;justify-content:space-between;margin-top:24px;color:var(--mode-accent);
-  font-size:.75rem;font-weight:700;letter-spacing:.02em;}
-.aee-detection-live-label{display:inline-flex;align-items:center;gap:8px;}
-.aee-detection-live-dot{width:7px;height:7px;border-radius:50%;background:#34d399;
-  box-shadow:0 0 0 4px rgba(52,211,153,.12);}
-.aee-detection-card-arrow{font-size:1.25rem;transition:transform .2s;}
-.aee-detection-card:hover .aee-detection-card-arrow{transform:translateX(4px);}
-.aee-realtime-content{width:min(1200px,100%);margin:0 auto 50px;padding:0 clamp(16px,4vw,48px);}
-.aee-realtime-summary{display:flex;align-items:center;justify-content:space-between;
-  gap:18px;margin:0 auto 18px;padding:16px 19px;border:1px solid rgba(148,163,184,.15);
-  border-radius:16px;background:linear-gradient(110deg,rgba(15,23,42,.78),rgba(15,23,42,.38));}
-.aee-realtime-summary-copy{display:grid;gap:4px;}
-.aee-realtime-summary-copy strong{color:#f1f5f9;font-size:.86rem;font-weight:700;}
-.aee-realtime-summary-copy span{color:#94a3b8;font-size:.73rem;line-height:1.55;}
-.aee-realtime-local-badge{display:inline-flex;flex:none;align-items:center;gap:8px;
-  padding:8px 11px;border:1px solid rgba(52,211,153,.22);border-radius:999px;
-  color:#a7f3d0;background:rgba(16,185,129,.08);font-size:.67rem;font-weight:750;
-  letter-spacing:.08em;text-transform:uppercase;}
-.aee-realtime-local-badge:before{width:7px;height:7px;border-radius:50%;
-  background:#34d399;box-shadow:0 0 0 4px rgba(52,211,153,.12);content:"";}
-.aee-realtime-notice{margin:0 auto 18px;padding:14px 17px;border:1px solid rgba(96,165,250,.17);
-  border-radius:13px;color:#aab8ca;background:rgba(37,99,235,.065);font-size:.77rem;line-height:1.6;}
-.aee-realtime-notice strong{color:#dbeafe;}
-.aee-realtime-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;}
-.aee-realtime-panel{min-width:0;align-self:start;padding:17px;border:1px solid rgba(148,163,184,.16);
-  border-radius:20px;background:linear-gradient(155deg,rgba(15,23,42,.72),rgba(10,15,28,.58));
-  box-shadow:0 18px 48px -38px rgba(0,0,0,.8);}
-.aee-realtime-panel-heading{display:flex;align-items:center;gap:12px;margin:0 0 13px;}
-.aee-realtime-panel-icon{width:36px;height:36px;flex:none;display:grid;place-items:center;
-  border:1px solid rgba(96,165,250,.18);border-radius:11px;color:#93c5fd;
-  background:rgba(59,130,246,.08);}
-.aee-realtime-panel-icon svg{width:18px;height:18px;}
-.aee-realtime-panel-heading strong{display:block;color:#e2e8f0;font-size:.79rem;font-weight:700;}
-.aee-realtime-panel-heading span{display:block;margin-top:3px;color:#8291a7;font-size:.67rem;}
-.aee-realtime-feed-badge{display:inline-flex;align-items:center;gap:6px;margin-left:auto;
-  color:#94a3b8;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
-.aee-realtime-feed-badge:before{width:6px;height:6px;border-radius:50%;background:#34d399;content:"";}
-.aee-realtime-panel .label-wrap{color:#dbeafe!important;font-weight:650!important;}
-.aee-realtime-panel img,.aee-realtime-panel video{
-  border:1px solid rgba(148,163,184,.13)!important;
-  border-radius:14px!important;background:#080d17!important;}
-#aee-realtime-camera .button-wrap{display:none!important;}
-#aee-realtime-camera [title="grant webcam access"]{display:none!important;}
-#aee-realtime-camera img,#aee-realtime-camera video[data-testid="webcam-video"]{
-  width:100%!important;max-height:min(62vh,680px)!important;
-  object-fit:contain!important;}
-.aee-realtime-overlay{position:fixed;z-index:9999;pointer-events:none;}
-.aee-realtime-camera-toolbar{display:flex;align-items:center;gap:12px;margin:0 0 14px;}
-.aee-realtime-camera-toolbar .aee-realtime-panel-icon{width:42px;height:42px;}
-.aee-realtime-camera-title{min-width:0;flex:1;}
-.aee-realtime-camera-title strong{display:block;color:#e2e8f0;font-size:.95rem;font-weight:750;}
-.aee-realtime-camera-title span{display:block;margin-top:3px;color:#8291a7;font-size:.7rem;}
-.aee-realtime-gpu-status{margin:12px 0!important;padding:12px 14px!important;
-  border:1px solid rgba(148,163,184,.18)!important;border-radius:13px!important;
-  color:#cbd5e1!important;background:rgba(15,23,42,.45)!important;
-  font-size:.74rem!important;line-height:1.55!important;}
-.aee-realtime-gpu-status.is-connected{border-color:rgba(52,211,153,.28)!important;
-  color:#a7f3d0!important;background:linear-gradient(110deg,
-  rgba(16,185,129,.12),rgba(15,23,42,.4))!important;}
-.aee-realtime-gpu-status.is-connected p:before{display:inline-block;width:8px;height:8px;
-  margin-right:9px;border-radius:50%;background:#34d399;
-  box-shadow:0 0 0 4px rgba(52,211,153,.12);content:"";}
-.aee-realtime-gpu-status.is-cpu{color:#cbd5e1!important;}
-.aee-realtime-settings{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;}
-.aee-realtime-settings span{display:inline-flex;align-items:center;min-height:30px;
-  padding:0 10px;border:1px solid rgba(148,163,184,.2);border-radius:999px;
-  color:#cbd5e1;background:rgba(15,23,42,.38);font-size:.68rem;font-weight:700;}
-.aee-realtime-settings .aee-realtime-fast-badge{color:#bfdbfe;
-  border-color:rgba(96,165,250,.24);background:rgba(37,99,235,.12);}
-.aee-realtime-settings .aee-realtime-confidence-badge{color:#a7f3d0;
-  border-color:rgba(52,211,153,.22);background:rgba(16,185,129,.1);}
-.aee-realtime-enable{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:8px;
-  min-height:40px;padding:0 13px;border:1px solid rgba(96,165,250,.28);border-radius:12px;
-  color:#dbeafe;background:linear-gradient(145deg,rgba(37,99,235,.2),rgba(79,70,229,.16));
-  font:700 .72rem Inter,system-ui,sans-serif;cursor:pointer;
-  transition:transform .16s,border-color .16s,background .16s;}
-.aee-realtime-enable:hover:not(:disabled){transform:translateY(-1px);
-  border-color:rgba(96,165,250,.55);background:rgba(37,99,235,.25);}
-.aee-realtime-enable:focus-visible{outline:2px solid #60a5fa;outline-offset:3px;}
-.aee-realtime-enable:disabled{opacity:.7;cursor:wait;}
-.aee-realtime-enable[data-state="active"]{color:#a7f3d0;border-color:rgba(52,211,153,.3);
-  background:rgba(16,185,129,.09);cursor:default;}
-.aee-realtime-enable svg{width:16px;height:16px;}
-.aee-realtime-panel .aee-realtime-status{min-height:48px;margin:12px 0 0;padding:12px 14px;
-  border:1px solid rgba(52,211,153,.15);border-radius:12px;color:#cbd5e1;
-  background:linear-gradient(110deg,rgba(16,185,129,.07),rgba(2,6,23,.35));
-  font-size:.75rem;line-height:1.6;}
-.aee-realtime-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 15px;
-  margin:12px 2px 0;color:#9aa9bd;font-size:.67rem;}
-.aee-realtime-legend span{display:inline-flex;align-items:center;gap:7px;}
-.aee-realtime-legend i{width:8px;height:8px;border-radius:50%;background:#f43f5e;}
-.aee-realtime-legend .aee-legend-person{background:#3b82f6;}
-.aee-realtime-legend .aee-legend-tool{background:#14b8a6;}
-.aee-realtime-confidence-note{margin:6px 2px 0;color:#8492a7;font-size:.65rem;line-height:1.5;}
-.aee-realtime-disclaimer{margin:14px 2px 0;color:#8492a7;font-size:.7rem;line-height:1.6;}
-html[data-theme="light"] .aee-detection-mode-heading h1{color:#172033;}
-html[data-theme="light"] .aee-detection-mode-heading p{color:#64748b;}
-html[data-theme="light"] .aee-detection-card{border-color:rgba(100,116,139,.18);
-  color:#172033;background:linear-gradient(145deg,#fff,#f2f6fc);
-  box-shadow:0 20px 50px -38px rgba(30,41,59,.55);}
-html[data-theme="light"] .aee-detection-card-copy h2{color:#172033;}
-html[data-theme="light"] .aee-detection-card-copy p{color:#64748b;}
-html[data-theme="light"] #aee-detection-back{color:#334155;background:rgba(255,255,255,.94);
-  border-color:rgba(100,116,139,.22);}
-html[data-theme="light"] .aee-realtime-panel{border-color:rgba(100,116,139,.18);
-  background:linear-gradient(155deg,rgba(255,255,255,.95),rgba(243,247,252,.9));
-  box-shadow:0 18px 40px -34px rgba(30,41,59,.4);}
-html[data-theme="light"] .aee-realtime-panel .label-wrap{color:#334155!important;}
-html[data-theme="light"] .aee-realtime-panel .aee-realtime-status{color:#334155;
-  border-color:rgba(100,116,139,.16);background:rgba(241,245,249,.8);}
-html[data-theme="light"] .aee-realtime-camera-title strong{color:#1e293b;}
-html[data-theme="light"] .aee-realtime-camera-title span{color:#64748b;}
-html[data-theme="light"] .aee-realtime-gpu-status{color:#334155!important;
-  border-color:rgba(100,116,139,.18)!important;background:rgba(248,250,252,.9)!important;}
-html[data-theme="light"] .aee-realtime-gpu-status.is-connected{color:#047857!important;
-  border-color:rgba(5,150,105,.22)!important;background:#ecfdf5!important;}
-html[data-theme="light"] .aee-realtime-settings span{color:#334155;
-  border-color:rgba(100,116,139,.2);background:rgba(248,250,252,.9);}
-html[data-theme="light"] .aee-realtime-settings .aee-realtime-fast-badge{color:#1d4ed8;
-  border-color:rgba(59,130,246,.23);background:#eff6ff;}
-html[data-theme="light"] .aee-realtime-settings .aee-realtime-confidence-badge{color:#047857;
-  border-color:rgba(5,150,105,.22);background:#ecfdf5;}
-html[data-theme="light"] .aee-realtime-enable{color:#1d4ed8;background:#eff6ff;
-  border-color:rgba(59,130,246,.23);}
-html[data-theme="light"] .aee-realtime-enable[data-state="active"]{color:#047857;
-  background:#ecfdf5;border-color:rgba(5,150,105,.22);}
-html[data-theme="light"] .aee-realtime-summary{border-color:rgba(100,116,139,.17);
-  background:linear-gradient(110deg,rgba(255,255,255,.95),rgba(243,247,252,.8));}
-html[data-theme="light"] .aee-realtime-summary-copy strong,
-html[data-theme="light"] .aee-realtime-panel-heading strong{color:#1e293b;}
-html[data-theme="light"] .aee-realtime-summary-copy span,
-html[data-theme="light"] .aee-realtime-panel-heading span,
-html[data-theme="light"] .aee-realtime-legend{color:#64748b;}
-html[data-theme="light"] .aee-realtime-panel img,
-html[data-theme="light"] .aee-realtime-panel video{background:#e2e8f0!important;}
-html[data-theme="light"] .aee-realtime-speed-mode{
-  border-color:rgba(100,116,139,.18)!important;background:rgba(248,250,252,.8)!important;}
-html[data-theme="light"] .aee-realtime-speed-mode .label-wrap{color:#1e293b!important;}
-html[data-theme="light"] .aee-realtime-speed-mode .info{color:#64748b!important;}
-html[data-theme="light"] .aee-realtime-notice{color:#475569;
-  border-color:rgba(37,99,235,.16);background:rgba(37,99,235,.045);}
-html[data-theme="light"] .aee-realtime-notice strong{color:#1d4ed8;}
-@media(max-width:720px){
-  #aee-detection-back{top:12px;left:64px;min-height:40px;padding:0 11px;font-size:.75rem;}
-  .aee-detection-mode-page{margin:82px auto 34px;padding:0 12px;}
-  .aee-detection-card-grid,.aee-realtime-layout{grid-template-columns:minmax(0,1fr);}
-  .aee-detection-card{min-height:240px;padding:23px;border-radius:20px;}
-  .aee-detection-card-icon{width:48px;height:48px;margin-bottom:19px;}
-  .aee-realtime-content{padding:0 14px;}
-  .aee-realtime-summary{align-items:flex-start;flex-direction:column;gap:11px;padding:14px;}
-  .aee-realtime-local-badge{align-self:flex-start;}
-  .aee-realtime-panel{padding:13px;border-radius:17px;}
-  .aee-realtime-camera-toolbar{align-items:flex-start;flex-wrap:wrap;}
-  .aee-realtime-camera-title{flex:1 1 calc(100% - 60px);}
-  .aee-realtime-enable{margin-left:auto;}
-}
 .aee-account-status{max-width:600px;margin:0 auto 18px;padding:14px 18px;border:1px solid rgba(96,165,250,.2);
   border-radius:14px;color:#bfdbfe;background:rgba(37,99,235,.09);font-size:.85rem;line-height:1.55;}
 .aee-account-status[data-kind="success"]{color:#a7f3d0;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08);}
@@ -4800,26 +3836,6 @@ html[data-theme="light"] .aee-up-progress.error{
   font-size:.68rem;color:var(--text-subtle);
   font-family:'JetBrains Mono',monospace;
   display:flex;align-items:center;gap:6px;
-}
-
-.aee-analysis-options{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) minmax(240px,1fr);
-  align-items:end;gap:14px!important;margin-top:14px!important;
-  padding:15px!important;border:1px solid var(--border-strong)!important;
-  border-radius:16px!important;
-  background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.06));
-}
-.aee-analysis-options>.block{min-width:0!important;margin:0!important;}
-.aee-analysis-options .info{color:var(--text-subtle)!important;font-size:.73rem!important;}
-.aee-analysis-notice{display:flex;flex-direction:column;gap:6px;color:var(--text-subtle);font-size:.82rem;}
-.aee-analysis-notice strong{color:var(--text);font-size:.9rem;}
-html[data-theme="light"] .aee-analysis-options{
-  background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(248,231,200,.58));
-  border-color:rgba(121,98,83,.2)!important;
-}
-@media(max-width:640px){
-  .aee-analysis-options{grid-template-columns:1fr;gap:10px!important;padding:12px!important;}
 }
 
 .aee-actions{
@@ -7123,39 +6139,8 @@ def _threat_distribution_html(results, tracker=None):
     </div>"""
 
 
-def _analysis_errors_html(errs):
-    if not errs:
-        return ""
-    rows = []
-    for error in errs[:8]:
-        if not isinstance(error, dict):
-            error = {"error": error}
-        video = _html.escape(str(error.get("video") or "Video"))
-        message = _html.escape(str(error.get("error") or "Unknown processing error"))
-        rows.append(f"<li><strong>{video}:</strong> {message}</li>")
-    omitted = len(errs) - len(rows)
-    if omitted:
-        rows.append(f"<li>{omitted} additional video error(s) are not shown.</li>")
-    return (
-        '<div class="aee-history-warning"><strong>Video pipeline errors</strong>'
-        f'<ul>{"".join(rows)}</ul></div>'
-    )
-
-
 def _overview_html(results, errs, sums, master, pdf, elapsed, tracker=None):
-    errors_html = _analysis_errors_html(errs)
-    if not results:
-        if not errs:
-            return _empty_html()
-        return (
-            '<div class="aee-empty">'
-            '<div class="aee-empty-icon">⚠️</div>'
-            '<div class="aee-empty-title">No analysis output was produced</div>'
-            '<div class="aee-empty-sub">No selected video completed successfully. '
-            'Review the pipeline errors below, then check the video format, file '
-            'access, and detector configuration.</div></div>'
-            + errors_html
-        )
+    if not results: return _empty_html()
     total = len(results)
     payload = None
     heat_html = ""
@@ -7258,8 +6243,7 @@ def _overview_html(results, errs, sums, master, pdf, elapsed, tracker=None):
         <div class="aee-stat-lbl">Elapsed</div></div>
     </div>
     {_threat_distribution_html(results, tracker)}
-    {tl}
-    {errors_html}"""
+    {tl}"""
 
 
 # ============================================================
@@ -7469,7 +6453,12 @@ _JS_HEAD = r"""
     const close = document.querySelector('#aee-account-close button');
     if (close && close.disabled !== required) close.disabled = required;
     if (wasRequired === true && !required){
-      window.setTimeout(() => navigateAeeDetection('modes'), 0);
+      window.setTimeout(() => {
+        const accountWindow = document.querySelector('#aee-account-window');
+        if (accountWindow && accountWindow.getAttribute('aria-modal') === 'true'){
+          closeAeeUtilityWindow(accountWindow);
+        }
+      }, 0);
     }
   }
   function isAeeAccountTarget(target){
@@ -7547,10 +6536,7 @@ _JS_HEAD = r"""
     const close = shell.querySelector('.aee-utility-window-close button');
     const initialFocus = name === 'account' && aeeAccessRequired()
       ? shell.querySelector('.aee-account-auth-form input:not([disabled])')
-      : close || (name === 'detection-modes'
-          ? shell.querySelector('[data-aee-detection-mode]')
-          : name === 'realtime-detection'
-            ? document.getElementById('aee-detection-back') : null);
+      : close;
     if (initialFocus) initialFocus.focus({preventScroll:true});
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:true,name}}));
   }
@@ -7581,325 +6567,6 @@ _JS_HEAD = r"""
       if (toggle) toggle.focus({preventScroll:true});
     }, 350);
     document.dispatchEvent(new CustomEvent('aee:utility-window', {detail:{open:false}}));
-  }
-  function setAeeRealtimeCameraButton(state){
-    const button = document.querySelector('[data-aee-realtime-enable]');
-    if (!button) return;
-    const labels = {
-      ready:'Enable live camera',
-      connecting:'Connecting to camera…',
-      active:'Live camera active',
-      error:'Try camera again'
-    };
-    button.dataset.state = state;
-    button.disabled = state === 'connecting';
-    button.setAttribute('aria-pressed', String(state === 'active'));
-    button.setAttribute('aria-label', labels[state] || labels.ready);
-    const label = button.querySelector('span');
-    if (label) label.textContent = labels[state] || labels.ready;
-  }
-  function clearAeeRealtimeCameraStart(){
-    if (window.__aeeRealtimeCameraObserver){
-      window.__aeeRealtimeCameraObserver.disconnect();
-      window.__aeeRealtimeCameraObserver = null;
-    }
-    if (window.__aeeRealtimeCameraStartTimer){
-      window.clearTimeout(window.__aeeRealtimeCameraStartTimer);
-      window.__aeeRealtimeCameraStartTimer = null;
-    }
-  }
-  const realtimeOverlayState = {
-    camera:null, video:null, parent:null, canvas:null, payload:null,
-    cameraObserver:null, dataObserver:null, resizeObserver:null
-  };
-  function drawAeeRealtimeOverlay(){
-    const state = realtimeOverlayState;
-    if (!state.video || !state.canvas || !state.parent) return;
-    const video = state.video;
-    const videoRect = video.getBoundingClientRect();
-    const width = videoRect.width;
-    const height = videoRect.height;
-    if (width <= 0 || height <= 0) return;
-    state.canvas.style.left = `${videoRect.left}px`;
-    state.canvas.style.top = `${videoRect.top}px`;
-    state.canvas.style.width = `${width}px`;
-    state.canvas.style.height = `${height}px`;
-    const deviceScale = Math.min(window.devicePixelRatio || 1, 2);
-    const canvasWidth = Math.max(1, Math.round(width * deviceScale));
-    const canvasHeight = Math.max(1, Math.round(height * deviceScale));
-    if (state.canvas.width !== canvasWidth) state.canvas.width = canvasWidth;
-    if (state.canvas.height !== canvasHeight) state.canvas.height = canvasHeight;
-    const videoStyle = window.getComputedStyle(video);
-    let mirrored = false;
-    for (let element = video; element && element !== document.body;
-         element = element.parentElement){
-      const transform = window.getComputedStyle(element).transform;
-      if (!transform || transform === 'none') continue;
-      const matrix = new DOMMatrixReadOnly(transform);
-      if (Math.abs(matrix.b) < 0.001 && Math.abs(matrix.c) < 0.001 &&
-          matrix.a < 0){
-        mirrored = !mirrored;
-      }
-    }
-    const context = state.canvas.getContext('2d');
-    if (!context) return;
-    context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
-    context.clearRect(0, 0, width, height);
-    const payload = state.payload;
-    if (!payload || !payload.width || !payload.height ||
-        !Array.isArray(payload.boxes)) return;
-    const borderLeft = parseFloat(videoStyle.borderLeftWidth) || 0;
-    const borderRight = parseFloat(videoStyle.borderRightWidth) || 0;
-    const borderTop = parseFloat(videoStyle.borderTopWidth) || 0;
-    const borderBottom = parseFloat(videoStyle.borderBottomWidth) || 0;
-    const paddingLeft = parseFloat(videoStyle.paddingLeft) || 0;
-    const paddingRight = parseFloat(videoStyle.paddingRight) || 0;
-    const paddingTop = parseFloat(videoStyle.paddingTop) || 0;
-    const paddingBottom = parseFloat(videoStyle.paddingBottom) || 0;
-    const contentLeft = borderLeft + paddingLeft;
-    const contentTop = borderTop + paddingTop;
-    const contentWidth = width - borderLeft - borderRight - paddingLeft - paddingRight;
-    const contentHeight = height - borderTop - borderBottom - paddingTop - paddingBottom;
-    if (contentWidth <= 0 || contentHeight <= 0) return;
-    const sourceAspect = payload.width / payload.height;
-    const displayAspect = contentWidth / contentHeight;
-    const renderedWidth = sourceAspect > displayAspect
-      ? contentWidth : contentHeight * sourceAspect;
-    const renderedHeight = sourceAspect > displayAspect
-      ? contentWidth / sourceAspect : contentHeight;
-    const offsetX = contentLeft + (contentWidth - renderedWidth) / 2;
-    const offsetY = contentTop + (contentHeight - renderedHeight) / 2;
-    const scaleX = renderedWidth / payload.width;
-    const scaleY = renderedHeight / payload.height;
-    for (const detection of payload.boxes){
-      if (!Array.isArray(detection.coordinates) ||
-          detection.coordinates.length !== 4) continue;
-      const [x1, y1, x2, y2] = detection.coordinates;
-      if (![x1, y1, x2, y2].every(Number.isFinite)) continue;
-      const sourceX1 = mirrored ? payload.width - x2 : x1;
-      const sourceX2 = mirrored ? payload.width - x1 : x2;
-      const left = offsetX + sourceX1 * scaleX;
-      const top = offsetY + y1 * scaleY;
-      const boxWidth = Math.max(0, (sourceX2 - sourceX1) * scaleX);
-      const boxHeight = Math.max(0, (y2 - y1) * scaleY);
-      if (boxWidth < 2 || boxHeight < 2) continue;
-      const color = /^#[0-9a-f]{6}$/i.test(detection.color)
-        ? detection.color : '#a855f7';
-      context.lineWidth = Math.max(2, Math.min(4, width / 400));
-      context.strokeStyle = '#0c1018';
-      context.strokeRect(left, top, boxWidth, boxHeight);
-      context.lineWidth = Math.max(1.5, Math.min(3, width / 600));
-      context.strokeStyle = color;
-      context.strokeRect(left, top, boxWidth, boxHeight);
-      const label = `${String(detection.label || 'Object')}  ${
-        Math.round(Math.max(0, Math.min(1, Number(detection.confidence) || 0)) * 100)
-      }%`;
-      context.font = `600 ${Math.max(12, Math.min(18, width / 55))}px Inter, sans-serif`;
-      const labelHeight = Math.max(24, Math.min(30, width / 30));
-      const labelWidth = Math.min(width, context.measureText(label).width + 16);
-      const labelLeft = Math.min(
-        Math.max(0, left), Math.max(0, width - labelWidth)
-      );
-      const proposedLabelTop = top >= labelHeight + 4 ? top - labelHeight : top;
-      const labelTop = Math.max(
-        0, Math.min(height - labelHeight, proposedLabelTop)
-      );
-      context.fillStyle = color;
-      context.fillRect(labelLeft, labelTop, labelWidth, labelHeight);
-      context.fillStyle = '#ffffff';
-      context.textBaseline = 'middle';
-      context.fillText(
-        label, labelLeft + 8, labelTop + labelHeight / 2,
-        Math.max(1, labelWidth - 12)
-      );
-    }
-  }
-  function readAeeRealtimeOverlay(){
-    const root = document.getElementById('aee-realtime-overlay-data');
-    const payloadNode = root && root.querySelector('[data-aee-realtime-payload]');
-    if (!payloadNode) return;
-    try {
-      realtimeOverlayState.payload = JSON.parse(
-        payloadNode.getAttribute('data-aee-realtime-payload')
-      );
-      drawAeeRealtimeOverlay();
-    } catch(error) {
-      console.warn('Could not read live detection overlay data.', error);
-    }
-  }
-  function syncAeeRealtimeOverlay(){
-    const state = realtimeOverlayState;
-    if (!state.camera) return;
-    const video = state.camera.querySelector(
-      'video[data-testid="webcam-video"], video'
-    );
-    if (video === state.video){
-      drawAeeRealtimeOverlay();
-      return;
-    }
-    if (state.resizeObserver) state.resizeObserver.disconnect();
-    if (state.canvas) state.canvas.remove();
-    if (state.video){
-      state.video.removeEventListener('loadedmetadata', drawAeeRealtimeOverlay);
-      state.video.removeEventListener('resize', drawAeeRealtimeOverlay);
-    }
-    state.video = video || null;
-    state.parent = document.body;
-    state.canvas = null;
-    if (!video || !state.parent) return;
-    const canvas = document.createElement('canvas');
-    canvas.className = 'aee-realtime-overlay';
-    canvas.setAttribute('aria-hidden', 'true');
-    state.parent.appendChild(canvas);
-    state.canvas = canvas;
-    state.resizeObserver = new ResizeObserver(drawAeeRealtimeOverlay);
-    state.resizeObserver.observe(video);
-    video.addEventListener('loadedmetadata', drawAeeRealtimeOverlay);
-    video.addEventListener('resize', drawAeeRealtimeOverlay);
-    drawAeeRealtimeOverlay();
-  }
-  function watchAeeRealtimeOverlay(camera){
-    const state = realtimeOverlayState;
-    if (state.cameraObserver) state.cameraObserver.disconnect();
-    if (state.dataObserver) state.dataObserver.disconnect();
-    state.camera = camera;
-    const dataRoot = document.getElementById('aee-realtime-overlay-data');
-    const dataContainer = dataRoot && dataRoot.parentElement;
-    if (dataContainer){
-      state.dataObserver = new MutationObserver(readAeeRealtimeOverlay);
-      state.dataObserver.observe(dataContainer, {
-        childList:true, subtree:true, attributes:true
-      });
-    }
-    state.cameraObserver = new MutationObserver(syncAeeRealtimeOverlay);
-    state.cameraObserver.observe(camera, {childList:true, subtree:true});
-    readAeeRealtimeOverlay();
-    syncAeeRealtimeOverlay();
-    window.addEventListener('resize', drawAeeRealtimeOverlay, {passive:true});
-    window.addEventListener('scroll', drawAeeRealtimeOverlay, {
-      passive:true, capture:true
-    });
-  }
-  function stopAeeRealtimeOverlay(){
-    const state = realtimeOverlayState;
-    if (state.cameraObserver) state.cameraObserver.disconnect();
-    if (state.dataObserver) state.dataObserver.disconnect();
-    if (state.resizeObserver) state.resizeObserver.disconnect();
-    if (state.canvas) state.canvas.remove();
-    if (state.video){
-      state.video.removeEventListener('loadedmetadata', drawAeeRealtimeOverlay);
-      state.video.removeEventListener('resize', drawAeeRealtimeOverlay);
-    }
-    window.removeEventListener('resize', drawAeeRealtimeOverlay);
-    window.removeEventListener('scroll', drawAeeRealtimeOverlay, true);
-    state.camera = null;
-    state.video = null;
-    state.parent = null;
-    state.canvas = null;
-    state.payload = null;
-  }
-  function stopAeeRealtimeCamera(){
-    clearAeeRealtimeCameraStart();
-    const camera = document.getElementById('aee-realtime-camera');
-    const capture = camera && camera.querySelector('.button-wrap .capture-button');
-    if (capture && capture.querySelector('[title="stop recording"]')) capture.click();
-    stopAeeRealtimeOverlay();
-    setAeeRealtimeCameraButton('ready');
-  }
-  function startAeeRealtimeCamera(){
-    if (!document.body.classList.contains('aee-detection-route-realtime')) return;
-    const camera = document.getElementById('aee-realtime-camera');
-    if (!camera){
-      setAeeRealtimeCameraButton('error');
-      return;
-    }
-    const capture = camera.querySelector('.button-wrap .capture-button');
-    if (capture){
-      if (!capture.querySelector('[title="stop recording"]')) capture.click();
-      watchAeeRealtimeOverlay(camera);
-      setAeeRealtimeCameraButton('active');
-      return;
-    }
-    const permission = camera.querySelector('[title="grant webcam access"] button');
-    if (!permission){
-      setAeeRealtimeCameraButton('error');
-      return;
-    }
-    clearAeeRealtimeCameraStart();
-    setAeeRealtimeCameraButton('connecting');
-    const observer = new MutationObserver(() => {
-      const liveCapture = camera.querySelector('.button-wrap .capture-button');
-      if (!liveCapture) return;
-      clearAeeRealtimeCameraStart();
-      if (!document.body.classList.contains('aee-detection-route-realtime')){
-        stopAeeRealtimeCamera();
-        return;
-      }
-      if (!liveCapture.querySelector('[title="stop recording"]')) liveCapture.click();
-      watchAeeRealtimeOverlay(camera);
-      setAeeRealtimeCameraButton('active');
-    });
-    window.__aeeRealtimeCameraObserver = observer;
-    observer.observe(camera, {childList:true, subtree:true});
-    permission.click();
-    window.__aeeRealtimeCameraStartTimer = window.setTimeout(() => {
-      clearAeeRealtimeCameraStart();
-      setAeeRealtimeCameraButton('error');
-    }, 10000);
-  }
-  document.addEventListener('click', event => {
-    if (event.target.closest('[data-aee-realtime-enable]')){
-      startAeeRealtimeCamera();
-    }
-  });
-  document.addEventListener('aee:detection-route', event => {
-    if (event.detail.route !== 'realtime') stopAeeRealtimeCamera();
-  });
-  function navigateAeeDetection(route){
-    if (aeeAccessRequired()){
-      activateAeeUtilityWindow('account');
-      return;
-    }
-    if (!['modes', 'realtime', 'upload'].includes(route)) return;
-    window.__aeeDetectionRouteInitialized = true;
-    try {
-      window.sessionStorage.setItem('aee-detection-route', route);
-    } catch (error) {
-      console.warn('Could not save the selected detection mode.', error);
-    }
-    document.body.classList.remove(
-      'aee-detection-route-modes', 'aee-detection-route-realtime',
-      'aee-detection-route-upload');
-    document.body.classList.add('aee-detection-route-' + route);
-    if (route === 'modes'){
-      activateAeeUtilityWindow('detection-modes');
-    } else if (route === 'realtime'){
-      activateAeeUtilityWindow('realtime-detection');
-    } else {
-      const activeWindow = document.querySelector(
-        '.aee-utility-window-shell[aria-modal="true"]');
-      if (activeWindow) closeAeeUtilityWindow(activeWindow);
-      window.setTimeout(() => {
-        const back = document.getElementById('aee-detection-back');
-        if (back) back.focus({preventScroll:true});
-      }, 0);
-    }
-    document.dispatchEvent(new CustomEvent('aee:detection-route', {detail:{route}}));
-  }
-  function initializeAeeDetectionRoute(){
-    const hasAccessState = document.querySelector(
-      '[data-aee-access-status], [data-aee-account-startup]');
-    if (window.__aeeDetectionRouteInitialized || !hasAccessState ||
-        aeeAccessRequired()) return;
-    window.__aeeDetectionRouteInitialized = true;
-    let route = 'modes';
-    try {
-      const savedRoute = window.sessionStorage.getItem('aee-detection-route');
-      if (['modes', 'realtime', 'upload'].includes(savedRoute)) route = savedRoute;
-    } catch (error) {
-      console.warn('Could not restore the selected detection mode.', error);
-    }
-    navigateAeeDetection(route);
   }
   function markAeeProfileFieldChanges(event){
     const field = event.target.closest(
@@ -8191,15 +6858,6 @@ _JS_HEAD = r"""
     'Agreement':'توافق النماذج','models':'نماذج','fusion':'دمج',
     'Analysis workflow':'خطوات التحليل','Add video':'إضافة فيديو',
     'Configure':'الإعدادات','Analyze':'تحليل','Review & export':'مراجعة وتصدير',
-    'Sampling rate · 0.1 frames/sec':'معدل أخذ العينات · 0.1 إطار/ثانية',
-    'Frames are sampled about once every 10 seconds. Brief events may be missed.':'يتم أخذ عينة إطار كل 10 ثوانٍ تقريباً، وقد لا تُلتقط الأحداث القصيرة.',
-    'Live camera':'الكاميرا المباشرة',
-    'Fast · 512 px':'سريع · 512 بكسل',
-    'Confidence · 0.30':'الثقة · 0.30',
-    'Enable live camera':'تشغيل الكاميرا المباشرة',
-    'Connecting to camera…':'جارٍ الاتصال بالكاميرا…',
-    'Live camera active':'الكاميرا المباشرة نشطة',
-    'Try camera again':'حاول تشغيل الكاميرا مجدداً',
     'Evidence intake':'استيراد الأدلة','batch supported':'يدعم المعالجة الدفعية',
     'Fingerprint every byte before analysis':'تحقق من سلامة البيانات قبل التحليل',
     'READY':'جاهز','Supported video formats':'تنسيقات الفيديو المدعومة',
@@ -8816,7 +7474,6 @@ _JS_HEAD = r"""
       window.__aeeInitialAccountOpened = true;
       window.setTimeout(() => activateAeeUtilityWindow('account'), 0);
     }
-    initializeAeeDetectionRoute();
   }
   document.addEventListener('click', event => {
     const markAllRead = event.target.closest('[data-aee-notification-read-all]');
@@ -8881,21 +7538,10 @@ _JS_HEAD = r"""
     if (event.target.closest('[data-aee-nav-update]')){
       activateAeeUtilityWindow('updates'); return;
     }
-    if (event.target.closest('[data-aee-detection-back]')){
-      navigateAeeDetection('modes'); return;
-    }
-    const detectionCard = event.target.closest('[data-aee-detection-mode]');
-    if (detectionCard){
-      navigateAeeDetection(detectionCard.dataset.aeeDetectionMode); return;
-    }
     if (event.target.closest('[data-aee-nav-close]') || event.target.closest('[data-aee-nav-backdrop]')){
       setAeeNavigation(false); return;
     }
     if (event.target.classList.contains('aee-utility-window-shell')){
-      if (event.target.id === 'aee-detection-modes-window') return;
-      if (event.target.id === 'aee-realtime-detection-window'){
-        navigateAeeDetection('modes'); return;
-      }
       closeAeeUtilityWindow(event.target); return;
     }
     const closeButton = event.target.closest('.aee-utility-window-close');
@@ -8944,10 +7590,7 @@ _JS_HEAD = r"""
         return;
       }
       const windowShell = document.querySelector('.aee-utility-window-shell[aria-modal="true"]');
-      if (windowShell && windowShell.id === 'aee-detection-modes-window') return;
-      if (windowShell && windowShell.id === 'aee-realtime-detection-window')
-        navigateAeeDetection('modes');
-      else if (windowShell) closeAeeUtilityWindow(windowShell);
+      if (windowShell) closeAeeUtilityWindow(windowShell);
       else setAeeNavigation(false);
     }
   });
@@ -10024,9 +8667,7 @@ def _build_master(results, out, work):
 
 
 def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes,
-                  high_accuracy=False, analysis_speed="fixed",
-                  progress=gr.Progress()):
-    sample_fps = _analysis_sampling_fps(analysis_speed)
+                  high_accuracy=False, progress=gr.Progress()):
     EMPTY_DF = _det_df([])
     EMPTY_TRACK_HTML = Tracker().panel_html()
     EMPTY_CAM_HTML = CAMCache().panel_html()
@@ -10075,18 +8716,8 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
         if not valid:
             out = list(EMPTY_OUT); out[9] = "No usable video was found."
             yield tuple(out); return
-        model_info = Ensemble.get().info
-        if not model_info["loaded"]:
-            model_errors = model_info.get("errors", [])
-            if model_errors:
-                details = "; ".join(
-                    f"{error['model']} ({error['stage']}): {error['message']}"
-                    for error in model_errors[-3:]
-                )
-                message = f"Detection models are not ready. {details}"
-            else:
-                message = "Detection models are not ready."
-            out = list(EMPTY_OUT); out[9] = message
+        if not Ensemble.get().info["loaded"]:
+            out = list(EMPTY_OUT); out[9] = "Detection models are not ready."
             yield tuple(out); return
 
         _init_html = ('<div class="aee-load" style="padding:32px;text-align:center;">'
@@ -10111,7 +8742,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
         root = Path(tempfile.mkdtemp(prefix="aee_")); t0 = time.time()
         results, errs = [], []
         q = queue.Queue(); stop = threading.Event()
-        proc = Processor(sampling_fps=sample_fps)
+        proc = Processor()
 
         def worker():
             try:
@@ -10120,8 +8751,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
                     try:
                         for ev in proc.process_stream(
                                 vp, root, cancel_event=cancel_event,
-                                high_accuracy=high_accuracy,
-                                analysis_speed=analysis_speed):
+                                high_accuracy=high_accuracy):
                             if stop.is_set(): return
                             if ev[0] == "stage":
                                 q.put(("stage", ev[1], ev[2], ev[3], i, Path(vp).name))
@@ -10193,7 +8823,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             try: ev = q.get(timeout=0.35)
             except queue.Empty:
                 if cancel_event.is_set(): stop.set()
-                elif time.time() - last_yield > _ANALYSIS_UI_UPDATE_INTERVAL:
+                elif time.time() - last_yield > 1.2:
                     yield snapshot(); last_yield = time.time()
                 continue
 
@@ -10216,7 +8846,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             elif kind == "error":
                 errs.append({"video": ev[2], "error": ev[1]})
 
-            if time.time() - last_yield > _ANALYSIS_UI_UPDATE_INTERVAL:
+            if time.time() - last_yield > 0.35:
                 yield snapshot(); last_yield = time.time()
 
         if was_cancelled or cancel_event.is_set():
@@ -10231,23 +8861,13 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             try:
                 master = _build_master(results, root/f"{_stamp}_evidence_summary.mp4",
                                         root/"_m")
-                if master is None:
-                    proc.warnings.append("Master summary video was not generated.")
-            except Exception as exc:
-                log.exception("Master summary video generation failed")
-                proc.warnings.append(
-                    f"Master summary video generation failed: {exc}"
-                )
+            except Exception as e: log.warning("master build: %s", e)
             try:
                 pdf = build_pdf(results, Ensemble.get().info,
                                 root/f"{_stamp}_evidence_report.pdf",
                                 tracker=proc.tracker,
                                 case_meta=case_meta, case_notes=case_notes)
-                if pdf is None:
-                    proc.warnings.append("PDF report was not generated.")
-            except Exception as exc:
-                log.exception("PDF report generation failed")
-                proc.warnings.append(f"PDF report generation failed: {exc}")
+            except Exception as e: log.warning("pdf build: %s", e)
 
         master_s = _persist_download(
             master, f"{_stamp}_evidence_summary.mp4")
@@ -10255,16 +8875,8 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             pdf, f"{_stamp}_evidence_report.pdf")
         if results and master_s is None:
             log.warning("Master Summary download unavailable for this analysis")
-            if master is not None:
-                proc.warnings.append(
-                    "Master summary video could not be copied to the downloads folder."
-                )
         if results and pdf_s is None:
             log.warning("Forensic PDF download unavailable for this analysis")
-            if pdf is not None:
-                proc.warnings.append(
-                    "PDF report could not be copied to the downloads folder."
-                )
 
         all_rows = _build_rows(results, proc.tracker)
         caps = [c for r in results for c in r.captures if Path(c).exists()]
@@ -10282,64 +8894,17 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
 
         history_warnings = _record_analysis_history(
             results, master_s, pdf_s, case_number,
-            high_accuracy=high_accuracy, analysis_speed=analysis_speed,
-            sampling_fps=sample_fps, case_meta=case_meta,
+            high_accuracy=high_accuracy, case_meta=case_meta,
             case_notes=case_notes, tracker_rows=track_rows,
             cam_items=proc.camcache.items, work_root=root)
+        history_status = ""
         if history_warnings:
             history_status = (
-                "Analysis completed, but some generated outputs could not be saved. "
-                "Open History to review the warnings. "
-                + _html.escape(history_warnings[0][:300]))
-        elif results:
-            history_status = "Analysis completed. Successful results were saved to History."
-        elif errs:
-            history_status = (
-                "No selected video completed successfully; no analysis results "
-                "were saved to History. Review the Overview for video errors."
-            )
-        else:
-            history_status = (
-                "The analysis pipeline finished without producing results or "
-                "reporting a video error. Check the application log."
-            )
-        if errs:
-            error_summary = "; ".join(
-                f"{_html.escape(str(error.get('video') or 'Video'))}: "
-                f"{_html.escape(str(error.get('error') or 'Unknown error'))}"
-                for error in errs[:3]
-            )
-            if len(errs) > 3:
-                error_summary += f"; {len(errs) - 3} more video error(s)"
-            history_status += " Video errors: " + error_summary
+                "Analysis completed, but some History files could not be saved. "
+                "Open History to review the storage warnings. "
+                + history_warnings[0][:300])
         if results:
             history_status += _ANALYSIS_COMPLETE_MARKER
-        if proc.warnings:
-            if history_status:
-                history_status += " "
-            history_status += "Pipeline warnings: " + "; ".join(
-                _html.escape(warning[:300]) for warning in proc.warnings[-5:]
-            )
-        detector_errors = Ensemble.get().info.get("errors", [])
-        if detector_errors:
-            unique_errors = []
-            seen_errors = set()
-            for error in detector_errors:
-                key = (error["model"], error["stage"], error["message"])
-                if key not in seen_errors:
-                    seen_errors.add(key)
-                    unique_errors.append(error)
-            error_summary = "; ".join(
-                f"{error['model']} ({error['stage']}): {error['message']}"
-                for error in unique_errors[-3:]
-            )
-            if history_status:
-                history_status += " "
-            history_status += (
-                "Some detector errors were recorded; remaining models continued "
-                "where possible. Check the Ensemble Configuration panel. "
-                + _html.escape(error_summary)
-            )
         yield (master_s, pdf_s, caps, sums, caps[0] if caps else None,
                gr.update(choices=classes, value="All"),
                gr.update(choices=classes, value="All"),
@@ -11657,13 +10222,6 @@ def build_ui():
     )
     with gr.Blocks(title="AI Evidence Extractor", analytics_enabled=False) as app:
         gr.HTML(_side_navigation_html(), elem_id="aee-nav-host")
-        gr.HTML('''<button type="button" id="aee-detection-back"
-          data-aee-detection-back aria-label="Back to Detection Modes">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h11"/></svg>
-          <span>Back to Detection Modes</span>
-        </button>''')
         notification_state = gr.HTML(value="", elem_id="aee-notification-state")
         gr.HTML(_hero_html(info))
         gr.HTML(_workflow_html())
@@ -11687,19 +10245,9 @@ def build_ui():
 
                 gr.HTML(_formats_html())
                 gr.HTML(value="", elem_id="aee-upload-progress-host")
-                with gr.Row(elem_classes=["aee-analysis-options"]):
-                    high_accuracy = gr.Checkbox(
-                        label="Enhanced accuracy (slower)", value=False,
-                        info=("Standard uses the two smallest models at 512px; enhanced "
-                              "mode uses all available models and test-time augmentation "
-                              "for difficult or small objects."))
-                    gr.HTML(
-                        '<div class="aee-analysis-notice">'
-                        '<strong>Sampling rate · 0.1 frames/sec</strong>'
-                        '<span>Frames are sampled about once every 10 seconds. '
-                        'Brief events may be missed.</span></div>'
-                    )
-                    analysis_speed = gr.State(value="fixed")
+                high_accuracy = gr.Checkbox(
+                    label="Enhanced accuracy (slower)", value=False,
+                    info="Use test-time augmentation on supported models for difficult or small objects.")
 
                 with gr.Row(elem_classes="aee-actions"):
                     reset_btn = gr.Button("← Reset", size="sm",
@@ -11804,7 +10352,7 @@ def build_ui():
                 history_refresh = gr.Button("Refresh history", size="sm")
                 history_table = gr.Dataframe(
                     value=_history_dataframe(), headers=HISTORY_COLUMNS,
-                    datatype=["str", "str", "number", "number", "str", "str", "str"],
+                    datatype=["str", "str", "number", "number", "str", "str"],
                     interactive=False, wrap=True, show_row_numbers=True)
 
         history_items = _history_list_items()
@@ -12284,190 +10832,6 @@ def build_ui():
                                 min_width=92)
                     feedback_status = gr.Markdown(elem_id="aee-feedback-status")
 
-        with gr.Group(visible=True, elem_id="aee-detection-modes-window",
-                      elem_classes=["aee-utility-window-shell",
-                                    "aee-detection-mode-window"]):
-            with gr.Column(elem_classes=["wrap"]):
-                gr.HTML('''<main class="aee-detection-mode-page">
-                  <header class="aee-detection-mode-heading">
-                    <div class="aee-detection-mode-eyebrow">AI Evidence Extractor</div>
-                    <h1>Choose Your Detection Mode</h1>
-                    <p>Select how you want to analyze and detect potential evidence.</p>
-                  </header>
-                  <section class="aee-detection-card-grid" aria-label="Detection modes">
-                    <button type="button" class="aee-detection-card"
-                      data-aee-detection-mode="realtime">
-                      <span class="aee-detection-card-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/>
-                          <path d="M12 3.5v5M20.5 12h-5M12 20.5v-5M3.5 12h5"/>
-                        </svg>
-                      </span>
-                      <span class="aee-detection-card-copy">
-                        <h2>In Real-Time Detection</h2>
-                        <p>Monitor live video streams and perform real-time AI-powered threat
-                          and evidence detection.</p>
-                      </span>
-                      <span class="aee-detection-card-footer">
-                        <span class="aee-detection-live-label">
-                          <span class="aee-detection-live-dot"></span>Live camera analysis
-                        </span><span class="aee-detection-card-arrow" aria-hidden="true">→</span>
-                      </span>
-                    </button>
-                    <button type="button" class="aee-detection-card"
-                      data-aee-detection-mode="upload">
-                      <span class="aee-detection-card-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                          <rect x="3" y="4" width="18" height="16" rx="3"/>
-                          <path d="m10 9 5 3-5 3zM12 2v5m-3-3 3-3 3 3"/>
-                        </svg>
-                      </span>
-                      <span class="aee-detection-card-copy">
-                        <h2>Upload Your Videos to Detection</h2>
-                        <p>Upload recorded CCTV, body-camera, or dash-camera videos and analyze
-                          them using the AI Evidence Extractor.</p>
-                      </span>
-                      <span class="aee-detection-card-footer">
-                        <span>Recorded video analysis</span>
-                        <span class="aee-detection-card-arrow" aria-hidden="true">→</span>
-                      </span>
-                    </button>
-                  </section>
-                </main>''')
-
-        with gr.Group(visible=True, elem_id="aee-realtime-detection-window",
-                      elem_classes=["aee-utility-window-shell",
-                                    "aee-realtime-detection-window"]):
-            with gr.Column(elem_classes=["wrap"]):
-                with gr.Row(elem_classes=["aee-utility-window-header"]):
-                    gr.HTML('''<header class="aee-project-page-heading">
-                      <span class="aee-project-page-mark" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                          <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/>
-                        </svg>
-                      </span>
-                      <div><small>LIVE CAMERA</small><h1>Real-Time Detection</h1>
-                        <p>On-device detection from a live camera stream.</p></div>
-                    </header>''')
-                with gr.Column(elem_classes=["aee-realtime-content"]):
-                    gr.HTML('''<div class="aee-realtime-summary">
-                      <div class="aee-realtime-summary-copy">
-                        <strong>Live visual screening</strong>
-                        <span>Detections appear directly on the live camera view. Processing speed depends on your device.</span>
-                      </div>
-                      <span class="aee-realtime-local-badge">Processed on this device</span>
-                    </div>''')
-                    gr.HTML('''<div class="aee-realtime-notice" role="note">
-                      <strong>For investigative support only.</strong> Model outputs can be
-                      inaccurate and are not proof of an event. Review the original footage and
-                      independently verify any potential finding. Camera frames are processed
-                      in memory and are not saved to analysis history. The supplied checkpoint
-                      metadata identifies its model license as AGPL-3.0.
-                    </div>''')
-                    with gr.Row(elem_classes=["aee-realtime-layout"]):
-                        with gr.Column(elem_classes=["aee-realtime-panel"]):
-                            gr.HTML('''<div class="aee-realtime-camera-toolbar">
-                              <span class="aee-realtime-panel-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                                  <rect x="3" y="5" width="18" height="14" rx="3"/>
-                                  <circle cx="12" cy="12" r="3"/>
-                                  <path d="m7 5 1-2h8l1 2"/>
-                                </svg>
-                              </span>
-                              <div class="aee-realtime-camera-title">
-                                <strong>Live camera</strong>
-                                <span>Bounding boxes are drawn directly on the video.</span>
-                              </div>
-                              <button type="button" class="aee-realtime-enable"
-                                data-aee-realtime-enable data-state="ready"
-                                aria-label="Enable live camera" aria-pressed="false">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                                  aria-hidden="true">
-                                  <path d="M14 10 21 6v12l-7-4"/>
-                                  <rect x="3" y="6" width="12" height="12" rx="2"/>
-                                </svg>
-                                <span>Enable live camera</span>
-                              </button>
-                            </div>''')
-                            gr.HTML('''<div class="aee-realtime-settings" aria-label="Live detection settings">
-                              <span class="aee-realtime-fast-badge">Fast · 512 px</span>
-                              <span class="aee-realtime-confidence-badge">Confidence · 0.30</span>
-                            </div>''')
-                            realtime_camera = gr.Image(
-                                label="Live camera", show_label=False,
-                                sources=["webcam"], image_mode="RGB",
-                                streaming=True, type="numpy",
-                                height=520,
-                                elem_id="aee-realtime-camera",
-                                elem_classes=["aee-realtime-camera"])
-                            realtime_device, realtime_half = (
-                                _REALTIME_PIPELINE.resolve_device()
-                            )
-                            gpu_available = realtime_device != "cpu"
-                            if gpu_available:
-                                gpu_name = _realtime_device_label(
-                                    realtime_device, realtime_half
-                                )
-                                gpu_status_initial = (
-                                    f"**GPU connected** · "
-                                    f"{gpu_name.removeprefix('GPU · ')}"
-                                )
-                                gpu_status_classes = [
-                                    "aee-realtime-gpu-status", "is-connected",
-                                ]
-                            elif os.environ.get("AEE_GPU_AUTOCONNECT_ERROR"):
-                                gpu_status_initial = (
-                                    "**GPU auto-connect failed.** CPU inference "
-                                    "remains active; setup will retry the next time "
-                                    "you open the app. Details are recorded in "
-                                    "`startup.log`."
-                                )
-                                gpu_status_classes = [
-                                    "aee-realtime-gpu-status", "is-cpu",
-                                ]
-                            else:
-                                gpu_status_initial = (
-                                    "**CPU inference is active.** Compatible NVIDIA "
-                                    "GPUs are connected automatically when the app "
-                                    "opens."
-                                )
-                                gpu_status_classes = [
-                                    "aee-realtime-gpu-status", "is-cpu",
-                                ]
-                            realtime_gpu_status = gr.Markdown(
-                                gpu_status_initial,
-                                elem_classes=gpu_status_classes,
-                            )
-                            realtime_status = gr.Markdown(
-                                "Enable the camera to begin live detection.",
-                                elem_classes=["aee-realtime-status"],
-                                elem_id="aee-realtime-status")
-                            realtime_overlay_data = gr.HTML(
-                                value=_realtime_overlay_html(0, 0, []),
-                                visible="hidden",
-                                elem_id="aee-realtime-overlay-data")
-                            gr.HTML('''<div class="aee-realtime-legend" aria-label="Bounding-box colors">
-                              <span><i></i>Potential threat classes</span>
-                              <span><i class="aee-legend-person"></i>Person</span>
-                              <span><i class="aee-legend-tool"></i>Tool</span>
-                            </div>''')
-                    gr.HTML('''<p class="aee-realtime-disclaimer">
-                      Model classes include firearms, melee and blunt weapons, explosives,
-                      fire/smoke, people, and tools. Detection quality depends on camera,
-                      lighting, distance, and the supplied model; no accuracy level is guaranteed.
-                    </p>''')
-                realtime_camera.stream(
-                    fn=_realtime_detect_frame,
-                    inputs=[realtime_camera],
-                    outputs=[realtime_status, realtime_overlay_data],
-                    stream_every=_REALTIME_STREAM_INTERVAL, concurrency_limit=1,
-                    trigger_mode="always_last", show_progress="hidden")
-
         gr.HTML(f"""<div class="aee-footer">
             <b>AI Evidence Extractor</b> · Threat Scoring + Object Tracking + EigenCAM
             · {info.get('n_models',0)} models · Learned Fusion
@@ -12530,8 +10894,7 @@ def build_ui():
             queue=False)
 
         process_event = process_btn.click(
-            fn=process_batch,
-            inputs=[video_input, *CASE_INPUTS, high_accuracy, analysis_speed],
+            fn=process_batch, inputs=[video_input, *CASE_INPUTS, high_accuracy],
             outputs=OUT, show_progress="hidden", api_name="analyze")
 
         def _post(master, pdf, caps, sums, prev, capc, evc, df, ov, prog,
@@ -12555,10 +10918,8 @@ def build_ui():
         history_refresh.click(fn=_history_dataframe, inputs=[],
                                outputs=[history_table], queue=False)
         detailed_history_refresh.click(
-            fn=_history_refresh_latest_ui, inputs=[history_refresh_state],
-            outputs=[history_refresh_state, history_detail, history_gallery,
-                     history_files, history_detections, history_tracks],
-            queue=False)
+            fn=_history_refresh_ui, inputs=[history_refresh_state],
+            outputs=[history_refresh_state], queue=False)
         feedback_attachment.upload(
             fn=_feedback_attachment_label_ui,
             inputs=[feedback_attachment],
@@ -12585,10 +10946,8 @@ def build_ui():
             fn=_history_dataframe, inputs=[], outputs=[history_table],
             show_progress="hidden")
         process_event.then(
-            fn=_history_refresh_latest_ui, inputs=[history_refresh_state],
-            outputs=[history_refresh_state, history_detail, history_gallery,
-                     history_files, history_detections, history_tracks],
-            show_progress="hidden")
+            fn=_history_refresh_ui, inputs=[history_refresh_state],
+            outputs=[history_refresh_state], show_progress="hidden")
         account_auth_mode_btn.click(
             fn=_account_auth_mode_ui, inputs=[account_auth_mode],
             outputs=[account_auth_mode, account_auth_intro, account_name_group,

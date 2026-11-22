@@ -1,13 +1,11 @@
 import base64
-import hashlib
-import html
 import json
 from pathlib import Path
-import re
 import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 import zipfile
 
@@ -23,360 +21,6 @@ def _nested_code_constants(code):
 
 
 class AccountUiTests(unittest.TestCase):
-    def test_detector_backend_supports_yolo_and_rtdetr_manifests(self):
-        yolo_backend = object()
-        rtdetr_backend = object()
-        with (
-            patch.object(app, "YOLO", yolo_backend),
-            patch.object(app, "RTDETR", rtdetr_backend),
-        ):
-            self.assertIs(app.Ensemble._model_class("yolo"), yolo_backend)
-            self.assertIs(app.Ensemble._model_class("rtdetr"), rtdetr_backend)
-        with self.assertRaisesRegex(ValueError, "Unsupported detector backend"):
-            app.Ensemble._model_class("unknown")
-
-    def test_ensemble_defers_loading_models_outside_the_fast_profile(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            model_entries = []
-            for name, size in (("large", 30), ("small", 1), ("medium", 10)):
-                filename = f"{name}.pt"
-                (root / filename).write_bytes(b"x" * size)
-                model_entries.append({
-                    "name": name, "path": filename, "conf": 0.1,
-                })
-            manifest = root / "ensemble_manifest.json"
-            manifest.write_text(json.dumps(model_entries), encoding="utf-8")
-            model_loader = Mock(
-                return_value=SimpleNamespace(names={0: "Firearm"})
-            )
-            with (
-                patch.object(app, "MODEL_DIR", root),
-                patch.object(app, "MANIFEST", manifest),
-                patch.object(app, "_resolve_inference_device",
-                             return_value=("cpu", False)),
-                patch.object(app, "YOLO", model_loader),
-                patch.object(app.CFG, "MAX_ACTIVE_MODELS", 0),
-                patch.object(app.CFG, "FAST_MODEL_COUNT", 1),
-            ):
-                ensemble = app.Ensemble()
-                info = ensemble.info
-
-        self.assertEqual(model_loader.call_count, 1)
-        self.assertEqual(
-            [member["loaded"] for member in info["members"]],
-            [False, True, False],
-        )
-        self.assertEqual(info["fast_models"], ["small"])
-
-    def test_standard_detector_profile_uses_few_small_models_at_lower_resolution(self):
-        class FakeDetector:
-            names = {0: "Firearm"}
-
-            def __init__(self):
-                self.calls = []
-
-            def predict(self, **kwargs):
-                self.calls.append(kwargs)
-                box = SimpleNamespace(
-                    cls=[0], conf=[0.95],
-                    xyxy=app.np.asarray([[1, 2, 30, 40]], dtype=int),
-                )
-                return [SimpleNamespace(boxes=[box])]
-
-        detectors = [FakeDetector() for _ in range(3)]
-        ensemble = app.Ensemble.__new__(app.Ensemble)
-        ensemble.models = [
-            {
-                "model": detector, "name": name, "size_mb": size,
-                "size_bytes": size,
-                "enabled": True, "names": detector.names, "conf": 0.1,
-                "error_count": 0, "last_error": None, "infer_ms": 0.0,
-            }
-            for detector, name, size in zip(
-                detectors, ("large", "small", "medium"), (100, 1, 20)
-            )
-        ]
-        ensemble.device = "cpu"
-        ensemble.half = False
-
-        with patch.object(app.CFG, "FAST_MODEL_COUNT", 1):
-            standard = ensemble.detect(app.np.zeros((64, 64, 3), dtype=app.np.uint8))
-            enhanced = ensemble.detect(
-                app.np.zeros((64, 64, 3), dtype=app.np.uint8),
-                high_accuracy=True,
-            )
-
-        self.assertEqual(len(standard), 1)
-        self.assertEqual(len(enhanced), 3)
-        self.assertEqual([len(detector.calls) for detector in detectors], [1, 2, 1])
-        self.assertEqual(detectors[1].calls[0]["imgsz"], 512)
-        self.assertFalse(detectors[1].calls[0]["augment"])
-        self.assertEqual(detectors[0].calls[0]["imgsz"], app.CFG.IMG)
-        self.assertTrue(detectors[0].calls[0]["augment"])
-
-    def test_detector_inference_errors_are_counted_and_retained(self):
-        class BrokenDetector:
-            names = {0: "Firearm"}
-
-            def predict(self, **_kwargs):
-                raise RuntimeError("inference failed")
-
-        ensemble = app.Ensemble.__new__(app.Ensemble)
-        ensemble.models = [{
-            "model": BrokenDetector(), "name": "broken", "size_mb": 1,
-            "size_bytes": 1,
-            "enabled": True, "names": {0: "Firearm"}, "conf": 0.1,
-            "error_count": 0, "last_error": None, "infer_ms": 0.0,
-        }]
-        ensemble.device = "cpu"
-        ensemble.half = False
-        ensemble.errors = []
-
-        with patch.object(app.log, "error"):
-            detections = ensemble.detect(
-                app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-            )
-
-        self.assertEqual(detections, [])
-        self.assertEqual(ensemble.models[0]["error_count"], 1)
-        self.assertIn("inference failed", ensemble.models[0]["last_error"])
-        self.assertEqual(ensemble.errors[-1]["stage"], "inference")
-
-    def test_detection_mode_picker_preserves_the_existing_upload_workspace(self):
-        source = Path(app.__file__).read_text(encoding="utf-8")
-        self.assertIn("Choose Your Detection Mode", source)
-        self.assertIn(
-            "Select how you want to analyze and detect potential evidence.", source
-        )
-        self.assertEqual(
-            source.count('<button type="button" class="aee-detection-card"'), 2
-        )
-        self.assertIn("aee-realtime-detection-window", source)
-        self.assertIn("Live camera", source)
-        self.assertNotIn("Detection sensitivity", source)
-        self.assertNotIn("Balanced · 640 px", source)
-        self.assertIn("Fast · 512 px", source)
-        self.assertIn("Confidence · 0.30", source)
-        self.assertNotIn("Live detection speed", source)
-        self.assertNotIn("Retry GPU connection", source)
-        self.assertNotIn("setup_realtime_gpu", source)
-        self.assertNotIn("Restarting now to start live", source)
-        self.assertIn("GPU connected", source)
-        self.assertIn("GPUs are connected automatically when the app ", source)
-        self.assertIn("data-aee-realtime-enable", source)
-        self.assertIn("Bounding-box colors", source)
-        self.assertIn("watchAeeRealtimeOverlay", app._JS_HEAD)
-        self.assertIn("drawAeeRealtimeOverlay", app._JS_HEAD)
-        self.assertNotIn("AI detection overlay", source)
-        self.assertNotIn("Minimum confidence", source)
-        self.assertNotIn("Input resolution", source)
-        self.assertNotIn('data-aee-realtime-feed-badge">Input', source)
-        self.assertNotIn('data-aee-realtime-feed-badge">Output', source)
-        self.assertIn("outputs=[realtime_status, realtime_overlay_data]", source)
-        self.assertNotIn("outputs=[realtime_camera", source)
-        self.assertNotIn("realtime_sensitivity", source)
-        self.assertNotIn("realtime_speed_mode", source)
-        self.assertIn("inputs=[realtime_camera]", source)
-        self.assertIn('visible="hidden"', source)
-        self.assertIn("_REALTIME_STREAM_INTERVAL", source)
-        self.assertEqual(app._REALTIME_STREAM_INTERVAL, 0.05)
-        self.assertIn("aee-realtime-overlay", app._JS_HEAD)
-        self.assertIn("data-testid=\"webcam-video\"", app._JS_HEAD)
-        application_source = Path(app.__file__).read_text(encoding="utf-8")
-        self.assertIn("def _install_realtime_gpu", application_source)
-        image_config = application_source.split(
-            "realtime_camera = gr.Image(", 1
-        )[1].split(")", 1)[0]
-        self.assertNotIn("stream_every=", image_config)
-        self.assertIn("Sampling rate · 0.1 frames/sec", source)
-        self.assertIn("Frames are sampled about once every 10 seconds.", source)
-        self.assertIn("aee-analysis-options", source)
-        self.assertIn("analysis_speed", source)
-        self.assertIn('analysis_speed = gr.State(value="fixed")', source)
-        self.assertIn("Back to Detection Modes", source)
-        self.assertIn("sessionStorage.getItem('aee-detection-route')", app._JS_HEAD)
-        self.assertIn("navigateAeeDetection('modes')", app._JS_HEAD)
-        self.assertIn("startAeeRealtimeCamera", app._JS_HEAD)
-        self.assertIn("stopAeeRealtimeCamera", app._JS_HEAD)
-        self.assertIn("button-wrap .capture-button", app._JS_HEAD)
-        self.assertIn("Upload video", source)
-
-    def test_realtime_checkpoint_is_bundled_and_checksum_verified(self):
-        checkpoint = (
-            Path(app.__file__).resolve().parent
-            / "assets"
-            / "realtime_weapons.pt"
-        )
-        self.assertTrue(checkpoint.is_file())
-        digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-        self.assertEqual(digest, app._REALTIME_MODEL_SHA256)
-
-    def test_realtime_detector_returns_box_metadata_without_replacing_camera_frame(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-        frame[0, 0] = [11, 22, 33]
-        boxes = SimpleNamespace(
-            data=app.np.array([
-                [2, 3, 25, 27, 0.91, 0],
-                [0, 0, 15, 20, 0.32, 0],
-                [1, 1, 12, 14, 0.28, 0],
-                [1, 1, 12, 14, 0.2, 0],
-            ], dtype=app.np.float32)
-        )
-        model = SimpleNamespace(
-            names={0: "Blunt_Weapon"},
-            predict=Mock(return_value=[SimpleNamespace(boxes=boxes)]),
-        )
-        with (
-            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
-            patch.object(
-                app._REALTIME_PIPELINE, "resolve_device",
-                return_value=("cpu", False),
-            ),
-        ):
-            status, overlay_html = app._realtime_detect_frame(frame)
-        self.assertIn("2 detections", status)
-        self.assertIn("Fast · 512 px", status)
-        self.assertIn("Confidence ≥ 0.30", status)
-        self.assertIn("Blunt", status)
-        self.assertIn("ms", status)
-        payload_text = re.search(
-            r'data-aee-realtime-payload="([^"]+)"', overlay_html
-        ).group(1)
-        payload = json.loads(html.unescape(payload_text))
-        self.assertEqual((payload["width"], payload["height"]), (32, 32))
-        self.assertEqual(len(payload["boxes"]), 2)
-        self.assertEqual(payload["boxes"][0]["coordinates"], [2, 3, 25, 27])
-        self.assertEqual(payload["boxes"][0]["label"], "Blunt")
-        self.assertAlmostEqual(payload["boxes"][0]["confidence"], 0.91)
-        self.assertEqual(payload["boxes"][0]["color"], "#eab308")
-        model.predict.assert_called_once()
-        inference = model.predict.call_args.kwargs
-        self.assertTrue(app.np.array_equal(
-            inference["source"][0, 0], [33, 22, 11]
-        ))
-        self.assertEqual(inference["conf"], 0.30)
-        self.assertEqual(inference["imgsz"], 512)
-        self.assertEqual(inference["max_det"], 20)
-        self.assertEqual(inference["iou"], 0.5)
-        self.assertIn("getBoundingClientRect()", app._JS_HEAD)
-        self.assertIn("appendChild(canvas)", app._JS_HEAD)
-        self.assertIn("state.parent = document.body", app._JS_HEAD)
-        self.assertIn("dataContainer", app._JS_HEAD)
-        self.assertIn("contentWidth", app._JS_HEAD)
-        self.assertIn("for (let element = video;", app._JS_HEAD)
-        self.assertIn("mirrored = !mirrored", app._JS_HEAD)
-        self.assertIn("payload.width - x2 : x1", app._JS_HEAD)
-        self.assertNotIn("state.canvas.style.transform =", app._JS_HEAD)
-        self.assertEqual(
-            app._realtime_checkpoint_hash(
-                Path(app.__file__).resolve().parent
-                / "assets"
-                / "realtime_weapons.pt"
-            ),
-            app._REALTIME_MODEL_SHA256,
-        )
-
-    def test_realtime_detector_uses_cuda_and_reports_the_active_gpu(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-        model = SimpleNamespace(
-            names={0: "Firearm"},
-            predict=Mock(return_value=[SimpleNamespace(boxes=None)]),
-        )
-        with (
-            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
-            patch.object(
-                app._REALTIME_PIPELINE, "resolve_device",
-                return_value=(0, True),
-            ),
-            patch.object(
-                app.torch.cuda, "get_device_name",
-                return_value="NVIDIA GeForce GTX 1050 Ti",
-            ),
-        ):
-            status, _ = app._realtime_detect_frame(frame)
-
-        self.assertIn("GPU · NVIDIA GeForce GTX 1050 Ti · FP16", status)
-        self.assertEqual(model.predict.call_args.kwargs["device"], 0)
-        self.assertTrue(model.predict.call_args.kwargs["half"])
-
-    def test_realtime_gpu_selection_is_independent_of_batch_device_setting(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-        model = SimpleNamespace(
-            names={0: "Firearm"},
-            predict=Mock(return_value=[SimpleNamespace(boxes=None)]),
-        )
-        with (
-            patch.object(app.CFG, "INFERENCE_DEVICE", "cpu"),
-            patch.object(app.torch.cuda, "is_available", return_value=True),
-            patch.object(
-                app.torch.cuda, "get_device_name",
-                return_value="NVIDIA GeForce GTX 1050 Ti",
-            ),
-            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
-        ):
-            status, _ = app._realtime_detect_frame(frame)
-
-        self.assertIn("GPU · NVIDIA GeForce GTX 1050 Ti · FP16", status)
-        self.assertEqual(model.predict.call_args.kwargs["device"], 0)
-        self.assertTrue(model.predict.call_args.kwargs["half"])
-
-    def test_gpu_setup_verifies_ultralytics_predictor_device_before_activation(self):
-        verification = app._gpu_verification_code()
-        self.assertIn("model.predictor.model.device.type == 'cuda'", verification)
-        self.assertIn("model.predictor.model.fp16", verification)
-
-    def test_realtime_detector_rejects_unsupported_camera_frame(self):
-        frame = app.np.zeros((32, 32), dtype=app.np.uint8)
-        with patch.object(app._REALTIME_PIPELINE, "load_model") as load_model:
-            status, overlay_html = app._realtime_detect_frame(frame)
-        self.assertIn("unsupported image format", status)
-        self.assertIn('"width":0,"height":0,"boxes":[]', html.unescape(overlay_html))
-        load_model.assert_not_called()
-
-    def test_realtime_detector_reports_empty_model_results(self):
-        frame = app.np.zeros((32, 32, 3), dtype=app.np.uint8)
-        model = SimpleNamespace(names={0: "Firearm"}, predict=Mock(return_value=[]))
-        with (
-            patch.object(app._REALTIME_PIPELINE, "load_model", return_value=model),
-            patch.object(
-                app._REALTIME_PIPELINE, "resolve_device",
-                return_value=("cpu", False),
-            ),
-        ):
-            status, overlay_html = app._realtime_detect_frame(frame)
-
-        self.assertIn("model returned no results", status)
-        self.assertIn('"width":0,"height":0,"boxes":[]', html.unescape(overlay_html))
-
-    def test_uploaded_video_sampling_is_fixed_at_tenth_fps(self):
-        for mode in ("balanced", "fast", "fixed"):
-            self.assertEqual(app._analysis_sampling_fps(mode), 0.1)
-        with self.assertRaisesRegex(ValueError, "Analysis speed"):
-            app._analysis_sampling_fps("unknown")
-
-    def test_tracker_allows_association_across_ten_second_sample_interval(self):
-        tracker = app.Tracker(sampling_fps=0.1)
-        first = {
-            "bbox": [10, 10, 30, 30],
-            "label": "Firearm",
-            "confidence": 0.9,
-        }
-        second = dict(first)
-
-        tracker.update([first], 0.0, 0, "sample.mp4")
-        tracker.update([second], 10.0, 1, "sample.mp4")
-
-        self.assertEqual(first["track_id"], second["track_id"])
-
-    def test_realtime_box_clips_coordinates_and_skips_degenerate_boxes(self):
-        frame = app.np.zeros((40, 48, 3), dtype=app.np.uint8)
-        self.assertEqual(
-            app._realtime_box_coordinates(frame, [-20, -8, 60, 55]),
-            [0, 0, 47, 39],
-        )
-        self.assertIsNone(app._realtime_box_coordinates(frame, [8, 8, 9, 20]))
-
     def test_feedback_controls_have_modern_theme_and_focus_styles(self):
         for css in (
             "#aee-feedback-kind .wrap,#aee-feedback-kind .input-container,",
@@ -934,101 +578,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(items[0]["video"], "newer.mp4")
         self.assertEqual(items[0]["detections"], 5)
 
-    def test_history_refresh_loads_details_for_the_latest_saved_analysis(self):
-        entries = [
-            {"id": "older", "video": "older.mp4", "analyzed_at": "2025-01-01"},
-            {"id": "newer", "video": "newer.mp4", "analyzed_at": "2025-01-02"},
-        ]
-        detail = ("latest detail", ["capture.jpg"], ["report.pdf"],
-                  app.pd.DataFrame(), app.pd.DataFrame())
-        with tempfile.TemporaryDirectory() as temp_dir:
-            history_file = Path(temp_dir) / "analysis_history.json"
-            history_file.write_text(json.dumps(entries), encoding="utf-8")
-            with (
-                patch.object(app, "HISTORY_FILE", history_file),
-                patch.object(app, "_history_detail_ui", return_value=detail) as load_detail,
-            ):
-                refreshed = app._history_refresh_latest_ui(4)
-
-        self.assertEqual(refreshed, (5, *detail))
-        load_detail.assert_called_once_with("newer")
-
-    def test_analysis_overview_shows_errors_when_no_video_completed(self):
-        overview = app._overview_html(
-            [],
-            [{"video": "broken <clip>.mp4", "error": "Could not <decode> video"}],
-            [],
-            None,
-            None,
-            1.0,
-        )
-
-        self.assertIn("No analysis output was produced", overview)
-        self.assertIn("Video pipeline errors", overview)
-        self.assertIn("broken &lt;clip&gt;.mp4", overview)
-        self.assertIn("Could not &lt;decode&gt; video", overview)
-        self.assertNotIn("<decode>", overview)
-
-    def test_batch_pipeline_returns_visible_errors_when_every_video_fails(self):
-        class FailedProcessor:
-            def __init__(self, sampling_fps=None):
-                self.sampling_fps = sampling_fps
-                self.tracker = SimpleNamespace(
-                    summaries=lambda: [],
-                    panel_html=lambda: "No tracks",
-                )
-                self.camcache = SimpleNamespace(
-                    items=[],
-                    panel_html=lambda: "No heatmaps",
-                )
-                self.warnings = []
-
-            def process_stream(self, *_args, **_kwargs):
-                yield ("error", "Cannot open video")
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            video = Path(temp_dir) / "broken.mp4"
-            video.write_bytes(b"video")
-            ensemble = SimpleNamespace(
-                info={"loaded": True, "errors": []},
-                models=[],
-            )
-            with (
-                patch.object(app, "Processor", FailedProcessor),
-                patch.object(app, "_stable_copy", return_value=str(video)),
-                patch.object(app.Ensemble, "get", return_value=ensemble),
-            ):
-                outputs = list(app.process_batch(
-                    [str(video)], "", "", "", "", "",
-                    progress=Mock(),
-                ))
-
-        final_output = outputs[-1]
-        self.assertIn("No analysis output was produced", final_output[8])
-        self.assertIn("Cannot open video", final_output[8])
-        self.assertIn("no analysis results were saved to History", final_output[9])
-
-    def test_analysis_overview_keeps_partial_video_errors_with_successful_results(self):
-        result = app.Result(
-            video_name="completed.mp4",
-            source_path="completed.mp4",
-            metadata=app.Meta(fps=25.0, frame_count=25, width=640,
-                              height=480, duration=1.0),
-        )
-        overview = app._overview_html(
-            [result],
-            [{"video": "failed.mp4", "error": "decoder stopped"}],
-            [],
-            None,
-            None,
-            1.0,
-        )
-
-        self.assertIn("Videos", overview)
-        self.assertIn("Video pipeline errors", overview)
-        self.assertIn("failed.mp4", overview)
-        self.assertIn("decoder stopped", overview)
-
     def test_remove_history_entry_deletes_only_managed_per_video_artifacts(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -1300,7 +849,6 @@ class AccountUiTests(unittest.TestCase):
                 "duration_seconds": 12.5,
                 "detections": index,
                 "high_accuracy": False,
-                "analysis_speed": "fast" if index == 0 else "balanced",
                 "case": "case-1",
             }
             for index in range(101)
@@ -1315,8 +863,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(history), 101)
         self.assertEqual(len(choices), 101)
         self.assertEqual(selected, "history-100")
-        self.assertEqual(history.iloc[-1]["Mode"], "Standard")
-        self.assertEqual(history.iloc[-1]["Sampling rate"], "0.5 fps")
         self.assertIn(".aee-history-detail", app.CSS)
 
     def test_history_zip_contains_analysis_details_and_generated_files(self):
@@ -1422,7 +968,6 @@ class AccountUiTests(unittest.TestCase):
             ):
                 warnings = app._record_analysis_history(
                     [result], str(master), str(report), "case-1",
-                    analysis_speed="fixed", sampling_fps=0.1,
                     case_meta={"examiner": "Analyst"}, case_notes="Case notes",
                     tracker_rows=[{"Video": "sample.mp4", "Track": 4}],
                     cam_items=[{"video": "sample.mp4", "heat": str(heat),
@@ -1435,10 +980,7 @@ class AccountUiTests(unittest.TestCase):
 
         self.assertEqual(warnings, [])
         self.assertEqual(saved_entries[0]["source_path"], str(source_video))
-        self.assertEqual(saved_entries[0]["analysis_speed"], "fixed")
-        self.assertEqual(saved_entries[0]["sampling_fps"], 0.1)
         self.assertEqual(saved_entries[0]["details"]["case_notes"], "Case notes")
-        self.assertIn("0.1 frames/sec", detail[0])
         self.assertEqual(len(saved_entries[0]["details"]["captures"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["highlights"]), 1)
         self.assertEqual(len(saved_entries[0]["details"]["heatmaps"]), 2)
@@ -1447,31 +989,6 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(detail[2]), 5)
         self.assertEqual(detail[3].iloc[0]["label"], "Firearm")
         self.assertEqual(detail[4].iloc[0]["Track"], 4)
-
-    def test_analysis_history_explains_when_report_outputs_are_missing(self):
-        result = app.Result(
-            video_name="sample.mp4",
-            source_path="sample.mp4",
-            metadata=app.Meta(fps=25.0, frame_count=25, width=640,
-                              height=480, duration=1.0),
-        )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            history_file = root / "analysis_history.json"
-            with (
-                patch.object(app, "HISTORY_FILE", history_file),
-                patch.object(app, "HISTORY_DIR", root / "history"),
-            ):
-                warnings = app._record_analysis_history([result], None, None)
-                entry = json.loads(history_file.read_text(encoding="utf-8"))[0]
-                detail = app._history_detail_ui(entry["id"])
-
-        self.assertIn("Master summary video was not saved", warnings[0])
-        self.assertIn("PDF report was not saved", warnings[1])
-        self.assertEqual(entry["analysis_speed"], "fixed")
-        self.assertEqual(entry["sampling_fps"], 0.1)
-        self.assertIn("0.1 frames/sec", detail[0])
-        self.assertIn("Some files were not saved", detail[0])
 
     def test_supabase_setup_sql_is_safe_to_rerun(self):
         sql = app._ACCOUNT_SETUP_SQL

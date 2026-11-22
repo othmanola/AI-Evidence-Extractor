@@ -371,7 +371,7 @@ def apply_staged_update(staged: dict, progress: Callable | None = None) -> None:
 def _restart_command(data_dir: Path, app_dir: Path) -> tuple[list[str], Path]:
     import sys
 
-    launcher = app_dir / "desktop_entry.py"
+    launcher = app_dir / "desktop_launcher.py"
     batch_launcher = app_dir / "run_app.bat"
     runtime_dir = app_dir / "runtime"
     venv = data_dir / "runtimeenv"
