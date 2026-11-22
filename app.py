@@ -604,6 +604,12 @@ def _history_refresh_ui(refresh_count=0):
     return refresh_count + 1
 
 
+def _history_refresh_latest_ui(refresh_count=0):
+    items = _history_list_items()
+    entry_id = items[0]["id"] if items else None
+    return refresh_count + 1, *_history_detail_ui(entry_id)
+
+
 def _copy_history_artifact(source, destination):
     if not source:
         return ""
@@ -641,6 +647,10 @@ def _record_analysis_history(results, master_path, report_path, case_number=None
             master_path, shared_dir / Path(master_path).name) if master_path else ""
         saved_report = _copy_history_artifact(
             report_path, shared_dir / Path(report_path).name) if report_path else ""
+        if not saved_master:
+            storage_warnings.append("Master summary video was not saved.")
+        if not saved_report:
+            storage_warnings.append("PDF report was not saved.")
     except OSError as exc:
         log.exception("Could not save shared history report artifacts")
         storage_warnings.append(f"Report artifact copy failed: {exc}")
@@ -2582,6 +2592,7 @@ def build_pdf(results, model_info, out_path, analyst_notes=None, tracker=None,
         from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
                                         Table, TableStyle, PageBreak)
     except Exception:
+        log.exception("PDF report dependencies could not be imported")
         return None
     try:
         styles = getSampleStyleSheet()
@@ -2713,8 +2724,9 @@ def build_pdf(results, model_info, out_path, analyst_notes=None, tracker=None,
                 st.append(tb)
         doc.build(st)
         return str(out_path) if out_path.exists() else None
-    except Exception as e:
-        log.warning("pdf: %s", e); return None
+    except Exception:
+        log.exception("PDF report generation failed")
+        return None
 
 
 # ============================================================
@@ -7079,8 +7091,39 @@ def _threat_distribution_html(results, tracker=None):
     </div>"""
 
 
+def _analysis_errors_html(errs):
+    if not errs:
+        return ""
+    rows = []
+    for error in errs[:8]:
+        if not isinstance(error, dict):
+            error = {"error": error}
+        video = _html.escape(str(error.get("video") or "Video"))
+        message = _html.escape(str(error.get("error") or "Unknown processing error"))
+        rows.append(f"<li><strong>{video}:</strong> {message}</li>")
+    omitted = len(errs) - len(rows)
+    if omitted:
+        rows.append(f"<li>{omitted} additional video error(s) are not shown.</li>")
+    return (
+        '<div class="aee-history-warning"><strong>Video pipeline errors</strong>'
+        f'<ul>{"".join(rows)}</ul></div>'
+    )
+
+
 def _overview_html(results, errs, sums, master, pdf, elapsed, tracker=None):
-    if not results: return _empty_html()
+    errors_html = _analysis_errors_html(errs)
+    if not results:
+        if not errs:
+            return _empty_html()
+        return (
+            '<div class="aee-empty">'
+            '<div class="aee-empty-icon">⚠️</div>'
+            '<div class="aee-empty-title">No analysis output was produced</div>'
+            '<div class="aee-empty-sub">No selected video completed successfully. '
+            'Review the pipeline errors below, then check the video format, file '
+            'access, and detector configuration.</div></div>'
+            + errors_html
+        )
     total = len(results)
     payload = None
     heat_html = ""
@@ -7183,7 +7226,8 @@ def _overview_html(results, errs, sums, master, pdf, elapsed, tracker=None):
         <div class="aee-stat-lbl">Elapsed</div></div>
     </div>
     {_threat_distribution_html(results, tracker)}
-    {tl}"""
+    {tl}
+    {errors_html}"""
 
 
 # ============================================================
@@ -10158,13 +10202,23 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             try:
                 master = _build_master(results, root/f"{_stamp}_evidence_summary.mp4",
                                         root/"_m")
-            except Exception as e: log.warning("master build: %s", e)
+                if master is None:
+                    proc.warnings.append("Master summary video was not generated.")
+            except Exception as exc:
+                log.exception("Master summary video generation failed")
+                proc.warnings.append(
+                    f"Master summary video generation failed: {exc}"
+                )
             try:
                 pdf = build_pdf(results, Ensemble.get().info,
                                 root/f"{_stamp}_evidence_report.pdf",
                                 tracker=proc.tracker,
                                 case_meta=case_meta, case_notes=case_notes)
-            except Exception as e: log.warning("pdf build: %s", e)
+                if pdf is None:
+                    proc.warnings.append("PDF report was not generated.")
+            except Exception as exc:
+                log.exception("PDF report generation failed")
+                proc.warnings.append(f"PDF report generation failed: {exc}")
 
         master_s = _persist_download(
             master, f"{_stamp}_evidence_summary.mp4")
@@ -10172,8 +10226,16 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             pdf, f"{_stamp}_evidence_report.pdf")
         if results and master_s is None:
             log.warning("Master Summary download unavailable for this analysis")
+            if master is not None:
+                proc.warnings.append(
+                    "Master summary video could not be copied to the downloads folder."
+                )
         if results and pdf_s is None:
             log.warning("Forensic PDF download unavailable for this analysis")
+            if pdf is not None:
+                proc.warnings.append(
+                    "PDF report could not be copied to the downloads folder."
+                )
 
         all_rows = _build_rows(results, proc.tracker)
         caps = [c for r in results for c in r.captures if Path(c).exists()]
@@ -10195,19 +10257,39 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             sampling_fps=sample_fps, case_meta=case_meta,
             case_notes=case_notes, tracker_rows=track_rows,
             cam_items=proc.camcache.items, work_root=root)
-        history_status = ""
         if history_warnings:
             history_status = (
-                "Analysis completed, but some History files could not be saved. "
-                "Open History to review the storage warnings. "
-                + history_warnings[0][:300])
+                "Analysis completed, but some generated outputs could not be saved. "
+                "Open History to review the warnings. "
+                + _html.escape(history_warnings[0][:300]))
+        elif results:
+            history_status = "Analysis completed. Successful results were saved to History."
+        elif errs:
+            history_status = (
+                "No selected video completed successfully; no analysis results "
+                "were saved to History. Review the Overview for video errors."
+            )
+        else:
+            history_status = (
+                "The analysis pipeline finished without producing results or "
+                "reporting a video error. Check the application log."
+            )
+        if errs:
+            error_summary = "; ".join(
+                f"{_html.escape(str(error.get('video') or 'Video'))}: "
+                f"{_html.escape(str(error.get('error') or 'Unknown error'))}"
+                for error in errs[:3]
+            )
+            if len(errs) > 3:
+                error_summary += f"; {len(errs) - 3} more video error(s)"
+            history_status += " Video errors: " + error_summary
         if results:
             history_status += _ANALYSIS_COMPLETE_MARKER
         if proc.warnings:
             if history_status:
                 history_status += " "
             history_status += "Pipeline warnings: " + "; ".join(
-                warning[:300] for warning in proc.warnings[-5:]
+                _html.escape(warning[:300]) for warning in proc.warnings[-5:]
             )
         detector_errors = Ensemble.get().info.get("errors", [])
         if detector_errors:
@@ -10227,7 +10309,7 @@ def process_batch(videos, case_number, evidence_id, examiner, agency, case_notes
             history_status += (
                 "Some detector errors were recorded; remaining models continued "
                 "where possible. Check the Ensemble Configuration panel. "
-                + error_summary
+                + _html.escape(error_summary)
             )
         yield (master_s, pdf_s, caps, sums, caps[0] if caps else None,
                gr.update(choices=classes, value="All"),
@@ -12446,8 +12528,10 @@ def build_ui():
         history_refresh.click(fn=_history_dataframe, inputs=[],
                                outputs=[history_table], queue=False)
         detailed_history_refresh.click(
-            fn=_history_refresh_ui, inputs=[history_refresh_state],
-            outputs=[history_refresh_state], queue=False)
+            fn=_history_refresh_latest_ui, inputs=[history_refresh_state],
+            outputs=[history_refresh_state, history_detail, history_gallery,
+                     history_files, history_detections, history_tracks],
+            queue=False)
         feedback_attachment.upload(
             fn=_feedback_attachment_label_ui,
             inputs=[feedback_attachment],
@@ -12474,8 +12558,10 @@ def build_ui():
             fn=_history_dataframe, inputs=[], outputs=[history_table],
             show_progress="hidden")
         process_event.then(
-            fn=_history_refresh_ui, inputs=[history_refresh_state],
-            outputs=[history_refresh_state], show_progress="hidden")
+            fn=_history_refresh_latest_ui, inputs=[history_refresh_state],
+            outputs=[history_refresh_state, history_detail, history_gallery,
+                     history_files, history_detections, history_tracks],
+            show_progress="hidden")
         account_auth_mode_btn.click(
             fn=_account_auth_mode_ui, inputs=[account_auth_mode],
             outputs=[account_auth_mode, account_auth_intro, account_name_group,

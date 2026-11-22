@@ -921,6 +921,100 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(items[0]["video"], "newer.mp4")
         self.assertEqual(items[0]["detections"], 5)
 
+    def test_history_refresh_loads_details_for_the_latest_saved_analysis(self):
+        entries = [
+            {"id": "older", "video": "older.mp4", "analyzed_at": "2025-01-01"},
+            {"id": "newer", "video": "newer.mp4", "analyzed_at": "2025-01-02"},
+        ]
+        detail = ("latest detail", ["capture.jpg"], ["report.pdf"],
+                  app.pd.DataFrame(), app.pd.DataFrame())
+        with tempfile.TemporaryDirectory() as temp_dir:
+            history_file = Path(temp_dir) / "analysis_history.json"
+            history_file.write_text(json.dumps(entries), encoding="utf-8")
+            with (
+                patch.object(app, "HISTORY_FILE", history_file),
+                patch.object(app, "_history_detail_ui", return_value=detail) as load_detail,
+            ):
+                refreshed = app._history_refresh_latest_ui(4)
+
+        self.assertEqual(refreshed, (5, *detail))
+        load_detail.assert_called_once_with("newer")
+
+    def test_analysis_overview_shows_errors_when_no_video_completed(self):
+        overview = app._overview_html(
+            [],
+            [{"video": "broken <clip>.mp4", "error": "Could not <decode> video"}],
+            [],
+            None,
+            None,
+            1.0,
+        )
+
+        self.assertIn("No analysis output was produced", overview)
+        self.assertIn("Video pipeline errors", overview)
+        self.assertIn("broken &lt;clip&gt;.mp4", overview)
+        self.assertIn("Could not &lt;decode&gt; video", overview)
+        self.assertNotIn("<decode>", overview)
+
+    def test_batch_pipeline_returns_visible_errors_when_every_video_fails(self):
+        class FailedProcessor:
+            def __init__(self):
+                self.tracker = SimpleNamespace(
+                    summaries=lambda: [],
+                    panel_html=lambda: "No tracks",
+                )
+                self.camcache = SimpleNamespace(
+                    items=[],
+                    panel_html=lambda: "No heatmaps",
+                )
+                self.warnings = []
+
+            def process_stream(self, *_args, **_kwargs):
+                yield ("error", "Cannot open video")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            video = Path(temp_dir) / "broken.mp4"
+            video.write_bytes(b"video")
+            ensemble = SimpleNamespace(
+                info={"loaded": True, "errors": []},
+                models=[],
+            )
+            with (
+                patch.object(app, "Processor", FailedProcessor),
+                patch.object(app, "_stable_copy", return_value=str(video)),
+                patch.object(app.Ensemble, "get", return_value=ensemble),
+            ):
+                outputs = list(app.process_batch(
+                    [str(video)], "", "", "", "", "",
+                    progress=Mock(),
+                ))
+
+        final_output = outputs[-1]
+        self.assertIn("No analysis output was produced", final_output[8])
+        self.assertIn("Cannot open video", final_output[8])
+        self.assertIn("no analysis results were saved to History", final_output[9])
+
+    def test_analysis_overview_keeps_partial_video_errors_with_successful_results(self):
+        result = app.Result(
+            video_name="completed.mp4",
+            source_path="completed.mp4",
+            metadata=app.Meta(fps=25.0, frame_count=25, width=640,
+                              height=480, duration=1.0),
+        )
+        overview = app._overview_html(
+            [result],
+            [{"video": "failed.mp4", "error": "decoder stopped"}],
+            [],
+            None,
+            None,
+            1.0,
+        )
+
+        self.assertIn("Videos", overview)
+        self.assertIn("Video pipeline errors", overview)
+        self.assertIn("failed.mp4", overview)
+        self.assertIn("decoder stopped", overview)
+
     def test_remove_history_entry_deletes_only_managed_per_video_artifacts(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -1337,6 +1431,28 @@ class AccountUiTests(unittest.TestCase):
         self.assertEqual(len(detail[2]), 5)
         self.assertEqual(detail[3].iloc[0]["label"], "Firearm")
         self.assertEqual(detail[4].iloc[0]["Track"], 4)
+
+    def test_analysis_history_explains_when_report_outputs_are_missing(self):
+        result = app.Result(
+            video_name="sample.mp4",
+            source_path="sample.mp4",
+            metadata=app.Meta(fps=25.0, frame_count=25, width=640,
+                              height=480, duration=1.0),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            history_file = root / "analysis_history.json"
+            with (
+                patch.object(app, "HISTORY_FILE", history_file),
+                patch.object(app, "HISTORY_DIR", root / "history"),
+            ):
+                warnings = app._record_analysis_history([result], None, None)
+                entry = json.loads(history_file.read_text(encoding="utf-8"))[0]
+                detail = app._history_detail_ui(entry["id"])
+
+        self.assertIn("Master summary video was not saved", warnings[0])
+        self.assertIn("PDF report was not saved", warnings[1])
+        self.assertIn("Some files were not saved", detail[0])
 
     def test_supabase_setup_sql_is_safe_to_rerun(self):
         sql = app._ACCOUNT_SETUP_SQL
